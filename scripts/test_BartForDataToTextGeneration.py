@@ -22,12 +22,15 @@ class BartForDataToTextGenerationTester():
         encoder_col0, encoder_col1, \
             encoder_col2, encoder_col3, encoder_col4 = model.get_encoders() 
 
+        
+
         self.encoder_col0 = encoder_col0
-        self.encoder_col1 = encoder_col1 
-        self.encoder_col2 = encoder_col2 
-        self.encoder_col3 = encoder_col3 
+        self.encoder_col1 = encoder_col1
+        self.encoder_col2 = encoder_col2
+        self.encoder_col3 = encoder_col3
         self.encoder_col4 = encoder_col4
 
+        self.encoder_outputs_list = []
         return
 
     def test_encoder0(self):
@@ -37,6 +40,7 @@ class BartForDataToTextGenerationTester():
                                 input_ids = data[0],
                                 attention_mask = data[1])
         print(encoder_outputs_col0[0].shape)
+        self.encoder_outputs_list.append(encoder_outputs_col0)
         return
 
     def test_encoder1(self):
@@ -47,6 +51,7 @@ class BartForDataToTextGenerationTester():
                                     input_ids = data[2],
                                     attention_mask = data[3])
             print(encoder_outputs_col1[0].shape)
+            self.encoder_outputs_list.append(encoder_outputs_col1)
         return
 
     def test_encoder2(self):
@@ -57,6 +62,7 @@ class BartForDataToTextGenerationTester():
                                     input_ids = data[4],
                                     attention_mask = data[5])
             print(encoder_outputs_col2[0].shape)
+            self.encoder_outputs_list.append(encoder_outputs_col2)
         return
 
     def test_encoder3(self):
@@ -67,6 +73,7 @@ class BartForDataToTextGenerationTester():
                                     input_ids = data[6],
                                     attention_mask = data[7])
             print(encoder_outputs_col3[0].shape)
+            self.encoder_outputs_list.append(encoder_outputs_col3)
         return
 
     def test_encoder4(self):
@@ -77,7 +84,13 @@ class BartForDataToTextGenerationTester():
                                     input_ids = data[8],
                                     attention_mask = data[9])
             print(encoder_outputs_col4[0].shape)
+            self.encoder_outputs_list.append(encoder_outputs_col4)
         return
+
+    def test_encoder_addition(self):
+        encoder_outputs_added =  model._get_added_encoder_outputs(self.encoder_list)
+        print(encoder_outputs_added)
+     
         
 
     
@@ -89,4 +102,5 @@ obj.test_encoder1()
 obj.test_encoder2()
 obj.test_encoder3()
 obj.test_encoder4()
+obj.test_encoder_addition()
     
