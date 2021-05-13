@@ -7,9 +7,9 @@ from Data2TextProcessor_1 import SummaryDataModule
 
 model = BartForDataToText.from_pretrained('facebook/bart-base')    
 tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
-summary_data = SummaryDataModule(tokenizer, data_files = ['/Users/sanjana/roboreviewer_summarization/data/web_nlg_train.csv', 
-                                           '/Users/sanjana/roboreviewer_summarization/data/web_nlg_dev.csv', 
-                                           '/Users/sanjana/roboreviewer_summarization/data/web_nlg_test.csv'], batch_size = 1)
+summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/web_nlg_train.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/web_nlg_dev.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/web_nlg_test.csv'], batch_size = 1)
 summary_data.prepare_data()
 
 summary_data.setup("stage")
