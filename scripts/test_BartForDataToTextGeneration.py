@@ -33,7 +33,7 @@ class BartForDataToTextGenerationTester():
     def test_encoder0(self):
         data = next(it)
         print(len(data))
-        encoder_outputs_col0 = encoder_col0(\
+        encoder_outputs_col0 = self.encoder_col0(\
                                 input_ids = data[0],
                                 attention_mask = data[1])
         print(encoder_outputs_col0[0].shape)
