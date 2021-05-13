@@ -20,18 +20,29 @@ class BartForDataToTextGenerationTester():
 
     def test_get_encoders(self):
         encoder_col0, encoder_col1, \
-            encoder_col2, encoder_col3, encoder_col4 = model.get_encoders()
+            encoder_col2, encoder_col3, encoder_col4 = model.get_encoders() 
 
+        self.encoder_col0 = encoder_col0
+        self.encoder_col1 = encoder_col1 
+        self.encoder_col2 = encoder_col2 
+        self.encoder_col3 = encoder_col3 
+        self.encoder_col4 = encoder_col4
+
+        return
+
+    def test_encoder0(self):
         data = next(it)
+        print(len(data))
         encoder_outputs_col0 = encoder_col0(\
                                 input_ids = data[0],
                                 attention_mask = data[1])
-        print(encoder_outputs_col0.shape)
+        print(encoder_outputs_col0[0].shape)
         return
         
 
     
         
-
-BartForDataToTextGenerationTester().test_get_encoders()
+obj = BartForDataToTextGenerationTester()
+obj.test_get_encoders()
+obj.test_encoder0()
     
