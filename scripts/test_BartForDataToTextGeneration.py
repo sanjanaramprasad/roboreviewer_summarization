@@ -49,7 +49,7 @@ class BartForDataToTextGenerationTester():
             print(encoder_outputs_col1[0].shape)
         return
 
-     def test_encoder2(self):
+    def test_encoder2(self):
         data = next(it)
         print(len(data))
         if len(data) > 5:
@@ -59,7 +59,7 @@ class BartForDataToTextGenerationTester():
             print(encoder_outputs_col2[0].shape)
         return
 
-     def test_encoder3(self):
+    def test_encoder3(self):
         data = next(it)
         print(len(data))
         if len(data) > 7:
@@ -69,7 +69,7 @@ class BartForDataToTextGenerationTester():
             print(encoder_outputs_col3[0].shape)
         return
 
-     def test_encoder4(self):
+    def test_encoder4(self):
         data = next(it)
         print(len(data))
         if len(data) > 9:
