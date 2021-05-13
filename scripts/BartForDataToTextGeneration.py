@@ -4,7 +4,7 @@ from transformers.models.bart.modeling_bart import BartEncoder, BartDecoder, Bar
 from transformers.models.bart.configuration_bart import BartConfig
 from transformers.modeling_outputs import BaseModelOutput,Seq2SeqLMOutput,Seq2SeqModelOutput, Seq2SeqQuestionAnsweringModelOutput,Seq2SeqSequenceClassifierOutput
 from transformers.modeling_utils import PreTrainedModel
-from configuration_bart_d2t import BartD2TConfig
+
 
 
 class BartForDataToText(BartPretrainedModel):
@@ -15,11 +15,11 @@ class BartForDataToText(BartPretrainedModel):
         padding_idx, vocab_size = config.pad_token_id, config.vocab_size
         self.shared = nn.Embedding(vocab_size, config.d_model, padding_idx)
         
-        self.encoder_punchline_texts = BartEncoder(config, self.shared)
-        self.encoder_punchline_effects = BartEncoder(config, self.shared)
-        self.encoder_populations = BartEncoder(config, self.shared)
-        self.encoder_interventions = BartEncoder(config, self.shared)
-        self.encoder_outcomes = BartEncoder(config, self.shared)
+        self.encoder_col0 = BartEncoder(config, self.shared)
+        self.encoder_col1 = BartEncoder(config, self.shared)
+        self.encoder_col2 = BartEncoder(config, self.shared)
+        self.encoder_col3 = BartEncoder(config, self.shared)
+        self.encoder_col4 = BartEncoder(config, self.shared)
         
         self.decoder = BartDecoder(config,self.shared)
         
@@ -33,15 +33,15 @@ class BartForDataToText(BartPretrainedModel):
     
     def set_input_embeddings(self, value):
         self.shared = value
-        self.encoder_punchline_texts = self.shared
-        self.encoder_punchline_effects = self.shared
-        self.encoder_populations = self.shared
-        self.encoder_interventions = self.shared
-        self.encoder_outcomes = self.shared
+        self.encoder_col0 = self.shared
+        self.encoder_col1 = self.shared
+        self.encoder_col2 = self.shared
+        self.encoder_col3 = self.shared
+        self.encoder_col4 = self.shared
         
     def get_encoders(self):
-        return self.encoder_punchline_texts, self.encoder_punchline_effects, \
-            self.encoder_populations, self.encoder_interventions, self.encoder_outcomes
+        return self.encoder_col0, self.encoder_col1, \
+            self.encoder_col2, self.encoder_col3, self.encoder_col4
     
     def get_decoder(self):
         self.decoder
@@ -98,21 +98,12 @@ class BartForDataToText(BartPretrainedModel):
     
     
     def _get_added_encoder_outputs(self, 
-        encoder_outputs_punchline_texts,
-        encoder_outputs_punchline_effects,
-        encoder_outputs_populations,
-        encoder_outputs_interventions,
-        encoder_outputs_outcomes):
+        encoder_outputs_list):
 
         encoder_outputs = []
         for i in range(0,3):
-            if len(encoder_outputs_punchline_texts) > i:  
-                added_enc_outputs_i = torch.cat((encoder_outputs_punchline_texts[i], \
-                    encoder_outputs_punchline_effects[i], encoder_outputs_populations[i], \
-                        encoder_outputs_interventions[i], encoder_outputs_outcomes[i]),1)
-        
-                #added_enc_outputs_i = torch.sum(added_enc_outputs_i, dim = 0)
-                #added_enc_outputs_i = added_enc_outputs_i.unsqueeze(0)
+            if len(encoder_outputs_list[i]) > i: 
+                added_enc_outputs_i = torch.cat([enc[i] for enc in encoder_outputs_list],1)
                 encoder_outputs.append(added_enc_outputs_i)
             
         added_enc_outputs = BaseModelOutput(
@@ -125,17 +116,9 @@ class BartForDataToText(BartPretrainedModel):
         
     
     def _get_attention_masks_OR(self, 
-        attention_mask_punchline_texts,
-        attention_mask_punchline_effects,
-        attention_mask_populations,
-        attention_mask_interventions,
-        attention_mask_outcomes ):
+        attention_mask_list ):
 
-            all_attn_outputs = torch.cat([attention_mask_punchline_texts,
-            attention_mask_punchline_effects,
-            attention_mask_populations,
-            attention_mask_interventions,
-            attention_mask_outcomes], 1)
+            all_attn_outputs = torch.cat(attention_mask_list, 1)
 
             #added_enc_attns = torch.Tensor.float(all_attn_outputs).mean(0).tolist()
             #added_enc_attns = [1 if each > 0.5 else 0 for each in added_enc_attns]
@@ -146,25 +129,25 @@ class BartForDataToText(BartPretrainedModel):
         
     def forward(
         self,
-        input_ids_punchline_texts = None,
-        input_ids_punchline_effects = None,
-        input_ids_populations = None, 
-        input_ids_interventions = None,
-        input_ids_outcomes = None,
-        attention_mask_punchline_texts = None,
-        attention_mask_punchline_effects = None,
-        attention_mask_populations = None,
-        attention_mask_interventions = None,
-        attention_mask_outcomes = None,
+        input_ids_col0 = None,
+        input_ids_col1 = None,
+        input_ids_col2 = None, 
+        input_ids_col3 = None,
+        input_ids_col4 = None,
+        attention_mask_col0 = None,
+        attention_mask_col1 = None,
+        attention_mask_col2 = None,
+        attention_mask_col3 = None,
+        attention_mask_col4 = None,
         decoder_input_ids=None,
         decoder_attention_mask=None,
         head_mask=None,
         decoder_head_mask=None,
-        encoder_outputs_punchline_texts = None,
-        encoder_outputs_punchline_effects = None,
-        encoder_outputs_populations = None,
-        encoder_outputs_interventions = None,
-        encoder_outputs_outcomes = None,
+        encoder_outputs_col0 = None,
+        encoder_outputs_col1 = None,
+        encoder_outputs_col2 = None,
+        encoder_outputs_col3 = None,
+        encoder_outputs_col4 = None,
         past_key_values=None,
         inputs_embeds=None,
         decoder_inputs_embeds=None,
@@ -187,61 +170,74 @@ class BartForDataToText(BartPretrainedModel):
         use_cache = use_cache if use_cache is not None else self.config.use_cache
         
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        encoder_outputs_list = []
+        attn_mask_list = [attention_mask_col0, attention_mask_col1, attention_mask_col2, \
+                            attention_mask_col3, attention_mask_col4]
+
+        if input_ids_col0:
+            encoder_outputs_col0 = self._get_encoder_outputs(
+                        encoder = self.encoder_col0, 
+                        encoder_outputs = encoder_outputs_col0, 
+                        input_ids = input_ids_col0,
+                        attention_mask = attention_mask_col0,
+                        head_mask = head_mask,
+                        inputs_embeds = inputs_embeds,
+                        output_attentions = output_attentions,
+                        output_hidden_states = output_hidden_states,
+                        return_dict = return_dict)
+            encoder_outputs_list.append(encoder_outputs_col0)
+
+        if input_ids_col1:
+            encoder_outputs_col1 = self._get_encoder_outputs(
+                        encoder = self.encoder_col1, 
+                        encoder_outputs = encoder_outputs_col1, 
+                        input_ids = input_ids_col1,
+                        attention_mask = attention_mask_col1,
+                        head_mask = head_mask,
+                        inputs_embeds = inputs_embeds,
+                        output_attentions = output_attentions,
+                        output_hidden_states = output_hidden_states,
+                        return_dict = return_dict)
+            encoder_outputs_list.append(encoder_outputs_col1)
+
+        if input_ids_col2:
+            encoder_outputs_col2 = self._get_encoder_outputs(
+                        encoder = self.encoder_col2, 
+                        encoder_outputs = encoder_outputs_col2, 
+                        input_ids = input_ids_col2,
+                        attention_mask = attention_mask_col2,
+                        head_mask = head_mask,
+                        inputs_embeds = inputs_embeds,
+                        output_attentions = output_attentions,
+                        output_hidden_states = output_hidden_states,
+                        return_dict = return_dict)
+            encoder_outputs_list.append(encoder_outputs_col2)
         
-        encoder_outputs_punchline_texts = self._get_encoder_outputs(
-                    encoder = self.encoder_punchline_texts, 
-                    encoder_outputs = encoder_outputs_punchline_texts, 
-                    input_ids = input_ids_punchline_texts,
-                    attention_mask = attention_mask_punchline_texts,
-                    head_mask = head_mask,
-                    inputs_embeds = inputs_embeds,
-                    output_attentions = output_attentions,
-                    output_hidden_states = output_hidden_states,
-                    return_dict = return_dict)
+        if input_ids_col3:
+            encoder_outputs_col3 = self._get_encoder_outputs(
+                        encoder = self.encoder_col3, 
+                        encoder_outputs = encoder_outputs_col3, 
+                        input_ids = input_ids_col3,
+                        attention_mask = attention_mask_col3,
+                        head_mask = head_mask,
+                        inputs_embeds = inputs_embeds,
+                        output_attentions = output_attentions,
+                        output_hidden_states = output_hidden_states,
+                        return_dict = return_dict)
+            encoder_outputs_list.append(encoder_outputs_col3)
         
-        encoder_outputs_punchline_effects = self._get_encoder_outputs(
-                    encoder = self.encoder_punchline_effects, 
-                    encoder_outputs = encoder_outputs_punchline_effects, 
-                    input_ids = input_ids_punchline_effects,
-                    attention_mask = attention_mask_punchline_effects,
-                    head_mask = head_mask,
-                    inputs_embeds = inputs_embeds,
-                    output_attentions = output_attentions,
-                    output_hidden_states = output_hidden_states,
-                    return_dict = return_dict)
-        
-        encoder_outputs_populations = self._get_encoder_outputs(
-                    encoder = self.encoder_populations, 
-                    encoder_outputs = encoder_outputs_populations, 
-                    input_ids = input_ids_populations,
-                    attention_mask = attention_mask_populations,
-                    head_mask = head_mask,
-                    inputs_embeds = inputs_embeds,
-                    output_attentions = output_attentions,
-                    output_hidden_states = output_hidden_states,
-                    return_dict = return_dict)
-        
-        encoder_outputs_interventions = self._get_encoder_outputs(
-                    encoder = self.encoder_interventions, 
-                    encoder_outputs = encoder_outputs_interventions, 
-                    input_ids = input_ids_interventions,
-                    attention_mask = attention_mask_interventions,
-                    head_mask = head_mask,
-                    inputs_embeds = inputs_embeds,
-                    output_attentions = output_attentions,
-                    output_hidden_states = output_hidden_states,
-                    return_dict = return_dict)
-        
-        encoder_outputs_outcomes = self._get_encoder_outputs(
-                    encoder = self.encoder_outcomes, 
-                    encoder_outputs = encoder_outputs_outcomes, 
-                    input_ids = input_ids_outcomes,
-                    attention_mask = attention_mask_outcomes,
-                    head_mask = head_mask,
-                    inputs_embeds = inputs_embeds,
-                    output_attentions = output_attentions,
-                    output_hidden_states = output_hidden_states,
-                    return_dict = return_dict)
+        if input_ids_col4:
+            encoder_outputs_col4 = self._get_encoder_outputs(
+                        encoder = self.encoder_col4, 
+                        encoder_outputs = encoder_outputs_col4, 
+                        input_ids = input_ids_col4,
+                        attention_mask = attention_mask_col4,
+                        head_mask = head_mask,
+                        inputs_embeds = inputs_embeds,
+                        output_attentions = output_attentions,
+                        output_hidden_states = output_hidden_states,
+                        return_dict = return_dict)
+            encoder_outputs_list.append(encoder_outputs_col4)
         
         ## Since BART decoder gets the same input as the encoder shifted right
         ## concatenate the source input_ids fed to different encoders to feed to BART decoder
@@ -265,22 +261,14 @@ class BartForDataToText(BartPretrainedModel):
         
         
         encoder_outputs_added = self._get_added_encoder_outputs(
-            encoder_outputs_punchline_texts,
-            encoder_outputs_punchline_effects,
-            encoder_outputs_populations,
-            encoder_outputs_interventions,
-            encoder_outputs_outcomes
+            encoder_outputs_list
         )
 
-        if attention_mask_punchline_texts is None:
-            added_enc_attns = attention_mask_punchline_texts
+        if attention_mask_col0 is None:
+            added_enc_attns = attention_mask_col0
         else:
             added_enc_attns = self._get_attention_masks_OR(
-                attention_mask_punchline_texts,
-                attention_mask_punchline_effects,
-                attention_mask_populations,
-                attention_mask_interventions,
-                attention_mask_outcomes
+                [attn_mask for attn_mask in attn_mask_list if attn_mask]
 
             )
 
@@ -303,7 +291,7 @@ class BartForDataToText(BartPretrainedModel):
         )
         
         if not return_dict:
-            outputs =  decoder_outputs + encoder_outputs
+            outputs =  decoder_outputs + encoder_outputs_added
             
         else:
             outputs = Seq2SeqModelOutput(
@@ -343,18 +331,18 @@ class BartForDataToText(BartPretrainedModel):
         self,
         decoder_input_ids,
         past=None,
-        attention_mask_punchline_texts = None,
-        attention_mask_punchline_effects = None,
-        attention_mask_populations = None,
-        attention_mask_interventions = None,
-        attention_mask_outcomes = None,
+        attention_mask_col0 = None,
+        attention_mask_col1 = None,
+        attention_mask_col2 = None,
+        attention_mask_col3 = None,
+        attention_mask_col4 = None,
         head_mask=None,
         use_cache=None,
-        encoder_outputs_punchline_texts=None,
-        encoder_outputs_punchline_effects = None,
-        encoder_outputs_populations = None,
-        encoder_outputs_interventions = None,
-        encoder_outputs_outcomes = None,
+        encoder_outputs_col0 =None,
+        encoder_outputs_col1 = None,
+        encoder_outputs_col2 = None,
+        encoder_outputs_col3 = None,
+        encoder_outputs_col4 = None,
         **kwargs
     ):
         # cut decoder_input_ids if past is used
@@ -362,23 +350,23 @@ class BartForDataToText(BartPretrainedModel):
             decoder_input_ids = decoder_input_ids[:, -1:]
 
         return {
-            "input_ids_punchline_texts": None,
-            "input_ids_punchline_effects": None,
-            "input_ids_populations": None,
-            "input_ids_interventions": None,
-            "input_ids_outcomes": None,
-            "encoder_outputs_punchline_texts": encoder_outputs_punchline_texts,
-            "encoder_outputs_punchline_effects": encoder_outputs_punchline_effects,
-            "encoder_outputs_populations": encoder_outputs_populations,
-            "encoder_outputs_interventions": encoder_outputs_interventions,
-            "encoder_outputs_outcomes": encoder_outputs_outcomes,
+            "input_ids_col0": None,
+            "input_ids_col1": None,
+            "input_ids_col2": None,
+            "input_ids_col3": None,
+            "input_ids_col4": None,
+            "encoder_outputs_col0": encoder_outputs_col0,
+            "encoder_outputs_col1": encoder_outputs_col1,
+            "encoder_outputs_col2": encoder_outputs_col2,
+            "encoder_outputs_col3": encoder_outputs_col3,
+            "encoder_outputs_col4": encoder_outputs_col4,
             "past_key_values": past,
             "decoder_input_ids": decoder_input_ids,
-            "attention_mask_punchline_texts": attention_mask_punchline_texts,
-            "attention_mask_punchline_effects": attention_mask_punchline_effects,
-            "attention_mask_populations": attention_mask_populations,
-            "attention_mask_interventions": attention_mask_interventions,
-            "attention_mask_outcomes": attention_mask_outcomes,
+            "attention_mask_col0": attention_mask_col0,
+            "attention_mask_col1": attention_mask_col1,
+            "attention_mask_col2": attention_mask_col2,
+            "attention_mask_col3": attention_mask_col3,
+            "attention_mask_col4": attention_mask_col4,
             "head_mask": head_mask,
             "use_cache": use_cache,  # change this to avoid caching (presumably for debugging)
         }
