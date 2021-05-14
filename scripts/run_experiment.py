@@ -43,11 +43,11 @@ class LitModel(pl.LightningModule):
         self.hparams = hparams
 
         if self.hparams.freeze_encoder:
-            freeze_params(self.model.encoder_punchline_texts)
-            freeze_params(self.model.encoder_punchline_effects)
-            freeze_params(self.model.encoder_populations)
-            freeze_params(self.model.encoder_interventions)
-            freeze_params(self.model.encoder_outcomes)
+            freeze_params(self.model.encoder_col0)
+            freeze_params(self.model.encoder_col1)
+            freeze_params(self.model.encoder_col2)
+            freeze_params(self.model.encoder_col3)
+            freeze_params(self.model.encoder_col4)
 
 
         if self.hparams.freeze_embeds:
@@ -57,47 +57,57 @@ class LitModel(pl.LightningModule):
     def freeze_embeds(self):
         ''' freeze the positional embedding parameters of the model; adapted from finetune.py '''
         freeze_params(self.model.shared)
-        for d in [self.model.encoder_punchline_texts, self.model.encoder_punchline_texts, self.model.encoder_populations,
-            self.model.encoder_interventions, self.model.encoder_outcomes, self.model.decoder]:
+        for d in [self.model.encoder_col0, self.model.encoder_col1, self.model.encoder_col2,
+            self.model.encoder_col3, self.model.encoder_col4, self.model.decoder]:
             freeze_params(d.embed_positions)
             freeze_params(d.embed_tokens)
 
     # Do a forward pass through the model
-    def forward(self, input_ids_punchline_texts, **kwargs):
-        return self.model(input_ids_punchline_texts, **kwargs)
+    def forward(self, input_ids_col0, **kwargs):
+        return self.model(input_ids_col0, **kwargs)
   
     def configure_optimizers(self):
         print("PARAMS", self.parameters())
-        optimizer = torch.optim.Adam(self.parameters(), lr = self.learning_rate)
+        #optimizer = torch.optim.Adam(self.parameters(), lr = self.learning_rate)
+        optimizer = torch.optim.SGD(self.parameters(), lr= self.learning_rate)
         return optimizer
 
     def training_step(self, batch, batch_idx):
         #print(batch)
     
-        src_punchline_text_ids, src_punchline_text_mask = batch[0], batch[1]
-        src_punchline_effect_ids, src_punchline_effect_mask = batch[2], batch[3]
-        src_population_ids, src_population_mask = batch[4], batch[5]
-        src_interventions_ids, src_interventions_mask = batch[6], batch[7]
-        src_outcomes_ids, src_outcomes_mask = batch[8], batch[9]
+        input_ids_col0 = batch[0] if len(batch) >1 else None
+        attention_mask_col0 = batch[1] if len(batch) >1 else None
+
+        input_ids_col1 = batch[2] if len(batch) >3 else None
+        attention_mask_col1 = batch[3] if len(batch) >3 else None
+
+        input_ids_col2 = batch[4] if len(batch) >5 else None
+        attention_mask_col2 = batch[5] if len(batch) >5 else None
+
+        input_ids_col3 = batch[6] if len(batch) >7 else None
+        attention_mask_col3 = batch[7] if len(batch) >7 else None
+
+        input_ids_col4 = batch[8] if len(batch) >9 else None
+        attention_mask_col4 = batch[9] if len(batch) >9 else None
         
         # Load the data into variables
         #src_ids, src_mask = batch[0], batch[1]
         tgt_ids = batch[-1]
         # Shift the decoder tokens right (but NOT the tgt_ids)
-        decoder_input_ids = shift_tokens_right(tgt_ids, self.tokenizer.pad_token_id)
+        
         # Run the model and get the logits
         outputs = self(
-        input_ids_punchline_texts = src_punchline_text_ids,
-        input_ids_punchline_effects = src_punchline_effect_ids,
-        input_ids_populations = src_population_ids, 
-        input_ids_interventions = src_interventions_ids,
-        input_ids_outcomes = src_outcomes_ids,
-        attention_mask_punchline_texts = src_punchline_text_mask,
-        attention_mask_punchline_effects = src_punchline_effect_mask,
-        attention_mask_populations = src_population_mask,
-        attention_mask_interventions = src_interventions_mask,
-        attention_mask_outcomes = src_outcomes_mask,
-        decoder_input_ids=decoder_input_ids,
+            input_ids_col0 = input_ids_col0,
+            input_ids_col1 = input_ids_col1,
+            input_ids_col2 = input_ids_col2, 
+            input_ids_col3 = input_ids_col3,
+            input_ids_col4 = input_ids_col4,
+            attention_mask_col0 = attention_mask_col0,
+            attention_mask_col1 = attention_mask_col1,
+            attention_mask_col2 = attention_mask_col2,
+            attention_mask_col3 = attention_mask_col3,
+            attention_mask_col4 = attention_mask_col4,
+            labels = tgt_ids,
             use_cache = False
         )
         lm_logits = outputs[0]
@@ -114,56 +124,42 @@ class LitModel(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
     
-        '''src_punchline_text_ids, src_punchline_text_mask = batch[0], batch[1]
-        src_outcome_ids, src_outcome_mask = batch[2], batch[3]
-        src_punchline_effect_ids, src_punchline_effect_mask = batch[4], batch[5]
-        src_population_ids, src_population_mask = batch[6], batch[7]
-        src_interventions_ids, src_interventions_mask = batch[8], batch[9]
-        # Load the data into variables
-        #src_ids, src_mask = batch[0], batch[1]
-        tgt_ids = batch[10]
-        # Shift the decoder tokens right (but NOT the tgt_ids)
-        decoder_input_ids = shift_tokens_right(tgt_ids, self.tokenizer.pad_token_id)
+        
+        input_ids_col0 = batch[0] if len(batch) >1 else None
+        attention_mask_col0 = batch[1] if len(batch) >1 else None
+
+        input_ids_col1 = batch[2] if len(batch) >3 else None
+        attention_mask_col1 = batch[3] if len(batch) >3 else None
+
+        input_ids_col2 = batch[4] if len(batch) >5 else None
+        attention_mask_col2 = batch[5] if len(batch) >5 else None
+
+        input_ids_col3 = batch[6] if len(batch) >7 else None
+        attention_mask_col3 = batch[7] if len(batch) >7 else None
+
+        input_ids_col4 = batch[8] if len(batch) >9 else None
+        attention_mask_col4 = batch[9] if len(batch) >9 else None
     
-        # Run the model and get the logits
-        outputs = self(
-        input_ids_punchline_texts = src_punchline_text_ids,
-        input_ids_punchline_effects = src_punchline_effect_ids,
-        input_ids_populations = src_population_ids, 
-        input_ids_interventions = src_interventions_ids,
-        input_ids_outcomes = src_outcome_ids,
-        attention_mask_punchline_texts = src_punchline_text_mask,
-        attention_mask_punchline_effects = src_punchline_effect_mask,
-        attention_mask_populations = src_population_mask,
-        attention_mask_interventions = src_interventions_mask,
-        attention_mask_outcomes = src_outcome_mask,
-        decoder_input_ids=decoder_input_ids,
-            use_cache = False
-        )'''
-        src_punchline_text_ids, src_punchline_text_mask = batch[0], batch[1]
-        src_punchline_effect_ids, src_punchline_effect_mask = batch[2], batch[3]
-        src_population_ids, src_population_mask = batch[4], batch[5]
-        src_interventions_ids, src_interventions_mask = batch[6], batch[7]
-        src_outcomes_ids, src_outcomes_mask = batch[8], batch[9]
+        
 
         # Load the data into variables
         #src_ids, src_mask = batch[0], batch[1]
         tgt_ids = batch[-1]
         # Shift the decoder tokens right (but NOT the tgt_ids)
-        decoder_input_ids = shift_tokens_right(tgt_ids, self.tokenizer.pad_token_id)
+        #decoder_input_ids = shift_tokens_right(tgt_ids, self.tokenizer.pad_token_id)
         # Run the model and get the logits
         outputs = self(
-        input_ids_punchline_texts = src_punchline_text_ids,
-        input_ids_punchline_effects = src_punchline_effect_ids,
-        input_ids_populations = src_population_ids,
-        input_ids_interventions = src_interventions_ids,
-        input_ids_outcomes = src_outcomes_ids,
-        attention_mask_punchline_texts = src_punchline_text_mask,
-        attention_mask_punchline_effects = src_punchline_effect_mask,
-        attention_mask_populations = src_population_mask,
-        attention_mask_interventions = src_interventions_mask,
-        attention_mask_outcomes = src_outcomes_mask,
-        decoder_input_ids=decoder_input_ids,
+            input_ids_col0 = input_ids_col0,
+            input_ids_col1 = input_ids_col1,
+            input_ids_col2 = input_ids_col2, 
+            input_ids_col3 = input_ids_col3,
+            input_ids_col4 = input_ids_col4,
+            attention_mask_col0 = attention_mask_col0,
+            attention_mask_col1 = attention_mask_col1,
+            attention_mask_col2 = attention_mask_col2,
+            attention_mask_col3 = attention_mask_col3,
+            attention_mask_col4 = attention_mask_col4,
+            labels = tgt_ids,
             use_cache = False
         )
 
@@ -182,10 +178,9 @@ class LitModel(pl.LightningModule):
         return epoch_dictionary
 
   
-    # Method that generates text using the BartForConditionalGeneration's generate() method
+    '''# Method that generates text using the BartForConditionalGeneration's generate() method
     def generate_text(self, all_input_ids, input_ids_punchline_text, input_ids_outcomes, input_ids_punchline_effect,  \
         input_ids_population, input_ids_interventions, eval_beams, early_stopping = True, max_len = 40):
-        ''' Function to generate text '''
         model_kwargs = self.model.generate_kwargs(
             all_input_ids = all_input_ids,
             input_ids_punchline_text = input_ids_punchline_text,
@@ -205,7 +200,7 @@ class LitModel(pl.LightningModule):
         logits_processor = LogitsProcessorList([MinLengthLogitsProcessor(5, eos_token_id=self.model.config.eos_token_id),])
         logits_warper = LogitsProcessorList([TopKLogitsWarper(50),TemperatureLogitsWarper(0.7),])
         outputs = self.model.beam_sample(input_ids, beam_scorer, logits_processor=logits_processor, logits_warper=logits_warper, **model_kwargs)
-        return [self.tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs]
+        return [self.tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs]'''
 
 def freeze_params(model):
     ''' Function that takes a model as input (or part of a model) and freezes the layers for faster training
@@ -217,9 +212,9 @@ def freeze_params(model):
 def main():
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
     bart_model = BartForDataToText.from_pretrained('facebook/bart-base')    
-    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/d2t_summarization/data/robo_train_field_sep.csv', 
-                                           '/home/sanjana/d2t_summarization/data/robo_dev_field_sep.csv', 
-                                           '/home/sanjana/d2t_summarization/data/robo_test_field_sep.csv'], batch_size = 1)
+    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/d2t_summarization/data/web_nlg_train.csv', 
+                                           '/home/sanjana/d2t_summarization/data/web_nlg_test.csv', 
+                                           '/home/sanjana/d2t_summarization/data/web_nlg_dev.csv'], batch_size = 1)
 
     summary_data.prepare_data()
     hparams = argparse.Namespace()
@@ -227,10 +222,10 @@ def main():
     hparams.freeze_encoder = True
     hparams.freeze_embeds = True
     hparams.eval_beams = 4
-    model = LitModel(learning_rate = 3e-4, tokenizer = tokenizer, model = bart_model, hparams = hparams)
+    model = LitModel(learning_rate = 1e-5, tokenizer = tokenizer, model = bart_model, hparams = hparams)
     checkpoint = ModelCheckpoint('checkpoint_files_2/')
     trainer = pl.Trainer(gpus=2, accelerator='dp',
-                        max_epochs = 15,
+                        max_epochs = 100,
                         min_epochs = 1,
                         auto_lr_find = False,
                         checkpoint_callback = checkpoint,
@@ -238,7 +233,7 @@ def main():
                         logger=logger)
 
     trainer.fit(model, summary_data)
-    trainer.save_checkpoint("example_sample_concat.ckpt")
+    trainer.save_checkpoint("webnlg_sanity_model.ckpt")
 
 
 if __name__ == '__main__': 
