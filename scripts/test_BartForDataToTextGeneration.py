@@ -148,4 +148,5 @@ obj.test_encoder3()
 obj.test_encoder4()
 obj.test_encoder_addition()
 obj.test_attn_masks_OR()
+obj.test_model_forward()
     
