@@ -174,7 +174,7 @@ class BartForDataToText(BartPretrainedModel):
         attn_mask_list = [attention_mask_col0, attention_mask_col1, attention_mask_col2, \
                             attention_mask_col3, attention_mask_col4]
 
-        if input_ids_col0:
+        if not (input_ids_col0 is None):
             encoder_outputs_col0 = self._get_encoder_outputs(
                         encoder = self.encoder_col0, 
                         encoder_outputs = encoder_outputs_col0, 
@@ -187,7 +187,7 @@ class BartForDataToText(BartPretrainedModel):
                         return_dict = return_dict)
             encoder_outputs_list.append(encoder_outputs_col0)
 
-        if input_ids_col1:
+        if not (input_ids_col1 is None):
             encoder_outputs_col1 = self._get_encoder_outputs(
                         encoder = self.encoder_col1, 
                         encoder_outputs = encoder_outputs_col1, 
@@ -200,7 +200,7 @@ class BartForDataToText(BartPretrainedModel):
                         return_dict = return_dict)
             encoder_outputs_list.append(encoder_outputs_col1)
 
-        if input_ids_col2:
+        if not (input_ids_col2 is None):
             encoder_outputs_col2 = self._get_encoder_outputs(
                         encoder = self.encoder_col2, 
                         encoder_outputs = encoder_outputs_col2, 
@@ -213,7 +213,7 @@ class BartForDataToText(BartPretrainedModel):
                         return_dict = return_dict)
             encoder_outputs_list.append(encoder_outputs_col2)
         
-        if input_ids_col3:
+        if not (input_ids_col3 is None):
             encoder_outputs_col3 = self._get_encoder_outputs(
                         encoder = self.encoder_col3, 
                         encoder_outputs = encoder_outputs_col3, 
@@ -226,7 +226,7 @@ class BartForDataToText(BartPretrainedModel):
                         return_dict = return_dict)
             encoder_outputs_list.append(encoder_outputs_col3)
         
-        if input_ids_col4:
+        if not (input_ids_col4 is None):
             encoder_outputs_col4 = self._get_encoder_outputs(
                         encoder = self.encoder_col4, 
                         encoder_outputs = encoder_outputs_col4, 
