@@ -110,13 +110,13 @@ class BartForDataToTextGenerationTester():
         attention_mask_col1 = data[3] if len(data) >3 else None
 
         input_ids_col2 = data[4] if len(data) >5 else None
-        attention_mask_col0 = data[5] if len(data) >5 else None
+        attention_mask_col2 = data[5] if len(data) >5 else None
 
         input_ids_col3 = data[6] if len(data) >7 else None
-        attention_mask_col0 = data[7] if len(data) >7 else None
+        attention_mask_col3 = data[7] if len(data) >7 else None
 
         input_ids_col4 = data[8] if len(data) >9 else None
-        attention_mask_col0 = data[9] if len(data) >9 else None
+        attention_mask_col4 = data[9] if len(data) >9 else None
 
         
         outputs = model(
