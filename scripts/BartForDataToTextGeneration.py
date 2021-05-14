@@ -4,7 +4,7 @@ from transformers.models.bart.modeling_bart import BartEncoder, BartDecoder, Bar
 from transformers.models.bart.configuration_bart import BartConfig
 from transformers.modeling_outputs import BaseModelOutput,Seq2SeqLMOutput,Seq2SeqModelOutput, Seq2SeqQuestionAnsweringModelOutput,Seq2SeqSequenceClassifierOutput
 from transformers.modeling_utils import PreTrainedModel
-
+from torch.nn import CrossEntropyLoss, MSELoss
 
 
 class BartForDataToText(BartPretrainedModel):
