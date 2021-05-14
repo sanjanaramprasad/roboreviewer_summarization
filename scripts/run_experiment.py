@@ -14,8 +14,7 @@ import random
 import re
 import argparse
 from pytorch_lightning.loggers import TensorBoardLogger
-from Data2TextProcessor import SummaryDataModule
-from Data2TextGenerator import Data2TextGenerator
+from Data2TextProcessor_1 import SummaryDataModule
 
 logger = TensorBoardLogger('tb_logs', name='my_model13')
 
