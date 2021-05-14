@@ -268,7 +268,7 @@ class BartForDataToText(BartPretrainedModel):
             added_enc_attns = attention_mask_col0
         else:
             added_enc_attns = self._get_attention_masks_OR(
-                [attn_mask for attn_mask in attn_mask_list if attn_mask]
+                [attn_mask for attn_mask in attn_mask_list if not (attn_mask is None)]
 
             )
 
