@@ -163,7 +163,10 @@ class LitModel(pl.LightningModule):
             use_cache = False
         )
 
+
         lm_logits = outputs[1]
+        print("LM LOGITS", lm_logits)
+        print("TGT IDS", tgt_ids)
 
         ce_loss_fct = torch.nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
         val_loss = ce_loss_fct(lm_logits.view(-1, lm_logits.shape[-1]), tgt_ids.view(-1))
@@ -211,9 +214,9 @@ def freeze_params(model):
 def main():
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
     bart_model = BartForDataToText.from_pretrained('facebook/bart-base')    
-    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/d2t_summarization/data/web_nlg_train.csv', 
-                                           '/home/sanjana/d2t_summarization/data/web_nlg_test.csv', 
-                                           '/home/sanjana/d2t_summarization/data/web_nlg_dev.csv'], batch_size = 1)
+    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/web_nlg_train.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/web_nlg_test.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/web_nlg_dev.csv'], batch_size = 1)
 
     summary_data.prepare_data()
     hparams = argparse.Namespace()

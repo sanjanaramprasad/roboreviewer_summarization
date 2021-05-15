@@ -130,11 +130,11 @@ class BartForDataToTextGenerationTester():
             attention_mask_col2 = attention_mask_col2,
             attention_mask_col3 = attention_mask_col3,
             attention_mask_col4 = attention_mask_col4,
-            labels = data[10]
+            labels = data[6]
         )
 
-        print(outputs)
-
+        print("OUTPUTS", outputs[0])
+        print('=' *13)
 
     
 
