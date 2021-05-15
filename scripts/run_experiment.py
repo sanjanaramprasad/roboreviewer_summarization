@@ -21,6 +21,7 @@ from transformers.generation_logits_process import (
     TopKLogitsWarper,
     TopPLogitsWarper,
 )
+from transformers.generation_utils import GenerationMixin
 from transformers.generation_stopping_criteria import (
     MaxLengthCriteria,
     MaxTimeCriteria,
@@ -210,6 +211,9 @@ class LitModel(pl.LightningModule):
         max_len = 13,
         ):
 
+        generator = GenerationMixin()
+        
+
         input_ids_col0 = batch[0] if len(batch) >1 else None
         attention_mask_col0 = batch[1] if len(batch) >1 else None
 
@@ -228,6 +232,16 @@ class LitModel(pl.LightningModule):
         encoder_col0, encoder_col1, \
             encoder_col2, encoder_col3, encoder_col4 = self.model.get_encoders()
 
+
+        logits_processor = generator._get_logits_processor(
+            repetition_penalty=0.5,
+            no_repeat_ngram_size=1,
+            encoder_no_repeat_ngram_size=1,
+            encoder_input_ids=input_ids_col0,
+            min_length=5,
+            max_length=13,
+            num_beams=4
+        )
 
         model_kwargs = {}
         if not(input_ids_col0 is None):
@@ -261,7 +275,7 @@ class LitModel(pl.LightningModule):
                 stopping_criteria=stopping_criteria,
                 **model_kwargs
             )
-        logits_processor = LogitsProcessorList([MinLengthLogitsProcessor(5, eos_token_id=self.model.config.eos_token_id),])
+        #logits_processor = LogitsProcessorList([MinLengthLogitsProcessor(5, eos_token_id=self.model.config.eos_token_id),])
         outputs = self.model.beam_search(input_ids, beam_scorer, logits_processor=logits_processor, **model_kwargs)
         print("Generated:", self.tokenizer.batch_decode(outputs, skip_special_tokens=True))
   
