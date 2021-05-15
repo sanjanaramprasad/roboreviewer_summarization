@@ -4,6 +4,29 @@ from torch.utils.data import DataLoader, TensorDataset, random_split, RandomSamp
 import pandas as pd
 import numpy as np
 from transformers import BartTokenizer, BartForCausalLM, BartForConditionalGeneration, BeamSearchScorer, LogitsProcessorList, MinLengthLogitsProcessor, TopKLogitsWarper, TemperatureLogitsWarper
+from transformers.generation_beam_search import BeamScorer, BeamSearchScorer
+from transformers.generation_logits_process import (
+    EncoderNoRepeatNGramLogitsProcessor,
+    ForcedBOSTokenLogitsProcessor,
+    ForcedEOSTokenLogitsProcessor,
+    HammingDiversityLogitsProcessor,
+    InfNanRemoveLogitsProcessor,
+    LogitsProcessorList,
+    MinLengthLogitsProcessor,
+    NoBadWordsLogitsProcessor,
+    NoRepeatNGramLogitsProcessor,
+    PrefixConstrainedLogitsProcessor,
+    RepetitionPenaltyLogitsProcessor,
+    TemperatureLogitsWarper,
+    TopKLogitsWarper,
+    TopPLogitsWarper,
+)
+from transformers.generation_stopping_criteria import (
+    MaxLengthCriteria,
+    MaxTimeCriteria,
+    StoppingCriteriaList,
+    validate_stopping_criteria,
+)
 import torch.nn.functional as F
 import pytorch_lightning as pl
 import torch
@@ -180,7 +203,51 @@ class LitModel(pl.LightningModule):
         #print(epoch_dictionary)
         return epoch_dictionary
 
+
+    def generate_text(self, 
+        batch,
+        num_beams = 4, 
+        max_len = 13,
+        ):
+
+        input_ids_col0 = batch[0] if len(batch) >1 else None
+        attention_mask_col0 = batch[1] if len(batch) >1 else None
+
+        input_ids_col1 = batch[2] if len(batch) >3 else None
+        attention_mask_col1 = batch[3] if len(batch) >3 else None
+
+        input_ids_col2 = batch[4] if len(batch) >5 else None
+        attention_mask_col2 = batch[5] if len(batch) >5 else None
+
+        input_ids_col3 = batch[6] if len(batch) >7 else None
+        attention_mask_col3 = batch[7] if len(batch) >7 else None
+
+        input_ids_col4 = batch[8] if len(batch) >9 else None
+        attention_mask_col4 = batch[9] if len(batch) >9 else None
+
+
+        input_ids = torch.ones((num_beams, 1), device=self.model.device, dtype=torch.long)
+        input_ids = input_ids * self.model.config.decoder_start_token_id
+
+        encoder_col0, encoder_col1, \
+            encoder_col2, encoder_col3, encoder_col4 = self.model.get_encoders()
+
+        model_kwargs = {
+                "encoder_outputs_col0": encoder_col0(input_ids_col0.repeat_interleave(num_beams, dim=0), return_dict=True),
+                "encoder_outputs_col1": encoder_col1(input_ids_col1.repeat_interleave(num_beams, dim=0), return_dict=True),
+                "encoder_outputs_col2": encoder_col2(input_ids_col2.repeat_interleave(num_beams, dim=0), return_dict=True),
+                "encoder_outputs_col3": encoder_col3(input_ids_col3.repeat_interleave(num_beams, dim=0), return_dict=True),
+                "encoder_outputs_col4": encoder_col4(input_ids_col4.repeat_interleave(num_beams, dim=0), return_dict=True),
+
+        }
+
+        beam_scorer = BeamSearchScorer(batch_size=1, num_beams=num_beams, device=self.model.device,)
+        logits_processor = LogitsProcessorList([MinLengthLogitsProcessor(5, eos_token_id=self.model.config.eos_token_id),])
+        outputs = self.model.beam_search(input_ids, beam_scorer, logits_processor=logits_processor, **model_kwargs)
+        print("Generated:", self.tokenizer.batch_decode(outputs, skip_special_tokens=True))
   
+        return 
+
     '''# Method that generates text using the BartForConditionalGeneration's generate() method
     def generate_text(self, all_input_ids, input_ids_punchline_text, input_ids_outcomes, input_ids_punchline_effect,  \
         input_ids_population, input_ids_interventions, eval_beams, early_stopping = True, max_len = 40):
@@ -239,5 +306,21 @@ def main():
     trainer.save_checkpoint("webnlg_sanity_model.ckpt")
 
 
+def inference():
+    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
+    model = LitModel.load_from_checkpoint(checkpoint_path="home/sanjana/roboreviewer_summarization/scripts/webnlg_sanity_model.ckpt")
+    print("Model loaded")
+    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/d2t_summarization/data/web_nlg_train.csv', 
+                                           '/home/sanjana/d2t_summarization/data/web_nlg_test.csv', 
+                                           '/home/sanjana/d2t_summarization/data/web_nlg_dev.csv'], batch_size = 1)
+    summary_data.prepare_data()
+    summary_data.setup("stage")
+    train_data = summary_data.train_dataloader()
+
+    it = iter(train_data)
+    for batch in next(it):
+        model.generate_text(batch)
+        
 if __name__ == '__main__': 
-    main()
+    #main()
+    inference()
