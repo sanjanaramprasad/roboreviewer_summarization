@@ -259,10 +259,10 @@ class BartForDataToText(BartPretrainedModel):
             )
             
         
-        
-        encoder_outputs_added = self._get_added_encoder_outputs(
-            encoder_outputs_list
-        )
+        if encoder_outputs_list:
+            encoder_outputs_added = self._get_added_encoder_outputs(
+                encoder_outputs_list
+            )
 
         if attention_mask_col0 is None:
             added_enc_attns = attention_mask_col0
