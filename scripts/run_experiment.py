@@ -236,13 +236,6 @@ class LitModel(pl.LightningModule):
         logits_processor = generator._get_logits_processor(
             repetition_penalty=0.5,
             no_repeat_ngram_size=1,
-            encoder_no_repeat_ngram_size=1,
-            encoder_input_ids=input_ids_col0,
-            min_length=5,
-            max_length=13,
-            num_beams=4,
-            repetition_penalty=0.5,
-            no_repeat_ngram_size=1,
             encoder_no_repeat_ngram_size=2,
             encoder_input_ids=input_ids_col0,
             bad_words_ids=None,
