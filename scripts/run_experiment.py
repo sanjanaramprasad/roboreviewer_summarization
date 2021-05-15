@@ -109,7 +109,8 @@ class LitModel(pl.LightningModule):
             labels = tgt_ids,
             use_cache = False
         )
-        lm_logits = outputs[0]
+        
+        lm_logits = outputs[1]
         # Create the loss function
         ce_loss_fct = torch.nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
         # Calculate the loss on the un-shifted tokens
@@ -162,8 +163,7 @@ class LitModel(pl.LightningModule):
             use_cache = False
         )
 
-
-        lm_logits = outputs[0]
+        lm_logits = outputs[1]
 
         ce_loss_fct = torch.nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
         val_loss = ce_loss_fct(lm_logits.view(-1, lm_logits.shape[-1]), tgt_ids.view(-1))

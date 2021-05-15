@@ -106,7 +106,7 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=5
               add_prefix_space = True
             )
             # Shift the target ids to the right
-            shifted_target_ids = shift_tokens_right(encoded_dict['input_ids'], tokenizer.pad_token_id)
+            #shifted_target_ids = shift_tokens_right(encoded_dict['input_ids'], tokenizer.pad_token_id)
             target_ids.append(encoded_dict['input_ids'])
 
     for i in range(0, sentence_dict_len):
