@@ -15,10 +15,10 @@ import re
 import argparse
 from pytorch_lightning.loggers import TensorBoardLogger
 from Data2TextProcessor_1 import SummaryDataModule
-
+from transformers.modeling_bart import shift_tokens_right
 logger = TensorBoardLogger('tb_logs', name='my_model13')
 
-def shift_tokens_right(input_ids, pad_token_id):
+'''def shift_tokens_right(input_ids, pad_token_id):
     """ Shift input ids one token to the right, and wrap the last non pad token (usually <eos>).
       This is taken directly from modeling_bart.py
     """
@@ -26,7 +26,7 @@ def shift_tokens_right(input_ids, pad_token_id):
     index_of_eos = (input_ids.ne(pad_token_id).sum(dim=1) - 1).unsqueeze(-1)
     prev_output_tokens[:, 0] = input_ids.gather(1, index_of_eos).squeeze()
     prev_output_tokens[:, 1:] = input_ids[:, :-1]
-    return prev_output_tokens
+    return prev_output_tokens'''
 
 
 
@@ -93,7 +93,6 @@ class LitModel(pl.LightningModule):
         #src_ids, src_mask = batch[0], batch[1]
         tgt_ids = batch[-1]
         # Shift the decoder tokens right (but NOT the tgt_ids)
-        
         # Run the model and get the logits
         outputs = self(
             input_ids_col0 = input_ids_col0,
@@ -107,6 +106,7 @@ class LitModel(pl.LightningModule):
             attention_mask_col3 = attention_mask_col3,
             attention_mask_col4 = attention_mask_col4,
             labels = tgt_ids,
+            decoder_input_ids = None,
             use_cache = False
         )
         
@@ -160,6 +160,7 @@ class LitModel(pl.LightningModule):
             attention_mask_col3 = attention_mask_col3,
             attention_mask_col4 = attention_mask_col4,
             labels = tgt_ids,
+            decoder_input_ids = None,
             use_cache = False
         )
 
