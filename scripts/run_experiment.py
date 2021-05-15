@@ -39,7 +39,7 @@ import re
 import argparse
 from pytorch_lightning.loggers import TensorBoardLogger
 from Data2TextProcessor_1 import SummaryDataModule
-from transformers.modeling_bart import shift_tokens_right
+#from transformers.modeling_bart import shift_tokens_right
 logger = TensorBoardLogger('tb_logs', name='my_model13')
 
 '''def shift_tokens_right(input_ids, pad_token_id):
@@ -240,7 +240,22 @@ class LitModel(pl.LightningModule):
             encoder_input_ids=input_ids_col0,
             min_length=5,
             max_length=13,
-            num_beams=4
+            num_beams=4,
+            repetition_penalty=0.5,
+            no_repeat_ngram_size=1,
+            encoder_no_repeat_ngram_size=2,
+            encoder_input_ids=input_ids_col0,
+            bad_words_ids=None,
+            min_length=5,
+            max_length=12,
+            eos_token_id=self.model.config.eos_token_id,
+            forced_bos_token_id=self.model.config.forced_bos_token_id,
+            forced_eos_token_id=self.model.config.forced_eos_token_id,
+            prefix_allowed_tokens_fn=None,
+            num_beams=4,
+            num_beam_groups=4,
+            diversity_penalty=0.5,
+            remove_invalid_values=None,
         )
 
         model_kwargs = {}
