@@ -225,21 +225,28 @@ class LitModel(pl.LightningModule):
         input_ids_col4 = batch[8] if len(batch) >9 else None
         attention_mask_col4 = batch[9] if len(batch) >9 else None
 
-
-        input_ids = torch.ones((num_beams, 1), device=self.model.device, dtype=torch.long)
-        input_ids = input_ids * self.model.config.decoder_start_token_id
-
         encoder_col0, encoder_col1, \
             encoder_col2, encoder_col3, encoder_col4 = self.model.get_encoders()
 
-        model_kwargs = {
-                "encoder_outputs_col0": encoder_col0(input_ids_col0.repeat_interleave(num_beams, dim=0), return_dict=True),
-                "encoder_outputs_col1": encoder_col1(input_ids_col1.repeat_interleave(num_beams, dim=0), return_dict=True),
-                "encoder_outputs_col2": encoder_col2(input_ids_col2.repeat_interleave(num_beams, dim=0), return_dict=True),
-                "encoder_outputs_col3": encoder_col3(input_ids_col3.repeat_interleave(num_beams, dim=0), return_dict=True),
-                "encoder_outputs_col4": encoder_col4(input_ids_col4.repeat_interleave(num_beams, dim=0), return_dict=True),
 
-        }
+        model_kwargs = {}
+        if not(input_ids_col0 is None):
+            model_kwargs["encoder_outputs_col0"] = encoder_col0(input_ids_col0.repeat_interleave(num_beams, dim=0), return_dict=True)
+        
+        if not(input_ids_col1 is None):
+            model_kwargs["encoder_outputs_col1"] = encoder_col1(input_ids_col1.repeat_interleave(num_beams, dim=0), return_dict=True)
+
+        if not(input_ids_col2 is None):
+            model_kwargs["encoder_outputs_col2"] = encoder_col2(input_ids_col2.repeat_interleave(num_beams, dim=0), return_dict=True)
+
+        if not(input_ids_col3 is None):
+            model_kwargs["encoder_outputs_col3"] = encoder_col3(input_ids_col3.repeat_interleave(num_beams, dim=0), return_dict=True)
+
+        if not(input_ids_col4 is None):
+            model_kwargs["encoder_outputs_col4"] = encoder_col4(input_ids_col4.repeat_interleave(num_beams, dim=0), return_dict=True)
+
+        input_ids = torch.ones((num_beams, 1), device=self.model.device, dtype=torch.long)
+        input_ids = input_ids * self.model.config.decoder_start_token_id
 
         beam_scorer = BeamSearchScorer(batch_size=1, num_beams=num_beams, device=self.model.device,)
         logits_processor = LogitsProcessorList([MinLengthLogitsProcessor(5, eos_token_id=self.model.config.eos_token_id),])
@@ -308,19 +315,19 @@ def main():
 
 def inference():
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
-    model = LitModel.load_from_checkpoint(checkpoint_path="home/sanjana/roboreviewer_summarization/scripts/webnlg_sanity_model.ckpt")
+    model = LitModel.load_from_checkpoint(checkpoint_path="webnlg_sanity_model.ckpt")
     print("Model loaded")
-    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/d2t_summarization/data/web_nlg_train.csv', 
-                                           '/home/sanjana/d2t_summarization/data/web_nlg_test.csv', 
-                                           '/home/sanjana/d2t_summarization/data/web_nlg_dev.csv'], batch_size = 1)
+    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/web_nlg_train.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/web_nlg_test.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/web_nlg_dev.csv'], batch_size = 1)
     summary_data.prepare_data()
     summary_data.setup("stage")
     train_data = summary_data.train_dataloader()
 
     it = iter(train_data)
-    for batch in next(it):
+    for batch in it:
         model.generate_text(batch)
-        
+
 if __name__ == '__main__': 
     #main()
     inference()
