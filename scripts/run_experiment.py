@@ -248,7 +248,16 @@ class LitModel(pl.LightningModule):
         input_ids = torch.ones((num_beams, 1), device=self.model.device, dtype=torch.long)
         input_ids = input_ids * self.model.config.decoder_start_token_id
 
-        beam_scorer = BeamSearchScorer(batch_size=1, num_beams=num_beams, device=self.model.device,)
+        length_penalty = length_penalty if length_penalty is not None else self.config.length_penalty
+        early_stopping = early_stopping if early_stopping is not None else self.config.early_stopping
+
+        beam_scorer = BeamSearchScorer(
+                batch_size=1,
+                num_beams=num_beams,
+                device=self.model.device,
+                length_penalty=2.0,
+                do_early_stopping=True,
+            )
         logits_processor = LogitsProcessorList([MinLengthLogitsProcessor(5, eos_token_id=self.model.config.eos_token_id),])
         outputs = self.model.beam_search(input_ids, beam_scorer, logits_processor=logits_processor, **model_kwargs)
         print("Generated:", self.tokenizer.batch_decode(outputs, skip_special_tokens=True))
