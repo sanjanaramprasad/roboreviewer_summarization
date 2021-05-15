@@ -185,7 +185,7 @@ class BartForDataToText(BartPretrainedModel):
                         output_attentions = output_attentions,
                         output_hidden_states = output_hidden_states,
                         return_dict = return_dict)
-            encoder_outputs_list.append(encoder_outputs_col0)
+            #encoder_outputs_list.append(encoder_outputs_col0)
 
         if not (input_ids_col1 is None):
             encoder_outputs_col1 = self._get_encoder_outputs(
@@ -198,7 +198,7 @@ class BartForDataToText(BartPretrainedModel):
                         output_attentions = output_attentions,
                         output_hidden_states = output_hidden_states,
                         return_dict = return_dict)
-            encoder_outputs_list.append(encoder_outputs_col1)
+            #encoder_outputs_list.append(encoder_outputs_col1)
 
         if not (input_ids_col2 is None):
             encoder_outputs_col2 = self._get_encoder_outputs(
@@ -211,7 +211,7 @@ class BartForDataToText(BartPretrainedModel):
                         output_attentions = output_attentions,
                         output_hidden_states = output_hidden_states,
                         return_dict = return_dict)
-            encoder_outputs_list.append(encoder_outputs_col2)
+            #encoder_outputs_list.append(encoder_outputs_col2)
         
         if not (input_ids_col3 is None):
             encoder_outputs_col3 = self._get_encoder_outputs(
@@ -224,7 +224,7 @@ class BartForDataToText(BartPretrainedModel):
                         output_attentions = output_attentions,
                         output_hidden_states = output_hidden_states,
                         return_dict = return_dict)
-            encoder_outputs_list.append(encoder_outputs_col3)
+            #encoder_outputs_list.append(encoder_outputs_col3)
         
         if not (input_ids_col4 is None):
             encoder_outputs_col4 = self._get_encoder_outputs(
@@ -237,7 +237,7 @@ class BartForDataToText(BartPretrainedModel):
                         output_attentions = output_attentions,
                         output_hidden_states = output_hidden_states,
                         return_dict = return_dict)
-            encoder_outputs_list.append(encoder_outputs_col4)
+            #encoder_outputs_list.append(encoder_outputs_col4)
         
         ## Since BART decoder gets the same input as the encoder shifted right
         ## concatenate the source input_ids fed to different encoders to feed to BART decoder
@@ -258,11 +258,15 @@ class BartForDataToText(BartPretrainedModel):
                 all_input_ids, self.config.pad_token_id, self.config.decoder_start_token_id
             )
             
+        encoder_outputs = [encoder_outputs_col0, encoder_outputs_col1, encoder_outputs_col2, \
+                            encoder_outputs_col3, encoder_outputs_col4]
+
+        encoder_outputs_list = [each for each in encoder_outputs if not (each is None)]
         
-        if encoder_outputs_list:
-            encoder_outputs_added = self._get_added_encoder_outputs(
+        encoder_outputs_added = self._get_added_encoder_outputs(
                 encoder_outputs_list
             )
+        
 
         if attention_mask_col0 is None:
             added_enc_attns = attention_mask_col0
