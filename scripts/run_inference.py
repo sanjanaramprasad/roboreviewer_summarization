@@ -7,7 +7,8 @@ import torch.distributed as dist
 from torch.nn import functional as Få
 
 from transformers.generation_utils import GenerationMixin
-
+from run_experiment import LitModel
+from transformers import BartTokenizer
 class Data2TextGenerator(GenerationMixin):
 
     def __init__(self, model, tokenizer):
