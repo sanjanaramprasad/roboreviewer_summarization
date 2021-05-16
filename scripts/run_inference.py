@@ -11,10 +11,13 @@ from run_experiment import LitModel
 from transformers import BartTokenizer
 class Data2TextGenerator(GenerationMixin):
 
-    def __init__(self, model, tokenizer, config: BartConfig):
+    def __init__(self, model, tokenizer):
         self.model = model.model 
         self.tokenizer = tokenizer 
-        self.config = config
+        self.config = self.model.config
+        self.device = self.model.device
+        #print(self.config.max_length)
+        
 
 
     def generate(self,
@@ -93,6 +96,5 @@ class Data2TextGenerator(GenerationMixin):
 if __name__ == '__main__':
     model = LitModel.load_from_checkpoint(checkpoint_path="webnlg_sanity_model.ckpt")
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
-
     generator = Data2TextGenerator(model, tokenizer)
     generator.generate()
