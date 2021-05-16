@@ -12,8 +12,9 @@ from transformers import BartTokenizer
 class Data2TextGenerator(GenerationMixin):
 
     def __init__(self, model, tokenizer):
-        self.model = model 
+        self.model = model.model 
         self.tokenizer = tokenizer 
+        self.config = model.config
 
 
     def generate(self,
@@ -52,25 +53,25 @@ class Data2TextGenerator(GenerationMixin):
         **model_kwargs, 
     ):
 
-        max_length = max_length if max_length is not None else self.model.model.config.max_length
-        num_beams = num_beams if num_beams is not None else self.model.model.config.num_beams
-        num_beam_groups = num_beam_groups if num_beam_groups is not None else self.model.model.config.num_beam_groups
-        do_sample = do_sample if do_sample is not None else self.model.model.config.do_sample
+        max_length = max_length if max_length is not None else self.config.max_length
+        num_beams = num_beams if num_beams is not None else self.config.num_beams
+        num_beam_groups = num_beam_groups if num_beam_groups is not None else self.config.num_beam_groups
+        do_sample = do_sample if do_sample is not None else self.config.do_sample
         num_return_sequences = (
-            num_return_sequences if num_return_sequences is not None else self.model.model.config.num_return_sequences
+            num_return_sequences if num_return_sequences is not None else self.config.num_return_sequences
         )
 
-        pad_token_id = pad_token_id if pad_token_id is not None else self.model.model.config.pad_token_id
-        bos_token_id = bos_token_id if bos_token_id is not None else self.model.model.config.eos_token_id
+        pad_token_id = pad_token_id if pad_token_id is not None else self.config.pad_token_id
+        bos_token_id = bos_token_id if bos_token_id is not None else self.config.eos_token_id
 
 
-        output_scores = output_scores if output_scores is not None else self.model.model.config.output_scores
-        output_attentions = output_attentions if output_attentions is not None else self.model.model.config.output_attentions
+        output_scores = output_scores if output_scores is not None else self.config.output_scores
+        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
-            output_hidden_states if output_hidden_states is not None else self.model.model.config.output_hidden_states
+            output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
         )
         return_dict_in_generate = (
-            return_dict_in_generate if return_dict_in_generate is not None else self.model.model.config.return_dict_in_generate
+            return_dict_in_generate if return_dict_in_generate is not None else self.config.return_dict_in_generate
         )
 
         model_kwargs["output_attentions"] = output_attentions
@@ -86,7 +87,7 @@ class Data2TextGenerator(GenerationMixin):
                 input_ids, pad_token_id, eos_token_id
             )
 
-        encoder_input_ids = input_ids if self.model.model.config.is_encoder_decoder else None
+        encoder_input_ids = input_ids if self.config.is_encoder_decoder else None
 
 
 if __name__ == '__main__':
