@@ -1,7 +1,7 @@
 import warnings
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
-
+from transformers.models.bart.configuration_bart import BartConfig
 import torch
 import torch.distributed as dist
 from torch.nn import functional as Få
@@ -11,10 +11,10 @@ from run_experiment import LitModel
 from transformers import BartTokenizer
 class Data2TextGenerator(GenerationMixin):
 
-    def __init__(self, model, tokenizer):
+    def __init__(self, model, tokenizer, config: BartConfig):
         self.model = model.model 
         self.tokenizer = tokenizer 
-        self.config = model.config
+        self.config = config
 
 
     def generate(self,
