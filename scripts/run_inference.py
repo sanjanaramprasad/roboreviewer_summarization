@@ -1,3 +1,11 @@
+import warnings
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
+
+import torch
+import torch.distributed as dist
+from torch.nn import functional as Få
+
 from transformers.generation_utils import GenerationMixin
 
 class Data2TextGenerator(GenerationMixin):
