@@ -5,7 +5,7 @@ from transformers.models.bart.configuration_bart import BartConfig
 from transformers.modeling_outputs import BaseModelOutput,Seq2SeqLMOutput,Seq2SeqModelOutput, Seq2SeqQuestionAnsweringModelOutput,Seq2SeqSequenceClassifierOutput
 from transformers.modeling_utils import PreTrainedModel
 from torch.nn import CrossEntropyLoss, MSELoss
-
+import copy
 
 class BartForDataToText(BartPretrainedModel):
     
@@ -15,11 +15,11 @@ class BartForDataToText(BartPretrainedModel):
         padding_idx, vocab_size = config.pad_token_id, config.vocab_size
         self.shared = nn.Embedding(vocab_size, config.d_model, padding_idx)
         
-        self.encoder_col0 = BartEncoder(config, self.shared)
-        self.encoder_col1 = BartEncoder(config, self.shared)
-        self.encoder_col2 = BartEncoder(config, self.shared)
-        self.encoder_col3 = BartEncoder(config, self.shared)
-        self.encoder_col4 = BartEncoder(config, self.shared)
+        self.encoder = BartEncoder(config, self.shared)
+        self.encoder1 = copy.deepcopy(self.encoder)
+        self.encoder2 = copy.deepcopy(self.encoder)
+        self.encoder3 = copy.deepcopy(self.encoder)
+        self.encoder4 = copy.deepcopy(self.encoder)
         
         self.decoder = BartDecoder(config,self.shared)
         
@@ -33,15 +33,15 @@ class BartForDataToText(BartPretrainedModel):
     
     def set_input_embeddings(self, value):
         self.shared = value
-        self.encoder_col0 = self.shared
-        self.encoder_col1 = self.shared
-        self.encoder_col2 = self.shared
-        self.encoder_col3 = self.shared
-        self.encoder_col4 = self.shared
+        self.encoder = self.shared
+        self.encoder1 = self.shared
+        self.encoder2 = self.shared
+        self.encoder3 = self.shared
+        self.encoder4 = self.shared
         
     def get_encoders(self):
-        return self.encoder_col0, self.encoder_col1, \
-            self.encoder_col2, self.encoder_col3, self.encoder_col4
+        return self.encoder, self.encoder1, \
+            self.encoder2, self.encoder3, self.encoder4
     
     def get_decoder(self):
         self.decoder
@@ -176,7 +176,7 @@ class BartForDataToText(BartPretrainedModel):
 
         if not (input_ids_col0 is None):
             encoder_outputs_col0 = self._get_encoder_outputs(
-                        encoder = self.encoder_col0, 
+                        encoder = self.encoder, 
                         encoder_outputs = encoder_outputs_col0, 
                         input_ids = input_ids_col0,
                         attention_mask = attention_mask_col0,
@@ -189,7 +189,7 @@ class BartForDataToText(BartPretrainedModel):
 
         if not (input_ids_col1 is None):
             encoder_outputs_col1 = self._get_encoder_outputs(
-                        encoder = self.encoder_col1, 
+                        encoder = self.encoder1, 
                         encoder_outputs = encoder_outputs_col1, 
                         input_ids = input_ids_col1,
                         attention_mask = attention_mask_col1,
@@ -202,7 +202,7 @@ class BartForDataToText(BartPretrainedModel):
 
         if not (input_ids_col2 is None):
             encoder_outputs_col2 = self._get_encoder_outputs(
-                        encoder = self.encoder_col2, 
+                        encoder = self.encoder2, 
                         encoder_outputs = encoder_outputs_col2, 
                         input_ids = input_ids_col2,
                         attention_mask = attention_mask_col2,
@@ -215,7 +215,7 @@ class BartForDataToText(BartPretrainedModel):
         
         if not (input_ids_col3 is None):
             encoder_outputs_col3 = self._get_encoder_outputs(
-                        encoder = self.encoder_col3, 
+                        encoder = self.encoder3, 
                         encoder_outputs = encoder_outputs_col3, 
                         input_ids = input_ids_col3,
                         attention_mask = attention_mask_col3,
@@ -228,7 +228,7 @@ class BartForDataToText(BartPretrainedModel):
         
         if not (input_ids_col4 is None):
             encoder_outputs_col4 = self._get_encoder_outputs(
-                        encoder = self.encoder_col4, 
+                        encoder = self.encoder4, 
                         encoder_outputs = encoder_outputs_col4, 
                         input_ids = input_ids_col4,
                         attention_mask = attention_mask_col4,
