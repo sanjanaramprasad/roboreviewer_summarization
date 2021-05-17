@@ -8,6 +8,8 @@ from torch.nn import CrossEntropyLoss, MSELoss
 import copy
 
 class BartForDataToText(BartPretrainedModel):
+    base_model_prefix = "model"
+    _keys_to_ignore_on_load_missing = [r"final_logits_bias", r"lm_head\.weight"]
     
     def __init__(self, config: BartConfig):
         super().__init__(config)
