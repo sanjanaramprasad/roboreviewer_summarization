@@ -24,6 +24,8 @@ class BartForDataToText(BartPretrainedModel):
         
         self.init_weights()
 
+        
+    def _make_duplicate_encoders(self):
         self.encoder1 = copy.deepcopy(self.encoder)
         self.encoder2 = copy.deepcopy(self.encoder)
         self.encoder3 = copy.deepcopy(self.encoder)
