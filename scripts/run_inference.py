@@ -11,6 +11,9 @@ from run_experiment import LitModel
 from transformers import BartTokenizer
 from Data2TextProcessor_1 import SummaryDataModule
 import argparse
+import pandas as pd
+from rouge import Rouge
+from transformers.generation_beam_search import BeamScorer, BeamSearchScorer
 
 class Data2TextGenerator(GenerationMixin):
 
@@ -20,6 +23,27 @@ class Data2TextGenerator(GenerationMixin):
         self.config = self.model.config
         self.device = self.model.device
         #print(self.config.max_length)
+
+
+    def _prepare_attention_mask_for_generation(self, batch, model_kwargs):
+        attention_mask_col0 = batch[1] if len(batch) >1 else None
+        attention_mask_col1 = batch[3] if len(batch) >3 else None
+        attention_mask_col2 = batch[5] if len(batch) >5 else None
+        attention_mask_col3 = batch[7] if len(batch) >7 else None
+        attention_mask_col4 = batch[9] if len(batch) >9 else None
+        
+        if not(attention_mask_col0 is None):
+            model_kwargs["attention_mask_col0"] = attention_mask_col0
+        if not(attention_mask_col1 is None):
+            model_kwargs["attention_mask_col1"] = attention_mask_col1
+        if not(attention_mask_col2 is None):
+            model_kwargs["attention_mask_col2"] = attention_mask_col2
+        if not(attention_mask_col3 is None):
+            model_kwargs["attention_mask_col3"] = attention_mask_col3
+        if not(attention_mask_col4 is None):
+            model_kwargs["attention_mask_col4"] = attention_mask_col4
+
+        return model_kwargs
 
     def _prepare_encoder_decoder_kwargs_for_generation(
         self, input_ids_col0: torch.LongTensor,
@@ -34,18 +58,32 @@ class Data2TextGenerator(GenerationMixin):
             encoder_kwargs = {
                 argument: value for argument, value in model_kwargs.items() if not argument.startswith("decoder_")
             }
-            print('ENC KWARGS', encoder_kwargs)
+            #print('ENC KWARGS', encoder_kwargs)
             if not(input_ids_col0 is None):
+                encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
+                encoder_kwargs["attention_mask"] = encoder_kwargs.get("attention_mask_col0", None)
+                #print(encoder_kwargs)
                 model_kwargs["encoder_outputs_col0"]: ModelOutput = encoder_col0(input_ids_col0, return_dict=True, **encoder_kwargs)
+            
             if not(input_ids_col1 is None):
+                encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
+                encoder_kwargs["attention_mask"] = encoder_kwargs.get("attention_mask_col1", None)
                 model_kwargs["encoder_outputs_col1"]: ModelOutput = encoder_col1(input_ids_col1, return_dict=True, **encoder_kwargs)
+            
             if not(input_ids_col2 is None):
+                encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
+                encoder_kwargs["attention_mask"] = encoder_kwargs.get("attention_mask_col2", None)
                 model_kwargs["encoder_outputs_col2"]: ModelOutput = encoder_col2(input_ids_col2, return_dict=True, **encoder_kwargs)
+            
             if not(input_ids_col3 is None):
+                encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
+                encoder_kwargs["attention_mask"] = encoder_kwargs.get("attention_mask_col3", None)
                 model_kwargs["encoder_outputs_col3"]: ModelOutput = encoder_col3(input_ids_col3, return_dict=True, **encoder_kwargs)
+           
             if not(input_ids_col4 is None):
+                encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
+                encoder_kwargs["attention_mask"] = encoder_kwargs.get("attention_mask_col4", None)
                 model_kwargs["encoder_outputs_col4"]: ModelOutput = encoder_col4(input_ids_col4, return_dict=True, **encoder_kwargs)
-
 
         return model_kwargs
         
@@ -132,12 +170,13 @@ class Data2TextGenerator(GenerationMixin):
 
         if model_kwargs.get("attention_mask", None) is None:
             # init `attention_mask` depending on `pad_token_id`
-            model_kwargs["attention_mask"] = self._prepare_attention_mask_for_generation(
-                input_ids, pad_token_id, eos_token_id
-            )
+            model_kwargs =  self._prepare_attention_mask_for_generation(
+                batch, model_kwargs)
 
         encoder_input_ids = input_ids if self.config.is_encoder_decoder else None
-
+        input_list = [each for each in [input_ids_col0, input_ids_col1, input_ids_col2, input_ids_col3, input_ids_col4,] \
+                            if not(each is None)]
+        encoder_input_ids = torch.cat(input_list, 0)
         if self.config.is_encoder_decoder:
             # add encoder_outputs to model_kwargs
             model_kwargs = self._prepare_encoder_decoder_kwargs_for_generation(input_ids_col0, 
@@ -151,15 +190,226 @@ class Data2TextGenerator(GenerationMixin):
                 input_ids = model_kwargs.pop("decoder_input_ids")
             else:
                 input_ids = self._prepare_decoder_input_ids_for_generation(
-                    input_ids, decoder_start_token_id=decoder_start_token_id, bos_token_id=bos_token_id
+                    input_ids, decoder_start_token_id=pad_token_id, bos_token_id=bos_token_id
                 )
 
+
+
             print("INPUT IDS", input_ids)
-            print("MODEL KWARGS", model_kwargs)
+            #print("MODEL KWARGS", model_kwargs)
+        
+        #input_ids = torch.cat(input_list,1)
+            # determine generation mode
+        is_greedy_gen_mode = (num_beams == 1) and (num_beam_groups == 1) and do_sample is False
+        #is_greedy_gen_mode = True
+        is_sample_gen_mode = (num_beams == 1) and (num_beam_groups == 1) and do_sample is True
+        is_beam_gen_mode = (num_beams > 1) and (num_beam_groups == 1) and do_sample is False
+        is_beam_sample_gen_mode = (num_beams > 1) and (num_beam_groups == 1) and do_sample is True
+        is_group_beam_gen_mode = (num_beams > 1) and (num_beam_groups > 1)
+        if num_beam_groups > num_beams:
+            raise ValueError("`num_beam_groups` has to be smaller or equal to `num_beams`")
+        if is_group_beam_gen_mode and do_sample is True:
+            raise ValueError(
+                "Diverse beam search cannot be used in sampling mode. Make sure that `do_sample` is set to `False`."
+            )
+
+        # set model_kwargs
+        model_kwargs["use_cache"] = use_cache
+
+        # get distribution pre_processing samplers
+        logits_processor = self._get_logits_processor(
+            repetition_penalty=repetition_penalty,
+            no_repeat_ngram_size=no_repeat_ngram_size,
+            encoder_no_repeat_ngram_size=encoder_no_repeat_ngram_size,
+            encoder_input_ids=encoder_input_ids,
+            bad_words_ids=bad_words_ids,
+            min_length=min_length,
+            max_length=max_length,
+            eos_token_id=eos_token_id,
+            forced_bos_token_id=forced_bos_token_id,
+            forced_eos_token_id=forced_eos_token_id,
+            prefix_allowed_tokens_fn=prefix_allowed_tokens_fn,
+            num_beams=num_beams,
+            num_beam_groups=num_beam_groups,
+            diversity_penalty=diversity_penalty,
+            remove_invalid_values=remove_invalid_values,
+        )
+
+        stopping_criteria = self._get_stopping_criteria(max_length=max_length, max_time=max_time)
+
+        if is_greedy_gen_mode:
+            if num_return_sequences > 1:
+                raise ValueError(
+                    f"num_return_sequences has to be 1, but is {num_return_sequences} when doing greedy search."
+                )
+
+            # greedy search
+            return self.model.greedy_search(
+                input_ids,
+                logits_processor=logits_processor,
+                stopping_criteria=stopping_criteria,
+                pad_token_id=pad_token_id,
+                eos_token_id=eos_token_id,
+                output_scores=output_scores,
+                return_dict_in_generate=return_dict_in_generate,
+                synced_gpus=synced_gpus,
+                **model_kwargs,
+            )
+
+        elif is_beam_gen_mode:
+            print("BEAM SEARCHING")
+            batch_size = input_ids.shape[0]
+
+            length_penalty = length_penalty if length_penalty is not None else self.config.length_penalty
+            early_stopping = early_stopping if early_stopping is not None else self.config.early_stopping
+
+            if num_return_sequences > num_beams:
+                raise ValueError("`num_return_sequences` has to be smaller or equal to `num_beams`.")
+
+            if stopping_criteria.max_length is None:
+                raise ValueError("`max_length` needs to be a stopping_criteria for now.")
+
+            beam_scorer = BeamSearchScorer(
+                batch_size=batch_size,
+                num_beams=num_beams,
+                device=self.device,
+                length_penalty=length_penalty,
+                do_early_stopping=early_stopping,
+                num_beam_hyps_to_keep=num_return_sequences,
+            )
+            # interleave with `num_beams`
+            input_ids, model_kwargs = self._expand_inputs_for_generation(
+                input_ids, expand_size=num_beams, is_encoder_decoder=self.config.is_encoder_decoder, **model_kwargs
+            )
+            return self.beam_search(
+                input_ids,
+                beam_scorer,
+                logits_processor=logits_processor,
+                stopping_criteria=stopping_criteria,
+                pad_token_id=pad_token_id,
+                eos_token_id=eos_token_id,
+                output_scores=output_scores,
+                return_dict_in_generate=return_dict_in_generate,
+                synced_gpus=synced_gpus,
+                **model_kwargs,
+            )
+
+
+        elif is_group_beam_gen_mode:
+            print("GROUP BEAM SEARCHING")
+            batch_size = input_ids.shape[0]
+
+            length_penalty = length_penalty if length_penalty is not None else self.config.length_penalty
+            early_stopping = early_stopping if early_stopping is not None else self.config.early_stopping
+
+            if num_return_sequences > num_beams:
+                raise ValueError("`num_return_sequences` has to be smaller or equal to `num_beams`.")
+
+            if num_beams % num_beam_groups != 0:
+                raise ValueError("`num_beams` should be divisible by `num_beam_groups` for group beam search.")
+
+            if stopping_criteria.max_length is None:
+                raise ValueError("`max_length` needs to be a stopping_criteria for now.")
+
+            diverse_beam_scorer = BeamSearchScorer(
+                batch_size=batch_size,
+                num_beams=num_beams,
+                max_length=stopping_criteria.max_length,
+                device=self.device,
+                length_penalty=length_penalty,
+                do_early_stopping=early_stopping,
+                num_beam_hyps_to_keep=num_return_sequences,
+                num_beam_groups=num_beam_groups,
+            )
+            # interleave with `num_beams`
+            input_ids, model_kwargs = self._expand_inputs_for_generation(
+                input_ids, expand_size=num_beams, is_encoder_decoder=self.config.is_encoder_decoder, **model_kwargs
+            )
+            return self.group_beam_search(
+                input_ids,
+                diverse_beam_scorer,
+                logits_processor=logits_processor,
+                stopping_criteria=stopping_criteria,
+                pad_token_id=pad_token_id,
+                eos_token_id=eos_token_id,
+                output_scores=output_scores,
+                return_dict_in_generate=return_dict_in_generate,
+                synced_gpus=synced_gpus,
+                **model_kwargs,
+            )
+
+        elif is_sample_gen_mode:
+            # get probability distribution warper
+            logits_warper = self._get_logits_warper(
+                top_k=top_k, top_p=top_p, temperature=temperature, num_beams=num_beams
+            )
+
+            # expand input_ids with `num_return_sequences` additional sequences per batch
+            input_ids, model_kwargs = self._expand_inputs_for_generation(
+                input_ids,
+                expand_size=num_return_sequences,
+                is_encoder_decoder=self.config.is_encoder_decoder,
+                **model_kwargs,
+            )
+
+            # sample
+            return self.sample(
+                input_ids,
+                logits_processor=logits_processor,
+                logits_warper=logits_warper,
+                stopping_criteria=stopping_criteria,
+                pad_token_id=pad_token_id,
+                eos_token_id=eos_token_id,
+                output_scores=output_scores,
+                return_dict_in_generate=return_dict_in_generate,
+                synced_gpus=synced_gpus,
+                **model_kwargs,
+            )
+        elif is_beam_sample_gen_mode:
+            logits_warper = self._get_logits_warper(
+                top_k=top_k, top_p=top_p, temperature=temperature, num_beams=num_beams
+            )
+
+            batch_size = input_ids.shape[0] * num_return_sequences
+
+            length_penalty = length_penalty if length_penalty is not None else self.config.length_penalty
+            if stopping_criteria.max_length is None:
+                raise ValueError("`max_length` needs to be a stopping_criteria for now.")
+            beam_scorer = BeamSearchScorer(
+                batch_size=batch_size,
+                num_beams=num_beams,
+                device=self.device,
+                length_penalty=length_penalty,
+                do_early_stopping=early_stopping,
+            )
+
+            # interleave with `num_beams * num_return_sequences`
+            input_ids, model_kwargs = self._expand_inputs_for_generation(
+                input_ids,
+                expand_size=num_beams * num_return_sequences,
+                is_encoder_decoder=self.config.is_encoder_decoder,
+                **model_kwargs,
+            )
+
+            return self.beam_sample(
+                input_ids,
+                beam_scorer,
+                logits_processor=logits_processor,
+                logits_warper=logits_warper,
+                stopping_criteria=stopping_criteria,
+                pad_token_id=pad_token_id,
+                eos_token_id=eos_token_id,
+                output_scores=output_scores,
+                return_dict_in_generate=return_dict_in_generate,
+                synced_gpus=synced_gpus,
+                **model_kwargs,
+            )
+
+
 
 if __name__ == '__main__':
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
-    model = LitModel.load_from_checkpoint(checkpoint_path="webnlg_sanity_model.ckpt")
+    model = LitModel.load_from_checkpoint(checkpoint_path="checkpoint_files_2/epoch=99-step=9999.ckpt")
     '''bart_model = BartForDataToText.from_pretrained('facebook/bart-base')    
     hparams = argparse.Namespace()
 
@@ -168,15 +418,30 @@ if __name__ == '__main__':
     hparams.eval_beams = 4
 
     model = LitModel(learning_rate = 1e-5, tokenizer = tokenizer, model = bart_model, hparams = hparams)'''
-    summary_data = SummaryDataModule(tokenizer, data_files = ['/Users/sanjana/roboreviewer_summarization/data/web_nlg_train.csv', 
-                                           '/Users/sanjana/roboreviewer_summarization/data/web_nlg_test.csv', 
-                                           '/Users/sanjana/roboreviewer_summarization/data/web_nlg_dev.csv'], batch_size = 1)
+    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/web_nlg_train.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/web_nlg_test.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/web_nlg_dev.csv'], batch_size = 1)
     summary_data.prepare_data()
     summary_data.setup("stage")
     train_data = summary_data.train_dataloader()
 
     it = iter(train_data)
-    first_batch = next(it)
-    generator = Data2TextGenerator(model, tokenizer)
+    ind = 0
+    while(ind < 5):
+        first_batch = next(it)
+        generator = Data2TextGenerator(model, tokenizer)
+        #print("Target", first_batch[-1])
+        outputs = generator.generate(first_batch, num_beams = 3)     
+        train_data = pd.read_csv('/home/sanjana/roboreviewer_summarization/data/web_nlg_train.csv')
+        target = train_data['target'][ind]
+        ind += 1
+        rouge = Rouge()
+        reference = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
+        if reference:
+            scores = rouge.get_scores(target, reference)
+            print("TARGET : ", target)
+            print("GENERATED :", reference)
+            print("SCORES", scores)
+            print('=' * 130)
 
-    generator.generate(first_batch)
+
