@@ -16,10 +16,6 @@ class BartForDataToText(BartPretrainedModel):
         self.shared = nn.Embedding(vocab_size, config.d_model, padding_idx)
         
         self.encoder = BartEncoder(config, self.shared)
-        self.encoder1 = copy.deepcopy(self.encoder)
-        self.encoder2 = copy.deepcopy(self.encoder)
-        self.encoder3 = copy.deepcopy(self.encoder)
-        self.encoder4 = copy.deepcopy(self.encoder)
         
         self.decoder = BartDecoder(config,self.shared)
         
@@ -27,6 +23,11 @@ class BartForDataToText(BartPretrainedModel):
         self.lm_head = nn.Linear(config.d_model, self.shared.num_embeddings, bias=False)
         
         self.init_weights()
+
+        self.encoder1 = copy.deepcopy(self.encoder)
+        self.encoder2 = copy.deepcopy(self.encoder)
+        self.encoder3 = copy.deepcopy(self.encoder)
+        self.encoder4 = copy.deepcopy(self.encoder)
         
     def get_input_embeddings(self):
         return self.shared 
