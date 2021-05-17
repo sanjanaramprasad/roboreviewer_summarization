@@ -1,5 +1,18 @@
 import json 
 import pandas as pd
+import re 
+
+
+
+def preprocess(text):
+    text = re.sub(r"""
+               [!"#$%&\'()*+,-./:;<=>?@^_`{|}~]+  # Accept one or more copies of punctuation
+               \ *           # plus zero or more copies of a space,
+               """,
+               " ",          # and replace it with a single space
+               text, flags=re.VERBOSE)
+    text = [w.lower() for w in text.split()if w.strip()]
+    return ' '.join(text)
 
 def read_json(filepath):
     with open(filepath, 'r') as fp:
@@ -11,9 +24,9 @@ def parse(entry):
     target = entry["lexicalisations"][0]["lex"]
     triplesets = entry["originaltriplesets"]["originaltripleset"][0]
 
-    object_t = [each_obj["object"] for each_obj in triplesets]
-    property_t = [each_obj["property"] for each_obj in triplesets]
-    subject_t = [each_obj["subject"] for each_obj in triplesets]
+    object_t = [preprocess(each_obj["object"]) for each_obj in triplesets]
+    property_t = [preprocess(each_obj["property"]) for each_obj in triplesets]
+    subject_t = [preprocess(each_obj["subject"]) for each_obj in triplesets]
     return object_t, property_t, subject_t, target
     
 
