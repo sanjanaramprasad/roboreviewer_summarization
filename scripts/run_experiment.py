@@ -60,17 +60,18 @@ def freeze_params(model):
 
 class LitModel(pl.LightningModule):
     # Instantiate the model
-    def __init__(self, learning_rate, tokenizer, model, hparams):
+    def __init__(self, learning_rate, tokenizer, model, freeze_encoder, freeze_embeds, eval_beams):
         super().__init__()
         self.tokenizer = tokenizer
         self.model = model
         self.model._make_duplicate_encoders()
         self.learning_rate = learning_rate
-        # self.freeze_encoder = freeze_encoder
-        # self.freeze_embeds_ = freeze_embeds
-        self.hparams = hparams
+        self.freeze_encoder = freeze_encoder
+        self.freeze_embeds_ = freeze_embeds
+        #self.hparams = hparams
+        #self.hparams.update(hparams)
 
-        if self.hparams.freeze_encoder:
+        if self.freeze_encoder:
             freeze_params(self.model.encoder)
             freeze_params(self.model.encoder1)
             freeze_params(self.model.encoder2)
@@ -78,7 +79,7 @@ class LitModel(pl.LightningModule):
             freeze_params(self.model.encoder4)
 
 
-        if self.hparams.freeze_embeds:
+        if freeze_embeds:
             self.freeze_embeds()
         self.save_hyperparameters()
   
@@ -209,7 +210,7 @@ class LitModel(pl.LightningModule):
         #print(epoch_dictionary)
         return epoch_dictionary
 
-def make_data(data_type = 'robo', path = '/home/sanjana'):
+def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana'):
     if data_type == 'robo':
         train_file = path + '/roboreviewer_summarization/data/robo_train_field_sep.csv'
         dev_file = path + '/roboreviewer_summarization/data/robo_dev_field_sep.csv'
@@ -221,25 +222,26 @@ def make_data(data_type = 'robo', path = '/home/sanjana'):
         test_file = path + '/roboreviewer_summarization/data/web_nlg_test.csv'
 
     data_files = [train_file, dev_file, test_file]
-    summary_data = SummaryDataModule(tokenizer, data_files = data_files)
+    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1)
     summary_data.prepare_data()
     return summary_data
 
 
 def main():
-    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
-    bart_model = BartForDataToText.from_pretrained('facebook/bart-base')    
-    summary_data = make_data()
+    tokenizer = BartTokenizer.from_pretrained('facebook/bart-large-cnn')
+    bart_model = BartForDataToText.from_pretrained('facebook/bart-large-cnn')    
+    summary_data = make_data(tokenizer, path = '/home/ramprasad.sa')
 
-    hparams = argparse.Namespace()
-    hparams.freeze_encoder = True
-    hparams.freeze_embeds = True
-    hparams.eval_beams = 4
+    #hparams = argparse.Namespace()
+    freeze_encoder = True
+    freeze_embeds = True
+    eval_beams = 4
     
 
-    model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, hparams = hparams)
+    model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
     checkpoint = ModelCheckpoint('checkpoint_files/')
-    trainer = pl.Trainer(max_epochs = max_epochs,
+    trainer = pl.Trainer(gpus = 1, 
+			max_epochs = max_epochs,
                         min_epochs = 1,
                         auto_lr_find = False,
                         checkpoint_callback = checkpoint,
