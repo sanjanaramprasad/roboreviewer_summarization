@@ -5,15 +5,16 @@ from BartForDataToTextGeneration import BartForDataToText
 from Data2TextProcessor_1 import SummaryDataModule
 
 
-model = BartForDataToText.from_pretrained('facebook/bart-base')    
+model = BartForDataToText.from_pretrained('facebook/bart-base')
+model._make_duplicate_encoders()
 tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
-summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/web_nlg_train.csv', 
-                                           '/home/sanjana/roboreviewer_summarization/data/web_nlg_dev.csv', 
-                                           '/home/sanjana/roboreviewer_summarization/data/web_nlg_test.csv'], batch_size = 1)
+summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_field_sep.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_dev_field_sep.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_test_field_sep.csv'], batch_size = 1)
 summary_data.prepare_data()
 
 summary_data.setup("stage")
-test_data = summary_data.test_dataloader(data_type = 'webnlg')
+test_data = summary_data.test_dataloader(data_type = 'robo')
 it = iter(test_data)
 
 class BartForDataToTextGenerationTester():
@@ -49,6 +50,7 @@ class BartForDataToTextGenerationTester():
         data = next(it)
         print(len(data))
         if len(data) > 3:
+            print('ENCODING 1')
             encoder_outputs_col1 = self.encoder_col1(\
                                     input_ids = data[2],
                                     attention_mask = data[3])
@@ -61,6 +63,7 @@ class BartForDataToTextGenerationTester():
         data = next(it)
         print(len(data))
         if len(data) > 5:
+            print('ENCODING 2')
             encoder_outputs_col2 = self.encoder_col2(\
                                     input_ids = data[4],
                                     attention_mask = data[5])
@@ -73,6 +76,7 @@ class BartForDataToTextGenerationTester():
         data = next(it)
         print(len(data))
         if len(data) > 7:
+            print('ENCODING 3')
             encoder_outputs_col3 = self.encoder_col3(\
                                     input_ids = data[6],
                                     attention_mask = data[7])
@@ -85,6 +89,7 @@ class BartForDataToTextGenerationTester():
         data = next(it)
         print(len(data))
         if len(data) > 9:
+            print('ENCODING 4')
             encoder_outputs_col4 = self.encoder_col4(\
                                     input_ids = data[8],
                                     attention_mask = data[9])
@@ -94,7 +99,7 @@ class BartForDataToTextGenerationTester():
         return
 
     def test_encoder_addition(self):
-        encoder_outputs_added =  model._get_added_encoder_outputs(self.encoder_outputs_list)
+        encoder_outputs_added =  model._get_sum_encoder_outputs(self.encoder_outputs_list)
         print(encoder_outputs_added[0].shape)
      
     def test_attn_masks_OR(self):

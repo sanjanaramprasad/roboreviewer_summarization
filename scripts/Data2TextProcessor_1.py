@@ -75,12 +75,18 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=5
         
     sentence_dict_len = 0
 
+    sentence_dict = eval(source_sentences[0])
+    sentence_keys = list(sentence_dict.keys())
+    sentence_keys_map = { key : 'col%s'%(str(i)) for i, key in enumerate(sentence_keys) }
+    print(sentence_keys_map)
     for sentence, tgt_sentence in list(zip(source_sentences, target_sentences)):
         sentence_dict = eval(sentence)
         #sentence_dict = json.loads(sentence.replace("\'", "\""))
-
+        #print(sentence_dict)
+        sentence_dict = {sentence_keys_map[key] : val for key, val in sentence_dict.items()}
+        #print(sentence_dict)
         sentence_dict_len = len(list(sentence_dict.keys()))
-
+        keys = list(sentence_dict.keys())
         if len(sentence_dict['col0']) <= 20:
             for i in range(0, sentence_dict_len):
                 keys_ids = 'ids_col%s'%(str(i))
@@ -147,7 +153,7 @@ class SummaryDataModule(pl.LightningDataModule):
         #print(self.test)
 
     # Load the training, validation and test sets in Pytorch Dataset objects
-    def train_dataloader(self, data_type = 'webnlg'):
+    def train_dataloader(self, data_type = 'robo'):
         #dataset = TensorDataset
         if data_type == 'robo':
             dataset = TensorDataset(self.train['ids_col0'], self.train['attention_masks_col0'],
@@ -165,7 +171,7 @@ class SummaryDataModule(pl.LightningDataModule):
         train_data = DataLoader(dataset, sampler = RandomSampler(dataset), batch_size = self.batch_size)
         return train_data
 
-    def val_dataloader(self, data_type = 'webnlg'):
+    def val_dataloader(self, data_type = 'robo'):
         if data_type == 'robo':
             dataset = TensorDataset(self.validate['ids_col0'], self.validate['attention_masks_col0'],
                                     self.validate['ids_col1'], self.validate['attention_masks_col1'],
@@ -181,7 +187,7 @@ class SummaryDataModule(pl.LightningDataModule):
         val_data = DataLoader(dataset, batch_size = self.batch_size)                       
         return val_data
 
-    def test_dataloader(self, data_type = 'webnlg'):
+    def test_dataloader(self, data_type = 'robo'):
         #print(self.test['punchline_text_ids'])
         if data_type == 'robo':
             dataset = TensorDataset(self.test['ids_col0'], self.test['attention_masks_col0'],

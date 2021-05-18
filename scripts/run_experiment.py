@@ -53,13 +53,15 @@ logger = TensorBoardLogger('tb_logs', name='my_model13')
     return prev_output_tokens'''
 
 
-
+train_count = 0
+val_count = 0
 class LitModel(pl.LightningModule):
     # Instantiate the model
     def __init__(self, learning_rate, tokenizer, model, hparams):
         super().__init__()
         self.tokenizer = tokenizer
         self.model = model
+        self.model._make_duplicate_encoders()
         self.learning_rate = learning_rate
         # self.freeze_encoder = freeze_encoder
         # self.freeze_embeds_ = freeze_embeds
@@ -91,8 +93,8 @@ class LitModel(pl.LightningModule):
   
     def configure_optimizers(self):
         print("PARAMS", self.parameters())
-        #optimizer = torch.optim.Adam(self.parameters(), lr = self.learning_rate)
-        optimizer = torch.optim.SGD(self.parameters(), lr= self.learning_rate)
+        optimizer = torch.optim.Adam(self.parameters(), lr = self.learning_rate)
+        #optimizer = torch.optim.SGD(self.parameters(), lr= self.learning_rate)
         return optimizer
 
     def training_step(self, batch, batch_idx):
@@ -190,8 +192,8 @@ class LitModel(pl.LightningModule):
 
 
         lm_logits = outputs[1]
-        print("LM LOGITS", lm_logits)
-        print("TGT IDS", tgt_ids)
+        #print("LM LOGITS", lm_logits)
+        #print("TGT IDS", tgt_ids)
 
         ce_loss_fct = torch.nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
         val_loss = ce_loss_fct(lm_logits.view(-1, lm_logits.shape[-1]), tgt_ids.view(-1))
@@ -233,7 +235,7 @@ class LitModel(pl.LightningModule):
             encoder_col2, encoder_col3, encoder_col4 = self.model.get_encoders()
 
 
-        logits_processor = generator._get_logits_processor(
+        logits_processor = self.model._get_logits_processor(
             repetition_penalty=0.5,
             no_repeat_ngram_size=1,
             encoder_no_repeat_ngram_size=2,
@@ -323,9 +325,9 @@ def freeze_params(model):
 def main():
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
     bart_model = BartForDataToText.from_pretrained('facebook/bart-base')    
-    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/web_nlg_train.csv', 
-                                           '/home/sanjana/roboreviewer_summarization/data/web_nlg_test.csv', 
-                                           '/home/sanjana/roboreviewer_summarization/data/web_nlg_dev.csv'], batch_size = 1)
+    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_field_sep.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_test_field_sep.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_dev_field_sep.csv'], batch_size = 1)
 
     summary_data.prepare_data()
     hparams = argparse.Namespace()
@@ -333,10 +335,10 @@ def main():
     hparams.freeze_encoder = True
     hparams.freeze_embeds = True
     hparams.eval_beams = 4
-    model = LitModel(learning_rate = 1e-5, tokenizer = tokenizer, model = bart_model, hparams = hparams)
+    model = LitModel(learning_rate = 3e-5, tokenizer = tokenizer, model = bart_model, hparams = hparams)
     checkpoint = ModelCheckpoint('checkpoint_files_2/')
     trainer = pl.Trainer(gpus=2, accelerator='dp',
-                        max_epochs = 100,
+                        max_epochs = 15,
                         min_epochs = 1,
                         auto_lr_find = False,
                         checkpoint_callback = checkpoint,
@@ -344,16 +346,16 @@ def main():
                         logger=logger)
 
     trainer.fit(model, summary_data)
-    trainer.save_checkpoint("webnlg_sanity_model.ckpt")
+    trainer.save_checkpoint("webnlg_model_epoch15_adam_3e5_sum.ckpt")
 
 
 def inference():
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
     model = LitModel.load_from_checkpoint(checkpoint_path="webnlg_sanity_model.ckpt")
     print("Model loaded")
-    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/web_nlg_train.csv', 
-                                           '/home/sanjana/roboreviewer_summarization/data/web_nlg_test.csv', 
-                                           '/home/sanjana/roboreviewer_summarization/data/web_nlg_dev.csv'], batch_size = 1)
+    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_field_sep.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_test_field_sep.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_dev_field_sep.csv'], batch_size = 1)
     summary_data.prepare_data()
     summary_data.setup("stage")
     train_data = summary_data.train_dataloader()
@@ -363,5 +365,5 @@ def inference():
         model.generate_text(batch)
 
 if __name__ == '__main__': 
-    #main()
-    inference()
+    main()
+    #inference()

@@ -190,7 +190,7 @@ class Data2TextGenerator(GenerationMixin):
                 input_ids = model_kwargs.pop("decoder_input_ids")
             else:
                 input_ids = self._prepare_decoder_input_ids_for_generation(
-                    input_ids, decoder_start_token_id=pad_token_id, bos_token_id=bos_token_id
+                    input_ids, decoder_start_token_id=decoder_start_token_id, bos_token_id=bos_token_id
                 )
 
 
@@ -238,6 +238,7 @@ class Data2TextGenerator(GenerationMixin):
         stopping_criteria = self._get_stopping_criteria(max_length=max_length, max_time=max_time)
 
         if is_greedy_gen_mode:
+            print("GREEDY SEARCHING")
             if num_return_sequences > 1:
                 raise ValueError(
                     f"num_return_sequences has to be 1, but is {num_return_sequences} when doing greedy search."
@@ -409,39 +410,49 @@ class Data2TextGenerator(GenerationMixin):
 
 if __name__ == '__main__':
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
-    model = LitModel.load_from_checkpoint(checkpoint_path="checkpoint_files_2/epoch=99-step=9999.ckpt")
-    '''bart_model = BartForDataToText.from_pretrained('facebook/bart-base')    
+    #model = LitModel.load_from_checkpoint(checkpoint_path="webnlg_model_14_sgd.ckpt")
+    #bart_model = BartForDataToText.from_pretrained('facebook/bart-base')    
+    #bart_model._make_duplicate_encoders()
     hparams = argparse.Namespace()
 
     hparams.freeze_encoder = True
     hparams.freeze_embeds = True
     hparams.eval_beams = 4
-
-    model = LitModel(learning_rate = 1e-5, tokenizer = tokenizer, model = bart_model, hparams = hparams)'''
-    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/web_nlg_train.csv', 
+    model = LitModel.load_from_checkpoint(checkpoint_path="webnlg_model_epoch15_adam_3e5_sum.ckpt")
+    #model = LitModel(learning_rate = 1e-5, tokenizer = tokenizer, model = bart_model, hparams = hparams)
+    '''summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/web_nlg_train.csv', 
                                            '/home/sanjana/roboreviewer_summarization/data/web_nlg_test.csv', 
                                            '/home/sanjana/roboreviewer_summarization/data/web_nlg_dev.csv'], batch_size = 1)
     summary_data.prepare_data()
-    summary_data.setup("stage")
-    train_data = summary_data.train_dataloader()
+    summary_data.setup("stage")'''
 
-    it = iter(train_data)
+    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_field_sep.csv',
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_dev_field_sep.csv',
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_test_field_sep.csv'], batch_size = 1)
+    summary_data.prepare_data()
+
+    summary_data.setup("stage")
+    test_data = summary_data.test_dataloader(data_type = 'robo')
+
+    #train_data = summary_data.train_dataloader()
+
+    it = iter(test_data)
     ind = 0
-    while(ind < 5):
+    while(ind < 10):
         first_batch = next(it)
         generator = Data2TextGenerator(model, tokenizer)
         #print("Target", first_batch[-1])
-        outputs = generator.generate(first_batch, num_beams = 3)     
-        train_data = pd.read_csv('/home/sanjana/roboreviewer_summarization/data/web_nlg_train.csv')
+        outputs = generator.generate(first_batch, num_beams = 1, do_sample = False, length_penalty = 5.0, max_length = 100)     
+        train_data = pd.read_csv('/home/sanjana/roboreviewer_summarization/data/robo_test_field_sep.csv')
         target = train_data['target'][ind]
         ind += 1
         rouge = Rouge()
         reference = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
-        if reference:
+        if reference.strip():
             scores = rouge.get_scores(target, reference)
             print("TARGET : ", target)
             print("GENERATED :", reference)
-            print("SCORES", scores)
+            #print("SCORES", scores)
             print('=' * 130)
 
 
