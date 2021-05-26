@@ -414,11 +414,11 @@ if __name__ == '__main__':
     #bart_model = BartForDataToText.from_pretrained('facebook/bart-base')    
     #bart_model._make_duplicate_encoders()
     hparams = argparse.Namespace()
-
+    rouge = Rouge()
     hparams.freeze_encoder = True
     hparams.freeze_embeds = True
     hparams.eval_beams = 4
-    model = LitModel.load_from_checkpoint(checkpoint_path="webnlg_model_epoch15_adam_3e5_sum.ckpt")
+    model = LitModel.load_from_checkpoint(checkpoint_path="/home/sanjana/roboreviewer_summarization/model_checkpoints/robo_model_epoch3e-05_adam_6_sum.ckpt")
     #model = LitModel(learning_rate = 1e-5, tokenizer = tokenizer, model = bart_model, hparams = hparams)
     '''summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/web_nlg_train.csv', 
                                            '/home/sanjana/roboreviewer_summarization/data/web_nlg_test.csv', 
@@ -438,21 +438,27 @@ if __name__ == '__main__':
 
     it = iter(test_data)
     ind = 0
+    model_out = []
+    references = []
     while(ind < 10):
         first_batch = next(it)
         generator = Data2TextGenerator(model, tokenizer)
         #print("Target", first_batch[-1])
-        outputs = generator.generate(first_batch, num_beams = 1, do_sample = False, length_penalty = 5.0, max_length = 100)     
+        outputs = generator.generate(first_batch, num_beams = 4, do_sample = False, length_penalty = 5.0, max_length = 300)     
         train_data = pd.read_csv('/home/sanjana/roboreviewer_summarization/data/robo_test_field_sep.csv')
         target = train_data['target'][ind]
         ind += 1
         rouge = Rouge()
-        reference = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
-        if reference.strip():
-            scores = rouge.get_scores(target, reference)
-            print("TARGET : ", target)
-            print("GENERATED :", reference)
+        model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
+        if model_output.strip():
+            model_out.append(model_output)
+            references.append(target)
+
+            #scores = rouge.get_scores(target, reference)
+            #print("TARGET : ", target)
+            #print("GENERATED :", reference)
             #print("SCORES", scores)
-            print('=' * 130)
+            #print('=' * 130)
+    print(rouge.get_scores(model_out, references, avg=True))
 
 
