@@ -41,14 +41,53 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from Data2TextProcessor_1 import SummaryDataModule
 #from transformers.modeling_bart import shift_tokens_right
 
-learning_rate = 3e-5 
-max_epochs = 6
+learning_rate = 3e-4 
+max_epochs = 25
 
 logger = TensorBoardLogger('tb_logs', name='my_model_epoch%s_%s'%(str(max_epochs), str(learning_rate)))
 
 
 train_count = 0
 val_count = 0
+
+import os
+import pytorch_lightning as pl
+
+class CheckpointEveryNSteps(pl.Callback):
+    """
+    Save a checkpoint every N steps, instead of Lightning's default that checkpoints
+    based on validation loss.
+    """
+
+    def __init__(
+        self,
+        save_step_frequency,
+        prefix="N-Step-Checkpoint",
+        use_modelcheckpoint_filename=False,
+    ):
+        """
+        Args:
+            save_step_frequency: how often to save in steps
+            prefix: add a prefix to the name, only used if
+                use_modelcheckpoint_filename=False
+            use_modelcheckpoint_filename: just use the ModelCheckpoint callback's
+                default filename, don't use ours.
+        """
+        self.save_step_frequency = save_step_frequency
+        self.prefix = prefix
+        self.use_modelcheckpoint_filename = use_modelcheckpoint_filename
+
+    def on_batch_end(self, trainer: pl.Trainer, _):
+        """ Check if we should save a checkpoint after every train batch """
+        epoch = trainer.current_epoch
+        global_step = trainer.global_step
+        if global_step % self.save_step_frequency == 0:
+            if self.use_modelcheckpoint_filename:
+                filename = trainer.checkpoint_callback.filename
+            else:
+                filename = f"{self.prefix}_{epoch}_{global_step}.ckpt"
+            ckpt_path = os.path.join(trainer.checkpoint_callback.dirpath, filename)
+            trainer.save_checkpoint(ckpt_path)
 
     
 def freeze_params(model):
@@ -60,17 +99,18 @@ def freeze_params(model):
 
 class LitModel(pl.LightningModule):
     # Instantiate the model
-    def __init__(self, learning_rate, tokenizer, model, hparams):
+    def __init__(self, learning_rate, tokenizer, model, freeze_encoder, freeze_embeds, eval_beams):
         super().__init__()
         self.tokenizer = tokenizer
         self.model = model
         self.model._make_duplicate_encoders()
         self.learning_rate = learning_rate
-        # self.freeze_encoder = freeze_encoder
-        # self.freeze_embeds_ = freeze_embeds
-        self.hparams = hparams
+        self.freeze_encoder = freeze_encoder
+        self.freeze_embeds_ = freeze_embeds
+        #self.hparams = hparams
+        #self.hparams.update(hparams)
 
-        if self.hparams.freeze_encoder:
+        if self.freeze_encoder:
             freeze_params(self.model.encoder)
             freeze_params(self.model.encoder1)
             freeze_params(self.model.encoder2)
@@ -78,7 +118,7 @@ class LitModel(pl.LightningModule):
             freeze_params(self.model.encoder4)
 
 
-        if self.hparams.freeze_embeds:
+        if freeze_embeds:
             self.freeze_embeds()
         self.save_hyperparameters()
   
@@ -223,7 +263,7 @@ def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana'):
         test_file = path + '/roboreviewer_summarization/data/web_nlg_test.csv'
 
     data_files = [train_file, dev_file, test_file]
-    summary_data = SummaryDataModule(tokenizer, data_files = data_files, batch_size = 1)
+    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1)
     summary_data.prepare_data()
     return summary_data
 
@@ -231,22 +271,22 @@ def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana'):
 def main():
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
     bart_model = BartForDataToText.from_pretrained('facebook/bart-base')    
-    summary_data = make_data(tokenizer)
+    summary_data = make_data(tokenizer, path = '/home/sanjana')
 
-    hparams = argparse.Namespace()
-    hparams.freeze_encoder = True
-    hparams.freeze_embeds = True
-    hparams.eval_beams = 4
-    
+    #hparams = argparse.Namespace()
+    freeze_encoder = True
+    freeze_embeds = True
+    eval_beams = 4
 
-    model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, hparams = hparams)
+    model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
     checkpoint = ModelCheckpoint('checkpoint_files/')
-    trainer = pl.Trainer(max_epochs = max_epochs,
+    trainer = pl.Trainer(gpus=2, accelerator='dp', 
+			max_epochs = max_epochs,
                         min_epochs = 1,
                         auto_lr_find = False,
-                        checkpoint_callback = checkpoint,
                         progress_bar_refresh_rate = 100,
-                        logger=logger)
+                        logger=logger,
+                        callbacks=[CheckpointEveryNSteps(save_step_frequency = 5)])
 
     trainer.fit(model, summary_data)
     trainer.save_checkpoint("robo_model_epoch%s_adam_%s_linearize.ckpt"%(str(learning_rate), str(max_epochs)))
