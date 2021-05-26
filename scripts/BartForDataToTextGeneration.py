@@ -19,12 +19,21 @@ class BartForDataToText(BartPretrainedModel):
         
         self.encoder = BartEncoder(config, self.shared)
         
+
+        config_decoder = copy.deepcopy(config)
+        config_decoder.d_model = 1200
         self.decoder = BartDecoder(config,self.shared)
         
         self.register_buffer("final_logits_bias", torch.zeros((1, self.shared.num_embeddings)))
         self.lm_head = nn.Linear(config.d_model, self.shared.num_embeddings, bias=False)
-        
+        self.fc0 = nn.Linear(config.d_model, 154)
+        self.fc1 = nn.Linear(config.d_model, 154)
+        self.fc2 = nn.Linear(config.d_model, 154)
+        self.fc3 = nn.Linear(config.d_model, 153)
+        self.fc4 = nn.Linear(config.d_model, 153)
+        print("DIM", config.d_model)
         self.init_weights()
+        
 
         
     def _make_duplicate_encoders(self):
@@ -120,14 +129,13 @@ class BartForDataToText(BartPretrainedModel):
         return added_enc_outputs
 
 
-    
-    def _get_added_encoder_outputs(self, 
+    def _get_concat_encoder_outputs(self, 
         encoder_outputs_list):
 
         encoder_outputs = []
         for i in range(0,3):
-            if len(encoder_outputs_list[i]) > i: 
-                added_enc_outputs_i = torch.cat([enc[i] for enc in encoder_outputs_list],1)
+            if len(encoder_outputs_list[0]) > i: 
+                added_enc_outputs_i = torch.cat([enc[i] for enc in encoder_outputs_list],2)
                 encoder_outputs.append(added_enc_outputs_i)
             
         added_enc_outputs = BaseModelOutput(
@@ -150,7 +158,20 @@ class BartForDataToText(BartPretrainedModel):
             #added_enc_attns = torch.as_tensor([added_enc_attns])
             added_enc_attns = torch.as_tensor([added_enc_attns] , device = attention_mask_list[0].device)
             return added_enc_attns
-        
+    
+    def _forward_pass(self, encoder_outputs, fcn):
+        enc_outputs = []
+        for i in range(0,3):
+            if len(encoder_outputs) > i:
+                enc_outputs.append(fcn(encoder_outputs[i]))
+
+        encoder_outputs = BaseModelOutput(
+                last_hidden_state=enc_outputs[0],
+                hidden_states=enc_outputs[1] if len(enc_outputs) > 1 else None,
+                attentions=enc_outputs[2] if len(enc_outputs) > 2 else None,
+            )
+        return encoder_outputs
+
         
     def forward(
         self,
@@ -181,6 +202,7 @@ class BartForDataToText(BartPretrainedModel):
         output_attentions=None,
         output_hidden_states=None,
         return_dict=None,
+        encoder_combination_type = 'addition'
     ):
         
         
@@ -272,6 +294,14 @@ class BartForDataToText(BartPretrainedModel):
                 input_ids_populations,
                 input_ids_interventions,
                 input_ids_outcomes),0)'''
+
+        if encoder_combination_type == 'linearize':
+            encoder_outputs_col0 = self._forward_pass(encoder_outputs_col0, self.fc0)
+            encoder_outputs_col1 = self._forward_pass(encoder_outputs_col1, self.fc1)
+            encoder_outputs_col2 = self._forward_pass(encoder_outputs_col2, self.fc2)
+            encoder_outputs_col3 = self._forward_pass(encoder_outputs_col3, self.fc3)
+            encoder_outputs_col4 = self._forward_pass(encoder_outputs_col4, self.fc4)
+
         if labels is not None:
             if decoder_input_ids is None:
                 decoder_input_ids = shift_tokens_right(
@@ -287,19 +317,34 @@ class BartForDataToText(BartPretrainedModel):
                             encoder_outputs_col3, encoder_outputs_col4]
 
         encoder_outputs_list = [each for each in encoder_outputs if not (each is None)]
+
+        if encoder_combination_type =='addition':
         
-        encoder_outputs_added = self._get_sum_encoder_outputs(
-                encoder_outputs_list
-            )
+            encoder_outputs = self._get_sum_encoder_outputs(
+                    encoder_outputs_list
+                )
         
 
-        if attention_mask_col0 is None:
-            added_enc_attns = attention_mask_col0
-        else:
-            added_enc_attns = self._get_attention_masks_OR(
-                [attn_mask for attn_mask in attn_mask_list if not (attn_mask is None)]
+            if attention_mask_col0 is None:
+                attn_mask = attention_mask_col0
+            else:
+                attn_mask = self._get_attention_masks_OR(
+                    [attn_mask for attn_mask in attn_mask_list if not (attn_mask is None)]
 
-            )
+                )
+
+        elif encoder_combination_type == 'linearize':
+            encoder_outputs = self._get_concat_encoder_outputs([encoder_outputs_col0, encoder_outputs_col1, encoder_outputs_col2, \
+                            encoder_outputs_col3, encoder_outputs_col4])
+            #print("ENC OUTPUT", encoder_outputs.shape)
+            if attention_mask_col0 is None:
+                attn_mask = attention_mask_col0
+            else:
+                attn_mask= self._get_attention_masks_OR(
+                    [attn_mask for attn_mask in attn_mask_list if not (attn_mask is None)]
+
+                )
+
 
         #print("ENC ATTNS", added_enc_attns)
         #print(attention_mask_punchline_texts)
@@ -307,8 +352,8 @@ class BartForDataToText(BartPretrainedModel):
         decoder_outputs = self.decoder(
             input_ids=decoder_input_ids,
             attention_mask=decoder_attention_mask,
-            encoder_hidden_states=encoder_outputs_added[0],
-            encoder_attention_mask=added_enc_attns,
+            encoder_hidden_states=encoder_outputs[0],
+            encoder_attention_mask=attn_mask,
             head_mask=decoder_head_mask,
             cross_attn_head_mask=None,
             past_key_values=past_key_values,
@@ -320,7 +365,7 @@ class BartForDataToText(BartPretrainedModel):
         )
         
         if not return_dict:
-            outputs =  decoder_outputs + encoder_outputs_added
+            outputs =  decoder_outputs + encoder_outputs
             
         else:
             outputs = Seq2SeqModelOutput(
@@ -329,9 +374,9 @@ class BartForDataToText(BartPretrainedModel):
             decoder_hidden_states=decoder_outputs.hidden_states,
             decoder_attentions=decoder_outputs.attentions,
             cross_attentions=decoder_outputs.cross_attentions,
-            encoder_last_hidden_state=encoder_outputs_added.last_hidden_state,
-            encoder_hidden_states=encoder_outputs_added.hidden_states,
-            encoder_attentions=encoder_outputs_added.attentions,
+            encoder_last_hidden_state=encoder_outputs.last_hidden_state,
+            encoder_hidden_states=encoder_outputs.hidden_states,
+            encoder_attentions=encoder_outputs.attentions,
             )
             
         lm_logits = self.lm_head(outputs[0]) + self.final_logits_bias
@@ -408,5 +453,6 @@ class BartForDataToText(BartPretrainedModel):
         return reordered_past        
     
         
+
 
 

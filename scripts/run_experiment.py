@@ -136,7 +136,8 @@ class LitModel(pl.LightningModule):
             attention_mask_col4 = attention_mask_col4,
             labels = tgt_ids,
             decoder_input_ids = None,
-            use_cache = False
+            use_cache = False,
+            encoder_combination_type = 'linearize'
         )
         
         lm_logits = outputs[1]
@@ -190,7 +191,8 @@ class LitModel(pl.LightningModule):
             attention_mask_col4 = attention_mask_col4,
             labels = tgt_ids,
             decoder_input_ids = None,
-            use_cache = False
+            use_cache = False,
+            encoder_combination_type = 'linearize'
         )
 
 
@@ -209,7 +211,7 @@ class LitModel(pl.LightningModule):
         #print(epoch_dictionary)
         return epoch_dictionary
 
-def make_data(data_type = 'robo', path = '/home/sanjana'):
+def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana'):
     if data_type == 'robo':
         train_file = path + '/roboreviewer_summarization/data/robo_train_field_sep.csv'
         dev_file = path + '/roboreviewer_summarization/data/robo_dev_field_sep.csv'
@@ -221,7 +223,7 @@ def make_data(data_type = 'robo', path = '/home/sanjana'):
         test_file = path + '/roboreviewer_summarization/data/web_nlg_test.csv'
 
     data_files = [train_file, dev_file, test_file]
-    summary_data = SummaryDataModule(tokenizer, data_files = data_files)
+    summary_data = SummaryDataModule(tokenizer, data_files = data_files, batch_size = 1)
     summary_data.prepare_data()
     return summary_data
 
@@ -229,7 +231,7 @@ def make_data(data_type = 'robo', path = '/home/sanjana'):
 def main():
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
     bart_model = BartForDataToText.from_pretrained('facebook/bart-base')    
-    summary_data = make_data()
+    summary_data = make_data(tokenizer)
 
     hparams = argparse.Namespace()
     hparams.freeze_encoder = True
@@ -247,7 +249,7 @@ def main():
                         logger=logger)
 
     trainer.fit(model, summary_data)
-    trainer.save_checkpoint("webnlg_model_epoch%s_adam_%s_sum.ckpt"%(str(learning_rate), str(max_epochs)))
+    trainer.save_checkpoint("robo_model_epoch%s_adam_%s_linearize.ckpt"%(str(learning_rate), str(max_epochs)))
 
 
 if __name__ == '__main__': 

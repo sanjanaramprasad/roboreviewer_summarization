@@ -1,9 +1,10 @@
 
 from transformers import BartTokenizer, BartForCausalLM, BartForConditionalGeneration, BeamSearchScorer, LogitsProcessorList, MinLengthLogitsProcessor, TopKLogitsWarper, TemperatureLogitsWarper
 
-from BartForDataToTextGeneration import BartForDataToText
+from BartForDataToTextGeneration_decoder_linearize import BartForDataToText
 from Data2TextProcessor_1 import SummaryDataModule
 
+from torch import nn 
 
 model = BartForDataToText.from_pretrained('facebook/bart-base')
 model._make_duplicate_encoders()
@@ -42,6 +43,10 @@ class BartForDataToTextGenerationTester():
                                 input_ids = data[0],
                                 attention_mask = data[1])
         print(encoder_outputs_col0[0].shape)
+        print(model.config.d_model)
+        #fcc = nn.Linear(model.config.d_model, 200)
+        encoder_outputs_col0 = model._forward_pass(encoder_outputs_col0, model.fc0)
+        print(encoder_outputs_col0[0].shape)
         self.encoder_outputs_list.append(encoder_outputs_col0)
         self.attn_list.append(data[1])
         return
@@ -54,6 +59,7 @@ class BartForDataToTextGenerationTester():
             encoder_outputs_col1 = self.encoder_col1(\
                                     input_ids = data[2],
                                     attention_mask = data[3])
+            encoder_outputs_col1 = model._forward_pass(encoder_outputs_col1, model.fc1)
             print(encoder_outputs_col1[0].shape)
             self.encoder_outputs_list.append(encoder_outputs_col1)
             self.attn_list.append(data[3])
@@ -98,6 +104,10 @@ class BartForDataToTextGenerationTester():
             self.attn_list.append(data[9])
         return
 
+    def test_encoder_concat(self):
+        encoder_outputs = model._get_concat_encoder_outputs(self.encoder_outputs_list)
+        print(encoder_outputs[0].shape)
+
     def test_encoder_addition(self):
         encoder_outputs_added =  model._get_sum_encoder_outputs(self.encoder_outputs_list)
         print(encoder_outputs_added[0].shape)
@@ -135,7 +145,8 @@ class BartForDataToTextGenerationTester():
             attention_mask_col2 = attention_mask_col2,
             attention_mask_col3 = attention_mask_col3,
             attention_mask_col4 = attention_mask_col4,
-            labels = data[6]
+            labels = data[6],
+            encoder_combination_type = 'linearize'
         )
 
         print("OUTPUTS", outputs[0])
@@ -146,13 +157,14 @@ class BartForDataToTextGenerationTester():
     
         
 obj = BartForDataToTextGenerationTester()
-obj.test_get_encoders()
-obj.test_encoder0()
-obj.test_encoder1()
-obj.test_encoder2()
-obj.test_encoder3()
-obj.test_encoder4()
-obj.test_encoder_addition()
-obj.test_attn_masks_OR()
+#obj.test_get_encoders()
+#obj.test_encoder0()
+#obj.test_encoder1()
+#obj.test_encoder2()
+#obj.test_encoder3()
+#obj.test_encoder4()
+#obj.test_encoder_concat()
+#obj.test_encoder_addition()
+#obj.test_attn_masks_OR()
 obj.test_model_forward()
     
