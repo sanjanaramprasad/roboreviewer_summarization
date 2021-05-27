@@ -177,7 +177,7 @@ class LitModel(pl.LightningModule):
             labels = tgt_ids,
             decoder_input_ids = None,
             use_cache = False,
-            encoder_combination_type = 'linearize'
+            encoder_combination_type = 'addition'
         )
         
         lm_logits = outputs[1]
@@ -232,7 +232,7 @@ class LitModel(pl.LightningModule):
             labels = tgt_ids,
             decoder_input_ids = None,
             use_cache = False,
-            encoder_combination_type = 'linearize'
+            encoder_combination_type = 'addition'
         )
 
 
@@ -279,14 +279,17 @@ def main():
     eval_beams = 4
 
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
-    checkpoint = ModelCheckpoint('checkpoint_files/')
+    checkpoint = ModelCheckpoint('checkpoint_files/3e-4_addition/',
+                                filename = '{epoch}-{val_loss:.2f}-{loss:.2f}',
+                                save_top_k=5,
+                                monitor = 'val_loss')
     trainer = pl.Trainer(gpus=2, accelerator='dp', 
 			max_epochs = max_epochs,
                         min_epochs = 1,
                         auto_lr_find = False,
                         progress_bar_refresh_rate = 100,
                         logger=logger,
-                        callbacks=[CheckpointEveryNSteps(save_step_frequency = 5)])
+                        callbacks=[checkpoint])
 
     trainer.fit(model, summary_data)
     trainer.save_checkpoint("robo_model_epoch%s_adam_%s_linearize.ckpt"%(str(learning_rate), str(max_epochs)))
