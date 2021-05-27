@@ -14,6 +14,7 @@ import argparse
 import pandas as pd
 from rouge import Rouge
 from transformers.generation_beam_search import BeamScorer, BeamSearchScorer
+from transformers.file_utils import ModelOutput
 
 class Data2TextGenerator(GenerationMixin):
 
