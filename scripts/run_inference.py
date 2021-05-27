@@ -26,6 +26,7 @@ class Data2TextGenerator(GenerationMixin):
 
 
     def _expand_inputs_for_generation(
+        self,
         input_ids: torch.LongTensor,
         expand_size: int = 1,
         is_encoder_decoder: bool = False,
