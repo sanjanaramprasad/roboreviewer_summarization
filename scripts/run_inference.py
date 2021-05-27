@@ -25,6 +25,73 @@ class Data2TextGenerator(GenerationMixin):
         #print(self.config.max_length)
 
 
+    def _expand_inputs_for_generation(
+        input_ids: torch.LongTensor,
+        expand_size: int = 1,
+        is_encoder_decoder: bool = False,
+        attention_mask_col0: torch.LongTensor = None,
+        attention_mask_col1: torch.LongTensor = None,
+        attention_mask_col2: torch.LongTensor = None,
+        attention_mask_col3: torch.LongTensor = None,
+        attention_mask_col4: torch.LongTensor = None,
+        encoder_outputs_col0: ModelOutput = None,
+        encoder_outputs_col1: ModelOutput = None,
+        encoder_outputs_col2: ModelOutput = None,
+        encoder_outputs_col3: ModelOutput = None,
+        encoder_outputs_col4: ModelOutput = None,
+        **model_kwargs,
+    ) -> Tuple[torch.LongTensor, Dict[str, Any]]:
+
+        expanded_return_idx = (
+            torch.arange(input_ids.shape[0]).view(-1, 1).repeat(1, expand_size).view(-1).to(input_ids.device)
+        )
+        input_ids = input_ids.index_select(0, expanded_return_idx)
+
+        if "token_type_ids" in model_kwargs:
+            token_type_ids = model_kwargs["token_type_ids"]
+            model_kwargs["token_type_ids"] = token_type_ids.index_select(0, expanded_return_idx)
+
+        if attention_mask_col0 is not None:
+            model_kwargs["attention_mask_col0"] = attention_mask_col0.index_select(0, expanded_return_idx)
+        if attention_mask_col1 is not None:
+            model_kwargs["attention_mask_col1"] = attention_mask_col1.index_select(0, expanded_return_idx)
+        if attention_mask_col2 is not None:
+            model_kwargs["attention_mask_col2"] = attention_mask_col2.index_select(0, expanded_return_idx)
+        if attention_mask_col3 is not None:
+            model_kwargs["attention_mask_col3"] = attention_mask_col3.index_select(0, expanded_return_idx)
+        if attention_mask_col4 is not None:
+            model_kwargs["attention_mask_col4"] = attention_mask_col4.index_select(0, expanded_return_idx)
+
+        if is_encoder_decoder:
+            assert encoder_outputs_col0 is not None
+            encoder_outputs_col0["last_hidden_state"] = encoder_outputs_col0.last_hidden_state.index_select(
+                0, expanded_return_idx.to(encoder_outputs_col0.last_hidden_state.device)
+            )
+
+            assert encoder_outputs_col1 is not None
+            encoder_outputs_col1["last_hidden_state"] = encoder_outputs_col1.last_hidden_state.index_select(
+                0, expanded_return_idx.to(encoder_outputs_col1.last_hidden_state.device)
+            )
+            assert encoder_outputs_col2 is not None
+            encoder_outputs_col2["last_hidden_state"] = encoder_outputs_col2.last_hidden_state.index_select(
+                0, expanded_return_idx.to(encoder_outputs_col2.last_hidden_state.device)
+            )
+            assert encoder_outputs_col3 is not None
+            encoder_outputs_col3["last_hidden_state"] = encoder_outputs_col3.last_hidden_state.index_select(
+                0, expanded_return_idx.to(encoder_outputs_col3.last_hidden_state.device)
+            )
+            assert encoder_outputs_col4 is not None
+            encoder_outputs_col4["last_hidden_state"] = encoder_outputs_col4.last_hidden_state.index_select(
+                0, expanded_return_idx.to(encoder_outputs_col4.last_hidden_state.device)
+            )
+            model_kwargs["encoder_outputs_col0"] = encoder_outputs_col0
+            model_kwargs["encoder_outputs_col1"] = encoder_outputs_col1
+            model_kwargs["encoder_outputs_col2"] = encoder_outputs_col2
+            model_kwargs["encoder_outputs_col3"] = encoder_outputs_col3
+            model_kwargs["encoder_outputs_col4"] = encoder_outputs_col4
+        return input_ids, model_kwargs
+
+
     def _prepare_attention_mask_for_generation(self, batch, model_kwargs):
         attention_mask_col0 = batch[1] if len(batch) >1 else None
         attention_mask_col1 = batch[3] if len(batch) >3 else None
