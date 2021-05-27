@@ -280,9 +280,9 @@ def main():
 
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
     checkpoint = ModelCheckpoint('checkpoint_files/3e-4_addition/',
-                                filename = '{epoch}-{val_loss:.2f}-{loss:.2f}',
+                                filename = '{epoch}-{loss:.2f}',
                                 save_top_k=5,
-                                monitor = 'val_loss')
+                                monitor = 'loss')
     trainer = pl.Trainer(gpus=2, accelerator='dp', 
 			max_epochs = max_epochs,
                         min_epochs = 1,
@@ -292,7 +292,7 @@ def main():
                         callbacks=[checkpoint])
 
     trainer.fit(model, summary_data)
-    trainer.save_checkpoint("robo_model_epoch%s_adam_%s_linearize.ckpt"%(str(learning_rate), str(max_epochs)))
+    trainer.save_checkpoint("robo_model_epoch%s_adam_%s_addition.ckpt"%(str(learning_rate), str(max_epochs)))
 
 
 if __name__ == '__main__': 
