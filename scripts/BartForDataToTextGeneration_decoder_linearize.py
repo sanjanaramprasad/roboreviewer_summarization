@@ -23,10 +23,12 @@ class BartForDataToText(BartPretrainedModel):
         config_decoder = copy.deepcopy(config)
         config_decoder.d_model = 1200
         self.shared_decoder = nn.Embedding(config_decoder.vocab_size, config_decoder.d_model, padding_idx)
+        #self.decoder = BartDecoder(config, self.shared)
+
         self.decoder1 = BartDecoder(config_decoder,self.shared_decoder)
         
         self.register_buffer("final_logits_bias", torch.zeros((1, self.shared_decoder.num_embeddings)))
-        #self.lm_head = nn.Linear(1200, self.shared_decoder.num_embeddings, bias=False)
+        #self.lm_head = nn.Linear(config.d_model , self.shared.num_embeddings, bias=False)
         self.lm_head = nn.Linear(config_decoder.d_model, self.shared_decoder.num_embeddings, bias=False)
         self.fc0 = nn.Linear(config.d_model, 240)
         self.fc1 = nn.Linear(config.d_model, 240)
@@ -63,8 +65,9 @@ class BartForDataToText(BartPretrainedModel):
         self.decoder1
         
     def get_output_embeddngs(self):
+        #eturn self.lm_head
         return None
-    
+
     def set_output_embeddings(self, new_embeddings):
         self.lm_head = new_embeddings
         
@@ -114,23 +117,42 @@ class BartForDataToText(BartPretrainedModel):
     
     def _get_sum_encoder_outputs(self,
             encoder_output_list):
-        encoder_outputs = []
+        #added_enc_outputs_i = torch.sum(added_enc_outputs_i, dim = 0)encoder_outputs = []
+        '''for batch_idx in range(0, len(encoder_output_list[0])):
+            encoder_output_list_batch = [each[batch_idx] for each in encoder_output_list]
+            encoder_outputs_batch = []
+            for i in range(0,3):
+                if len(encoder_output_list_batch[0]) > i:
+                    added_enc_outputs_i = torch.cat(tuple([enc[i] for enc in encoder_output_list_batch]), dim = 0)
+                    added_enc_outputs_i = torch.sum(added_enc_outputs_i, dim = 0)
+                    added_enc_outputs_i = added_enc_outputs_i.unsqueeze(0)
+                    encoder_outputs_batch.append(added_enc_outputs_i)
+            added_enc_outputs = BaseModelOutput(
+                         last_hidden_state=encoder_outputs_batch[0],
+                         hidden_states = encoder_outputs_batch[1] if len(encoder_outputs_batch) > 1 else None,
+                         attentions=encoder_outputs_batch[2] if len(encoder_outputs_batch.append) > 2 else None,
+                )
+            encoder_outputs.append(added_enc_outputs)
+        return encoder_outputs'''
+        print(encoder_output_list[0][0].shape)
+        encoder_outputs =  {0:[], 1:[], 2:[]}
         for i in range(0,3):
             if len(encoder_output_list[0]) > i:
-                added_enc_outputs_i = torch.cat(tuple([enc[i] for enc in encoder_output_list]), dim = 0)
-
+                added_enc_outputs_i = torch.stack([enc[i] for enc in encoder_output_list], dim = 0)
+                #print("ADDED",added_enc_outputs_i.shape)
                 added_enc_outputs_i = torch.sum(added_enc_outputs_i, dim = 0)
-                added_enc_outputs_i = added_enc_outputs_i.unsqueeze(0)
-                encoder_outputs.append(added_enc_outputs_i)
+                #print("SUMMED", added_enc_outputs_i.shape)
+                #added_enc_outputs_i = added_enc_outputs_i.unsqueeze(0)
+                encoder_outputs[i].append(added_enc_outputs_i)
 
+        #print("LSH", torch.cat(encoder_outputs[0], dim =0).shape)
         added_enc_outputs = BaseModelOutput(
-                last_hidden_state=encoder_outputs[0],
-                hidden_states=encoder_outputs[1] if len(encoder_outputs) > 1 else None,
-                attentions=encoder_outputs[2] if len(encoder_outputs) > 2 else None,
+                last_hidden_state=torch.cat(encoder_outputs[0], dim =0),
+                hidden_states=torch.cat(encoder_outputs[1], dim=1) if len(encoder_outputs[1]) > 1 else None,
+                attentions=torch.cat(encoder_outputs[2], dim=1) if len(encoder_outputs[2]) > 1 else None,
             )
         #print(added_enc_outputs)
         return added_enc_outputs
-
 
     def _get_concat_encoder_outputs(self, 
         encoder_outputs_list):
@@ -153,13 +175,14 @@ class BartForDataToText(BartPretrainedModel):
     def _get_attention_masks_OR(self, 
         attention_mask_list ):
 
+            #added_enc_attns 
             #all_attn_outputs = torch.cat(attention_mask_list, 1)
-
-            all_attn_outputs = torch.cat(tuple(attention_mask_list), 0)
+            print("ATTN LIST", attention_mask_list[0].shape)
+            all_attn_outputs = torch.stack(attention_mask_list, 0)
             added_enc_attns = torch.Tensor.float(all_attn_outputs).mean(0).tolist()
-            added_enc_attns = [1 if each > 0.5 else 0 for each in added_enc_attns]
+            added_enc_attns = [[1 if each > 0.5 else 0 for each in each_list] for each_list in added_enc_attns]
             #added_enc_attns = torch.as_tensor([added_enc_attns])
-            added_enc_attns = torch.as_tensor([added_enc_attns] , device = attention_mask_list[0].device)
+            added_enc_attns = torch.as_tensor(added_enc_attns , device = attention_mask_list[0].device)
             return added_enc_attns
     
     def _forward_pass(self, encoder_outputs, fcn):
@@ -223,7 +246,7 @@ class BartForDataToText(BartPretrainedModel):
         encoder_outputs_list = []
         attn_mask_list = [attention_mask_col0, attention_mask_col1, attention_mask_col2, \
                             attention_mask_col3, attention_mask_col4]
-
+        print(attention_mask_col0.shape)
         if not (input_ids_col0 is None):
             encoder_outputs_col0 = self._get_encoder_outputs(
                         encoder = self.encoder, 
@@ -305,6 +328,8 @@ class BartForDataToText(BartPretrainedModel):
             encoder_outputs_col3 = self._forward_pass(encoder_outputs_col3, self.fc3)
             encoder_outputs_col4 = self._forward_pass(encoder_outputs_col4, self.fc4)
 
+
+        print("ENCODER SHAPES", encoder_outputs_col4[0].shape)
         if labels is not None:
             if decoder_input_ids is None:
                 decoder_input_ids = shift_tokens_right(
@@ -326,6 +351,7 @@ class BartForDataToText(BartPretrainedModel):
             encoder_outputs = self._get_sum_encoder_outputs(
                     encoder_outputs_list
                 )
+            print("POST SUMMED SHAPE", encoder_outputs[0].shape)
         
 
             if attention_mask_col0 is None:
@@ -347,6 +373,7 @@ class BartForDataToText(BartPretrainedModel):
                     [attn_mask for attn_mask in attn_mask_list if not (attn_mask is None)]
 
                 )
+        print(attn_mask.shape)
 
         #print("ENC ATTNS", added_enc_attns)
         #print(attention_mask_punchline_texts)
