@@ -111,19 +111,17 @@ class BartForDataToText(BartPretrainedModel):
     
     def _get_sum_encoder_outputs(self,
             encoder_output_list):
-        encoder_outputs = []
+        encoder_outputs = {0:[], 1:[], 2:[]}
         for i in range(0,3):
             if len(encoder_output_list[0]) > i:
-                added_enc_outputs_i = torch.cat(tuple([enc[i] for enc in encoder_output_list]), dim = 0)
-
+                added_enc_outputs_i = torch.stack([enc[i] for enc in encoder_output_list], dim = 0)
                 added_enc_outputs_i = torch.sum(added_enc_outputs_i, dim = 0)
-                added_enc_outputs_i = added_enc_outputs_i.unsqueeze(0)
-                encoder_outputs.append(added_enc_outputs_i)
+                encoder_outputs[i].append(added_enc_outputs_i)
 
         added_enc_outputs = BaseModelOutput(
-                last_hidden_state=encoder_outputs[0],
-                hidden_states=encoder_outputs[1] if len(encoder_outputs) > 1 else None,
-                attentions=encoder_outputs[2] if len(encoder_outputs) > 2 else None,
+                last_hidden_state=torch.cat(encoder_outputs[0], dim =0 ),
+                hidden_states=torch.cat(encoder_outputs[1], dim =0 ) if len(encoder_outputs[1]) > 1 else None,
+                attentions=torch.cat(encoder_outputs[2], dim =0 ) if len(encoder_outputs[2]) > 1 else None,
             )
         #print(added_enc_outputs)
         return added_enc_outputs
@@ -132,16 +130,16 @@ class BartForDataToText(BartPretrainedModel):
     def _get_concat_encoder_outputs(self, 
         encoder_outputs_list):
 
-        encoder_outputs = []
+        encoder_outputs = {0:[], 1:[], 2:[]}
         for i in range(0,3):
             if len(encoder_outputs_list[0]) > i: 
                 added_enc_outputs_i = torch.cat([enc[i] for enc in encoder_outputs_list],2)
-                encoder_outputs.append(added_enc_outputs_i)
+                encoder_outputs[i].append(added_enc_outputs_i)
             
         added_enc_outputs = BaseModelOutput(
-                last_hidden_state=encoder_outputs[0],
-                hidden_states=encoder_outputs[1] if len(encoder_outputs) > 1 else None,
-                attentions=encoder_outputs[2] if len(encoder_outputs) > 2 else None,
+                last_hidden_state=torch.cat(encoder_outputs[0], dim =0 ),
+                hidden_states=torch.cat(encoder_outputs[1], dim =0 ) if len(encoder_outputs[1]) > 1 else None,
+                attentions=torch.cat(encoder_outputs[2], dim =0 ) if len(encoder_outputs[2]) > 1 else None,
             )
         #print(added_enc_outputs)
         return added_enc_outputs
@@ -152,11 +150,11 @@ class BartForDataToText(BartPretrainedModel):
 
             #all_attn_outputs = torch.cat(attention_mask_list, 1)
 
-            all_attn_outputs = torch.cat(tuple(attention_mask_list), 0)
+            all_attn_outputs = torch.stack(attention_mask_list, 0)
             added_enc_attns = torch.Tensor.float(all_attn_outputs).mean(0).tolist()
-            added_enc_attns = [1 if each > 0.5 else 0 for each in added_enc_attns]
+            added_enc_attns = [[1 if each > 0.5 else 0 for each in each_list] for each_list in added_enc_attns]
             #added_enc_attns = torch.as_tensor([added_enc_attns])
-            added_enc_attns = torch.as_tensor([added_enc_attns] , device = attention_mask_list[0].device)
+            added_enc_attns = torch.as_tensor(added_enc_attns , device = attention_mask_list[0].device)
             return added_enc_attns
     
     def _forward_pass(self, encoder_outputs, fcn):
