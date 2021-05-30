@@ -7,6 +7,16 @@ from transformers.modeling_utils import PreTrainedModel
 from torch.nn import CrossEntropyLoss, MSELoss
 import copy
 
+
+class BartEncoderShared():
+    def __init__(self, enc, layers ):
+        ind = 0
+        own_layers = enc.layers[3:]
+        for shared_layer in layers:
+            own_layers.insert(ind, shared_layer)
+            ind +=1
+        enc.layers = own_layers
+
 class BartForDataToText(BartPretrainedModel):
     base_model_prefix = "model"
     _keys_to_ignore_on_load_missing = [r"final_logits_bias", r"lm_head\.weight"]
@@ -34,25 +44,31 @@ class BartForDataToText(BartPretrainedModel):
         print("DIM", config.d_model)
         self.init_weights()
         
+        
 
         
     def _make_duplicate_encoders(self):
         self.encoder1 = copy.deepcopy(self.encoder)
+        BartEncoderShared(self.encoder1, self.encoder.layers[:3])
         self.encoder2 = copy.deepcopy(self.encoder)
+        BartEncoderShared(self.encoder2, self.encoder.layers[:3])
         self.encoder3 = copy.deepcopy(self.encoder)
+        BartEncoderShared(self.encoder3, self.encoder.layers[:3])
         self.encoder4 = copy.deepcopy(self.encoder)
-        
+        BartEncoderShared(self.encoder4, self.encoder.layers[:3])
+        #self.share_layers()
+ 
     def get_input_embeddings(self):
         return self.shared 
     
     def set_input_embeddings(self, value):
         self.shared = value
-        self.encoder.embed_tokens = value
-        self.encoder1.embed_tokens = value
-        self.encoder2.embed_tokens = value
-        self.encoder3.embed_tokens = value
-        self.encoder4.embed_tokens = value
-        self.decoder.embed_tokens = value
+        self.encoder.embed_tokens = self.shared
+        self.encoder1.embed_tokens = self.shared
+        self.encoder2.embed_tokens = self.shared
+        self.encoder3.embed_tokens = self.shared
+        self.encoder4.embed_tokens = self.shared
+        self.decoder.embed_tokens = self.shared
         
     def get_encoders(self):
         return self.encoder, self.encoder1, \
