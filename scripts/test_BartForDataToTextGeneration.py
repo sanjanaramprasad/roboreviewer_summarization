@@ -11,7 +11,7 @@ model._make_duplicate_encoders()
 tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
 summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_field_sep.csv', 
                                            '/home/sanjana/roboreviewer_summarization/data/robo_dev_field_sep.csv', 
-                                           '/home/sanjana/roboreviewer_summarization/data/robo_test_field_sep.csv'], batch_size = 1)
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_test_field_sep.csv'], batch_size = 3)
 summary_data.prepare_data()
 
 summary_data.setup("stage")
@@ -157,14 +157,14 @@ class BartForDataToTextGenerationTester():
     
         
 obj = BartForDataToTextGenerationTester()
-#obj.test_get_encoders()
+obj.test_get_encoders()
 #obj.test_encoder0()
 #obj.test_encoder1()
 #obj.test_encoder2()
-#obj.test_encoder3()
-#obj.test_encoder4()
+obj.test_encoder3()
+obj.test_encoder4()
 #obj.test_encoder_concat()
-#obj.test_encoder_addition()
-#obj.test_attn_masks_OR()
+obj.test_encoder_addition()
+obj.test_attn_masks_OR()
 obj.test_model_forward()
     
