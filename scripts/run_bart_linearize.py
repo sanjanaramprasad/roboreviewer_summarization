@@ -147,11 +147,17 @@ class LitModel(pl.LightningModule):
         loss = ce_loss_fct(lm_logits.view(-1, lm_logits.shape[-1]), tgt_ids.view(-1))
         tensorboard_logs = {'loss': loss}
         self.logger.experiment.add_scalar("Train Loss", loss, self.current_epoch)
+
         epoch_dictionary={
-            'loss': loss,
+            'val_loss': loss,
             'log': tensorboard_logs}
         return epoch_dictionary
 
+    def validation_epoch_end(self, outputs):
+        avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
+        tensorboard_logs = {'val_loss': avg_loss}
+        self.log('val_loss', avg_loss)
+        return {'val_loss': avg_loss, 'log': tensorboard_logs}
 
         
 
@@ -192,10 +198,10 @@ def main():
     eval_beams = 4
 
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
-    checkpoint = ModelCheckpoint('checkpoint_files/3e-5_bartconditional/',
+    checkpoint = ModelCheckpoint('checkpoint_files/3e-5_addition/',
                                 filename = '{epoch}-{loss:.2f}',
                                 save_top_k=10,
-                                monitor = 'loss')
+                                monitor = 'val_loss')
     trainer = pl.Trainer(gpus=2, accelerator='dp', 
 			max_epochs = max_epochs,
                         min_epochs = 1,
