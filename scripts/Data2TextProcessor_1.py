@@ -53,7 +53,7 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=5
             for each in snippet:
                 enc = run_bart(each)
                 if len(enc['input_ids']) < 40:
-                    each = "<s> " + each+" </s>"
+                    each = "<attribute> " + each+" </attribute>"
                     snippet_processed.append(each)
             snippet = " ".join(snippet_processed)
         #rint(snippet)
@@ -206,7 +206,11 @@ class SummaryDataModule(pl.LightningDataModule):
 
 
 if __name__ == '__main__':
-    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
+    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
+                                                    eos_token="</s>", 
+                                                    pad_token = "<pad>", 
+                                                    additional_special_tokens=["<attribute>",  "</attribute>",
+                                                                                ])
     bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
     summary_data = SummaryDataModule(tokenizer, data_files = ['/Users/sanjana/roboreviewer_summarization/data/web_nlg_train.csv', 
                                            '/Users/sanjana/roboreviewer_summarization/data/web_nlg_dev.csv', 

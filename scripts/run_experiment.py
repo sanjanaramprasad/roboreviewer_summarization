@@ -41,10 +41,10 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from Data2TextProcessor_1 import SummaryDataModule
 #from transformers.modeling_bart import shift_tokens_right
 
-learning_rate = 3e-4 
+learning_rate = 3e-5 
 max_epochs = 25
 
-logger = TensorBoardLogger('tb_logs', name='my_model_epoch%s_%s'%(str(max_epochs), str(learning_rate)))
+logger = TensorBoardLogger('tb_logs', name='my_model_epoch%s_%s_addition'%(str(max_epochs), str(learning_rate)))
 
 
 train_count = 0
@@ -189,7 +189,8 @@ class LitModel(pl.LightningModule):
         self.logger.experiment.add_scalar("Train Loss", loss, self.current_epoch)
         epoch_dictionary={
             'loss': loss,
-            'log': tensorboard_logs}
+            'log': tensorboard_logs,
+            }
         return epoch_dictionary
 
     def validation_step(self, batch, batch_idx):
@@ -246,10 +247,16 @@ class LitModel(pl.LightningModule):
         tensorboard_logs = {'val_loss': val_loss}
         self.logger.experiment.add_scalar("Val Loss", val_loss, self.current_epoch)
         epoch_dictionary={
-            'loss': val_loss,
+            'val_loss': val_loss,
             'log': tensorboard_logs}
         #print(epoch_dictionary)
         return epoch_dictionary
+
+    def validation_epoch_end(self, outputs):
+        avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
+        tensorboard_logs = {'val_loss': avg_loss}
+        self.log('val_loss', avg_loss)
+        return {'val_loss': avg_loss, 'log': tensorboard_logs}
 
 def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana'):
     if data_type == 'robo':
@@ -269,7 +276,11 @@ def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana'):
 
 
 def main():
-    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
+    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
+                                                    eos_token="</s>", 
+                                                    pad_token = "<pad>", 
+                                                    additional_special_tokens=["<attribute>",  "</attribute>",
+                                                                                ])
     bart_model = BartForDataToText.from_pretrained('facebook/bart-base')    
     summary_data = make_data(tokenizer, path = '/home/sanjana')
 
@@ -279,10 +290,10 @@ def main():
     eval_beams = 4
 
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
-    checkpoint = ModelCheckpoint('checkpoint_files/3e-4_addition/',
+    checkpoint = ModelCheckpoint('checkpoint_files/3e-5_addition/',
                                 filename = '{epoch}-{loss:.2f}',
-                                save_top_k=5,
-                                monitor = 'loss')
+                                save_top_k=10,
+                                monitor = 'val_loss')
     trainer = pl.Trainer(gpus=2, accelerator='dp', 
 			max_epochs = max_epochs,
                         min_epochs = 1,
