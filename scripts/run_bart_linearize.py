@@ -76,7 +76,7 @@ class LitModel(pl.LightningModule):
         #self.hparams.update(hparams)
 
         if self.freeze_encoder:
-            freeze_params(self.model.encoder)
+            freeze_params(self.model.get_encoder())
 
 
         if freeze_embeds:
@@ -85,8 +85,8 @@ class LitModel(pl.LightningModule):
   
     def freeze_embeds(self):
         ''' freeze the positional embedding parameters of the model; adapted from finetune.py '''
-        freeze_params(self.model.shared)
-        for d in [self.model.encoder, self.model.decoder]:
+        freeze_params(self.model.model.shared)
+        for d in [self.model.model.encoder, self.model.model.decoder]:
             freeze_params(d.embed_positions)
             freeze_params(d.embed_tokens)
 
