@@ -87,33 +87,33 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=5
         #print(sentence_dict)
         sentence_dict_len = len(list(sentence_dict.keys()))
         keys = list(sentence_dict.keys())
-        if len(sentence_dict['col0']) <= 20:
-            for i in range(0, sentence_dict_len):
-                keys_ids = 'ids_col%s'%(str(i))
-                attention_masks_ids = 'attention_masks_col%s'%(str(i))
+        #if len(sentence_dict['col0']) <= 20:
+        for i in range(0, sentence_dict_len):
+            keys_ids = 'ids_col%s'%(str(i))
+            attention_masks_ids = 'attention_masks_col%s'%(str(i))
 
-                if keys_ids not in encoded_sentences:
-                    encoded_sentences[keys_ids] = []
-                if attention_masks_ids not in encoded_sentences:
-                    encoded_sentences[attention_masks_ids] = []
+            if keys_ids not in encoded_sentences:
+                encoded_sentences[keys_ids] = []
+            if attention_masks_ids not in encoded_sentences:
+                encoded_sentences[attention_masks_ids] = []
 
-                #print(sentence_dict['col%s'%(str(i))])
+            #print(sentence_dict['col%s'%(str(i))])
 
-                sentence_encoding = get_encoding(sentence_dict['col%s'%(str(i))])
-                encoded_sentences[keys_ids].append(sentence_encoding['input_ids'])
-                encoded_sentences[attention_masks_ids].append(sentence_encoding['attention_mask'])
+        sentence_encoding = get_encoding(sentence_dict['col%s'%(str(i))])
+        encoded_sentences[keys_ids].append(sentence_encoding['input_ids'])
+        encoded_sentences[attention_masks_ids].append(sentence_encoding['attention_mask'])
 
-            encoded_dict = tokenizer(
-              tgt_sentence,
-              max_length=max_length,
-              padding="max_length" if pad_to_max_length else None,
-              truncation=True,
-              return_tensors=return_tensors,
-              add_prefix_space = True
-            )
-            # Shift the target ids to the right
-            #shifted_target_ids = shift_tokens_right(encoded_dict['input_ids'], tokenizer.pad_token_id)
-            target_ids.append(encoded_dict['input_ids'])
+        encoded_dict = tokenizer(
+            tgt_sentence,
+            max_length=max_length,
+            padding="max_length" if pad_to_max_length else None,
+            truncation=True,
+            return_tensors=return_tensors,
+            add_prefix_space = True
+        )
+        # Shift the target ids to the right
+        #shifted_target_ids = shift_tokens_right(encoded_dict['input_ids'], tokenizer.pad_token_id)
+        target_ids.append(encoded_dict['input_ids'])
 
     for i in range(0, sentence_dict_len):
         keys_ids = 'ids_col%s'%(str(i))
