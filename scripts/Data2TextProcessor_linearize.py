@@ -25,7 +25,7 @@ def shift_tokens_right(input_ids, pad_token_id):
     prev_output_tokens[:, 1:] = input_ids[:, :-1]
     return prev_output_tokens
 
-def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=2048, pad_to_max_length=True, return_tensors="pt"):
+def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=1024, pad_to_max_length=True, return_tensors="pt"):
     ''' Function that tokenizes a sentence 
         Args: tokenizer - the BART tokenizer; source and target sentences are the source and target sentences
         Returns: Dictionary with keys: input_ids, attention_mask, target_ids
@@ -37,6 +37,8 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=2
     tokenized_sentences = {}
 
     for sentence in source_sentences:
+        
+        #print(sentence)
         encoded_dict = tokenizer(
           sentence,
           max_length=max_length,
@@ -125,10 +127,7 @@ class SummaryDataModule(pl.LightningDataModule):
 
 
 if __name__ == '__main__':
-    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', unk_token="<unk>",
-                                                    bos_token="<s>", 
-                                                    eos_token="</s>", 
-                                                    pad_token = "<pad>", 
+    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', 
                                                     additional_special_tokens=["<study>",  "</study>",
                                                                                 "<punchline_text>", "</punchline_text>",
                                                                                 "<punchline_effect>", "</punchline_effect>",
@@ -136,9 +135,14 @@ if __name__ == '__main__':
                                                                                 "<interventions>", "</interventions>",
                                                                                 "<outcomes>", "</outcomes>"])
     bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
-    summary_data = SummaryDataModule(tokenizer, data_files = ['/Users/sanjana/roboreviewer_summarization/data/robo_train_linearized.csv', 
-                                           '/Users/sanjana/roboreviewer_summarization/data/robo_dev_linearized.csv', 
-                                           '/Users/sanjana/roboreviewer_summarization/data/robo_test_linearized.csv'], batch_size = 1)
+    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_linearized.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_dev_linearized.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_test_linearized.csv'], batch_size = 1)
 
     summary_data.prepare_data()
     summary_data.setup("stage")
+    train_data = summary_data.train_dataloader()
+    train_batches = iter(train_data)
+    batch= next(train_batches)
+    print(batch[1])
+    print(batch[2])

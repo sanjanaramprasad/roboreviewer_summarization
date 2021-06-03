@@ -1,17 +1,26 @@
 
 from transformers import BartTokenizer, BartForCausalLM, BartForConditionalGeneration, BeamSearchScorer, LogitsProcessorList, MinLengthLogitsProcessor, TopKLogitsWarper, TemperatureLogitsWarper
-
-from BartForDataToTextGeneration_decoder_linearize import BartForDataToText
+import torch.optim as optim
+#from BartForDataToTextGeneration import BartForDataToText
 from Data2TextProcessor_1 import SummaryDataModule
 
+from BartForDataToTextGeneration import BartForDataToText
 from torch import nn 
+import torch
+#additional_special_tokens = []
 
+additional_special_tokens=["<attribute>",  "</attribute>"]
 model = BartForDataToText.from_pretrained('facebook/bart-base')
-model._make_duplicate_encoders()
+
+#model._make_duplicate_encoders()
 tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
-summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_field_sep.csv', 
-                                           '/home/sanjana/roboreviewer_summarization/data/robo_dev_field_sep.csv', 
-                                           '/home/sanjana/roboreviewer_summarization/data/robo_test_field_sep.csv'], batch_size = 3)
+tokenizer.add_tokens(additional_special_tokens)
+#model.resize_token_embeddings(len(tokenizer))
+model._make_duplicate_encoders()
+model.resize_token_embeddings(len(tokenizer))
+summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_sep.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_dev_sep.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_test_sep.csv'], batch_size = 1)
 summary_data.prepare_data()
 
 summary_data.setup("stage")
@@ -148,7 +157,13 @@ class BartForDataToTextGenerationTester():
             labels = data[6],
             encoder_combination_type = 'linearize'
         )
-
+        tgt_ids = data[-1]
+        optimizer = optim.Adam(model.parameters())
+        lm_logits = outputs[1]
+        ce_loss_fct = torch.nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
+        loss = ce_loss_fct(lm_logits.view(-1, lm_logits.shape[-1]), tgt_ids.view(-1))
+        optimizer.zero_grad()
+        loss.backward()
         print("OUTPUTS", outputs[0])
         print('=' *13)
 
@@ -164,7 +179,9 @@ obj.test_get_encoders()
 obj.test_encoder3()
 obj.test_encoder4()
 #obj.test_encoder_concat()
-obj.test_encoder_addition()
-obj.test_attn_masks_OR()
+#obj.test_encoder_addition()
+#obj.test_attn_masks_OR()
 obj.test_model_forward()
-    
+
+print(obj.encoder_col3.layers[0].final_layer_norm.weight.grad==obj.encoder_col4.layers[0].final_layer_norm.weight.grad)
+#print(obj.encoder_col3.layers[-1].final_layer_norm.weight.grad ==obj.encoder_col4.layers[-1].final_layer_norm.weight)

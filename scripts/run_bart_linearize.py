@@ -38,7 +38,7 @@ import random
 import re
 import argparse
 from pytorch_lightning.loggers import TensorBoardLogger
-from Data2TextProcessor_1 import SummaryDataModule
+from Data2TextProcessor_linearize import SummaryDataModule
 #from transformers.modeling_bart import shift_tokens_right
 
 learning_rate = 3e-5 
@@ -163,9 +163,9 @@ class LitModel(pl.LightningModule):
 
 def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana'):
     if data_type == 'robo':
-        train_file = path + '/roboreviewer_summarization/data/robo_train_field_sep.csv'
-        dev_file = path + '/roboreviewer_summarization/data/robo_dev_field_sep.csv'
-        test_file = path + '/roboreviewer_summarization/data/robo_test_field_sep.csv'
+        train_file = path + '/roboreviewer_summarization/data/robo_train_sep_linearized.csv'
+        dev_file = path + '/roboreviewer_summarization/data/robo_dev_sep_linearized.csv'
+        test_file = path + '/roboreviewer_summarization/data/robo_test_sep_linearized.csv'
     
     elif data_type =='webnlg':
         train_file = path + '/roboreviewer_summarization/data/web_nlg_train.csv'
@@ -179,17 +179,20 @@ def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana'):
 
 
 def main():
+    additional_special_tokens = ["<study>", "</study>", 
+            "<outcomes>", "</outcomes>", 
+            "<punchline_text>", "</punchline_text>", 
+            "<population>", "</population>", 
+            "<interventions>", "</interventions>", 
+            "<punchline_effect>", "</punchline_effect>"]
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', unk_token="<unk>",
                                                     bos_token="<s>", 
                                                     eos_token="</s>", 
-                                                    pad_token = "<pad>", 
-                                                    additional_special_tokens=["<study>",  "</study>",
-                                                                                "<punchline_text>", "</punchline_text>",
-                                                                                "<punchline_effect>", "</punchline_effect>",
-                                                                                "<population>", "</population>",
-                                                                                "<interventions>", "</interventions>",
-                                                                                "<outcomes>", "</outcomes>"])
+                                                    pad_token = "<pad>")
+    tokenizer.add_tokens(additional_special_tokens)
     bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
+    bart_model.resize_token_embeddings(len(tokenizer))
+    
     summary_data = make_data(tokenizer, path = '/home/sanjana')
 
     #hparams = argparse.Namespace()
@@ -198,9 +201,9 @@ def main():
     eval_beams = 4
 
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
-    checkpoint = ModelCheckpoint('checkpoint_files/3e-5_addition/',
-                                filename = '{epoch}-{loss:.2f}',
-                                save_top_k=10,
+    checkpoint = ModelCheckpoint('checkpoint_files_final/3e-5_bartcond_linearized/',
+                                filename = '{epoch}-{val_loss:.2f}',
+                                save_top_k=13,
                                 monitor = 'val_loss')
     trainer = pl.Trainer(gpus=2, accelerator='dp', 
 			max_epochs = max_epochs,

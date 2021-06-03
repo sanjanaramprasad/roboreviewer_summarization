@@ -5,9 +5,9 @@ from transformers.models.bart.configuration_bart import BartConfig
 import torch
 import torch.distributed as dist
 from torch.nn import functional as Få
-from BartForDataToTextGeneration import BartForDataToText
+from BartForDataToTextGeneration_addition import BartForDataToText
 from transformers.generation_utils import GenerationMixin
-from run_experiment import LitModel
+from run_experiment_decoder_linearize import LitModel
 from transformers import BartTokenizer
 from Data2TextProcessor_1 import SummaryDataModule
 import argparse
@@ -15,6 +15,7 @@ import pandas as pd
 from rouge import Rouge
 from transformers.generation_beam_search import BeamScorer, BeamSearchScorer
 from transformers.file_utils import ModelOutput
+import pandas as pd
 
 class Data2TextGenerator(GenerationMixin):
 
@@ -351,7 +352,8 @@ class Data2TextGenerator(GenerationMixin):
             input_ids, model_kwargs = self._expand_inputs_for_generation(
                 input_ids, expand_size=num_beams, is_encoder_decoder=self.config.is_encoder_decoder, **model_kwargs
             )
-            return self.beam_search(
+            #print("BEAM SEARCH KWARGS", model_kwargs)
+            return self.model.beam_search(
                 input_ids,
                 beam_scorer,
                 logits_processor=logits_processor,
@@ -395,7 +397,7 @@ class Data2TextGenerator(GenerationMixin):
             input_ids, model_kwargs = self._expand_inputs_for_generation(
                 input_ids, expand_size=num_beams, is_encoder_decoder=self.config.is_encoder_decoder, **model_kwargs
             )
-            return self.group_beam_search(
+            return self.model.group_beam_search(
                 input_ids,
                 diverse_beam_scorer,
                 logits_processor=logits_processor,
@@ -487,7 +489,7 @@ if __name__ == '__main__':
     hparams.freeze_encoder = True
     hparams.freeze_embeds = True
     hparams.eval_beams = 4
-    model = LitModel.load_from_checkpoint(checkpoint_path="/home/sanjana/roboreviewer_summarization/model_checkpoints/robo_model_epoch3e-05_adam_6_sum.ckpt")
+    model = LitModel.load_from_checkpoint(checkpoint_path="/home/sanjana/roboreviewer_summarization/scripts/checkpoint_files/3e-5_linearize_mod/epoch=16-loss=0.47.ckpt")
     #model = LitModel(learning_rate = 1e-5, tokenizer = tokenizer, model = bart_model, hparams = hparams)
     '''summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/web_nlg_train.csv', 
                                            '/home/sanjana/roboreviewer_summarization/data/web_nlg_test.csv', 
@@ -501,33 +503,38 @@ if __name__ == '__main__':
     summary_data.prepare_data()
 
     summary_data.setup("stage")
-    test_data = summary_data.test_dataloader(data_type = 'robo')
+    val_data = summary_data.val_dataloader(data_type = 'robo')
 
     #train_data = summary_data.train_dataloader()
-
-    it = iter(test_data)
+    num_val = len(list(val_data))
+    #num_val = 50
+    print("NUM EXAMPLES", num_val)
+    it = iter(val_data)
     ind = 0
     model_out = []
     references = []
-    while(ind < 10):
+    while(ind < num_val):
         first_batch = next(it)
         generator = Data2TextGenerator(model, tokenizer)
         #print("Target", first_batch[-1])
-        outputs = generator.generate(first_batch, num_beams = 4, do_sample = False, length_penalty = 5.0, max_length = 300)     
-        train_data = pd.read_csv('/home/sanjana/roboreviewer_summarization/data/robo_test_field_sep.csv')
-        target = train_data['target'][ind]
+        outputs = generator.generate(first_batch, num_beams = 5, do_sample = False, max_length = 300, length_penalty = 1.5)     
+        val_data = pd.read_csv('/home/sanjana/roboreviewer_summarization/data/robo_dev_field_sep.csv')
+        target = val_data['target'][ind]
         ind += 1
         rouge = Rouge()
         model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
+        target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in first_batch[-1]])
         if model_output.strip():
             model_out.append(model_output)
             references.append(target)
 
             #scores = rouge.get_scores(target, reference)
             #print("TARGET : ", target)
-            #print("GENERATED :", reference)
+            #print("GENERATED :", model_output)
             #print("SCORES", scores)
             #print('=' * 130)
     print(rouge.get_scores(model_out, references, avg=True))
-
-
+#print(references)
+#print(model_out)
+df_write = pd.DataFrame(list(zip(references, model_out)), columns=["Reference Summary", "Generated Summary"])
+df_write.to_csv("model_epoch3e-05_adam_linmod.csv")

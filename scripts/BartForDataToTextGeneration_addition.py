@@ -20,8 +20,8 @@ class BartForDataToText(BartPretrainedModel):
         self.encoder = BartEncoder(config, self.shared)
         
 
-        #config_decoder = copy.deepcopy(config)
-        #config_decoder.d_model = 1200
+        config_decoder = copy.deepcopy(config)
+        config_decoder.d_model = 1200
         self.decoder = BartDecoder(config,self.shared)
         
         self.register_buffer("final_logits_bias", torch.zeros((1, self.shared.num_embeddings)))
@@ -201,7 +201,7 @@ class BartForDataToText(BartPretrainedModel):
         output_attentions=None,
         output_hidden_states=None,
         return_dict=None,
-        encoder_combination_type = 'linearize'
+        encoder_combination_type = 'addition'
     ):
         
         
