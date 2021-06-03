@@ -52,7 +52,7 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=5
             snippet_processed = []
             for each in snippet:
                 enc = run_bart(each)
-                if len(enc['input_ids']) < 40:
+                if len(enc['input_ids']) < 1000:
                     each = "<attribute> " + each+" </attribute>"
                     snippet_processed.append(each)
             snippet = " ".join(snippet_processed)
@@ -87,7 +87,7 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=5
         #print(sentence_dict)
         sentence_dict_len = len(list(sentence_dict.keys()))
         keys = list(sentence_dict.keys())
-        if len(sentence_dict['col0']) <= 20:
+        if len(sentence_dict['col0']) <= 200:
             for i in range(0, sentence_dict_len):
                 keys_ids = 'ids_col%s'%(str(i))
                 attention_masks_ids = 'attention_masks_col%s'%(str(i))
