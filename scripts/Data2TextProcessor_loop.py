@@ -25,107 +25,58 @@ def shift_tokens_right(input_ids, pad_token_id):
     prev_output_tokens[:, 1:] = input_ids[:, :-1]
     return prev_output_tokens
 
-def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=512, pad_to_max_length=True, return_tensors="pt"):
+def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=1024, pad_to_max_length=True, return_tensors="pt"):
     ''' Function that tokenizes a sentence 
         Args: tokenizer - the BART tokenizer; source and target sentences are the source and target sentences
         Returns: Dictionary with keys: input_ids, attention_mask, target_ids
     '''
 
-    encoded_sentences = {}
-
+    input_ids = []
+    attention_masks = []
     target_ids = []
-    
-    def run_bart(snippet):
-        encoded_dict = tokenizer(
-            snippet,
+    tokenized_sentences = {}
+
+    for sentence_list in source_sentences:
+        for sentence in sentence_list:
+            #print(sentence)
+            encoded_dict = tokenizer(
+            sentence,
             max_length=max_length,
             padding="max_length" if pad_to_max_length else None,
             truncation=True,
             return_tensors=return_tensors,
             add_prefix_space = True
-        )
-        return encoded_dict
-    
-    def get_encoding(snippet):
-        #print(snippet)
-        if isinstance(snippet, list):
-            snippet_processed = []
-            for each in snippet:
-                enc = run_bart(each)
-                if len(enc['input_ids']) < 40:
-                    each = "<attribute> " + each+" </attribute>"
-                    snippet_processed.append(each)
-            snippet = " ".join(snippet_processed)
-        #print(snippet)
-        encoded_dict = run_bart(snippet)
-        return encoded_dict
-    
-    def pad_sentences(ids, type = "sentence"):
-        if ids.shape[0] < 20:
-            num_sentences = ids.shape[0]
-            filler = [1] * 512
-            if type == "attention":
-                filler = [0] * 512
-            padded_sentences = [filler for i in range(0, 20 - num_sentences)]
-            padded_sentences = torch.as_tensor(padded_sentences)
-            padded_ids = torch.cat([ids ,padded_sentences ])
-            #print(padded_ids)
-            return padded_ids
-        return ids
-        
-    sentence_dict_len = 0
-
-    sentence_dict = eval(source_sentences[0])
-    sentence_keys = list(sentence_dict.keys())
-    sentence_keys_map = { key : 'col%s'%(str(i)) for i, key in enumerate(sentence_keys) }
-    print(sentence_keys_map)
-    for sentence, tgt_sentence in list(zip(source_sentences, target_sentences)):
-        sentence_dict = eval(sentence)
-        #sentence_dict = json.loads(sentence.replace("\'", "\""))
-        #print(sentence_dict)
-        sentence_dict = {sentence_keys_map[key] : val for key, val in sentence_dict.items()}
-        #print(sentence_dict)
-        sentence_dict_len = len(list(sentence_dict.keys()))
-        keys = list(sentence_dict.keys())
-        if len(sentence_dict['col0']) <= 20:
-            for i in range(0, sentence_dict_len):
-                keys_ids = 'ids_col%s'%(str(i))
-                attention_masks_ids = 'attention_masks_col%s'%(str(i))
-
-                if keys_ids not in encoded_sentences:
-                    encoded_sentences[keys_ids] = []
-                if attention_masks_ids not in encoded_sentences:
-                    encoded_sentences[attention_masks_ids] = []
-
-                #print(sentence_dict['col%s'%(str(i))])
-
-                sentence_encoding = get_encoding(sentence_dict['col%s'%(str(i))])
-                encoded_sentences[keys_ids].append(sentence_encoding['input_ids'])
-                encoded_sentences[attention_masks_ids].append(sentence_encoding['attention_mask'])
-
-            encoded_dict = tokenizer(
-              tgt_sentence,
-              max_length=max_length,
-              padding="max_length" if pad_to_max_length else None,
-              truncation=True,
-              return_tensors=return_tensors,
-              add_prefix_space = True
             )
-            # Shift the target ids to the right
-            #shifted_target_ids = shift_tokens_right(encoded_dict['input_ids'], tokenizer.pad_token_id)
-            target_ids.append(encoded_dict['input_ids'])
 
-    for i in range(0, sentence_dict_len):
-        keys_ids = 'ids_col%s'%(str(i))
-        attention_masks_ids = 'attention_masks_col%s'%(str(i))
-        encoded_sentences[keys_ids] = torch.cat(encoded_sentences[keys_ids], dim = 0)
-        encoded_sentences[attention_masks_ids] = torch.cat(encoded_sentences[attention_masks_ids], dim = 0)
+            input_ids.append(encoded_dict['input_ids'])
+            attention_masks.append(encoded_dict['attention_mask'])
+
+    input_ids = torch.cat(input_ids, dim = 0)
+    attention_masks = torch.cat(attention_masks, dim = 0)
+
+    for sentence in target_sentences:
+        encoded_dict = tokenizer(
+          sentence,
+          max_length=max_length,
+          padding="max_length" if pad_to_max_length else None,
+          truncation=True,
+          return_tensors=return_tensors,
+          add_prefix_space = True
+        )
+        # Shift the target ids to the right
+        # shifted_target_ids = shift_tokens_right(encoded_dict['input_ids'], tokenizer.pad_token_id)
+        target_ids.append(encoded_dict['input_ids'])
 
     target_ids = torch.cat(target_ids, dim = 0)
-    
-    encoded_sentences['labels'] = target_ids
+  
 
-    return encoded_sentences
+    batch = {
+        "input_ids": input_ids,
+        "attention_mask": attention_masks,
+        "labels": target_ids,
+    }
+
+    return batch
 
 
 
@@ -155,70 +106,43 @@ class SummaryDataModule(pl.LightningDataModule):
     # Load the training, validation and test sets in Pytorch Dataset objects
     def train_dataloader(self, data_type = 'robo'):
         #dataset = TensorDataset
-        if data_type == 'robo':
-            dataset = TensorDataset(self.train['ids_col0'], self.train['attention_masks_col0'],
-                                    self.train['ids_col1'], self.train['attention_masks_col1'],
-                                    self.train['ids_col2'], self.train['attention_masks_col2'],
-                                    self.train['ids_col3'], self.train['attention_masks_col3'],
-                                    self.train['ids_col4'], self.train['attention_masks_col4'],
-                                    self.train['labels'])
-        elif data_type == 'webnlg':
-            dataset = TensorDataset(self.train['ids_col0'], self.train['attention_masks_col0'],
-                                    self.train['ids_col1'], self.train['attention_masks_col1'],
-                                    self.train['ids_col2'], self.train['attention_masks_col2'],
+        dataset = TensorDataset(self.train['input_ids'], self.train['attention_mask'],
                                     self.train['labels'])
         #dataset = TensorDataset(self.train['input_ids'], self.train['attention_mask'], self.train['labels'])                          
         train_data = DataLoader(dataset, sampler = RandomSampler(dataset), batch_size = self.batch_size)
         return train_data
 
     def val_dataloader(self, data_type = 'robo'):
-        if data_type == 'robo':
-            dataset = TensorDataset(self.validate['ids_col0'], self.validate['attention_masks_col0'],
-                                    self.validate['ids_col1'], self.validate['attention_masks_col1'],
-                                    self.validate['ids_col2'], self.validate['attention_masks_col2'],
-                                    self.validate['ids_col3'], self.validate['attention_masks_col3'],
-                                    self.validate['ids_col4'], self.validate['attention_masks_col4'],
-                                    self.validate['labels'])
-        elif data_type == 'webnlg':
-            dataset = TensorDataset(self.validate['ids_col0'], self.validate['attention_masks_col0'],
-                                    self.validate['ids_col1'], self.validate['attention_masks_col1'],
-                                    self.validate['ids_col2'], self.validate['attention_masks_col2'],
+        dataset = TensorDataset(self.validate['input_ids'], self.validate['attention_mask'],
                                     self.validate['labels'])
         val_data = DataLoader(dataset, batch_size = self.batch_size)                       
         return val_data
 
     def test_dataloader(self, data_type = 'robo'):
         #print(self.test['punchline_text_ids'])
-        if data_type == 'robo':
-            dataset = TensorDataset(self.test['ids_col0'], self.test['attention_masks_col0'],
-                                    self.test['ids_col1'], self.test['attention_masks_col1'],
-                                    self.test['ids_col2'], self.test['attention_masks_col2'],
-                                    self.test['ids_col3'], self.test['attention_masks_col3'],
-                                    self.test['ids_col4'], self.test['attention_masks_col4'],
-                                    self.test['labels'])
-        elif data_type == 'webnlg':
-            dataset = TensorDataset(self.test['ids_col0'], self.test['attention_masks_col0'],
-                                    self.test['ids_col1'], self.test['attention_masks_col1'],
-                                    self.test['ids_col2'], self.test['attention_masks_col2'],
+        dataset = TensorDataset(self.test['input_ids'], self.test['attention_mask'],
                                     self.test['labels'])
         test_data = DataLoader(dataset, batch_size = self.batch_size)                   
         return test_data
 
 
 if __name__ == '__main__':
-    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
-                                                    eos_token="</s>", 
-                                                    pad_token = "<pad>")
-    #bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
-    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_sep.csv', 
-                                           '/home/sanjana/roboreviewer_summarization/data/robo_dev_sep.csv', 
-                                           '/home/sanjana/roboreviewer_summarization/data/robo_test_sep.csv'], batch_size = 1)
+    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', 
+                                                    additional_special_tokens=["<study>",  "</study>",
+                                                                                "<punchline_text>", "</punchline_text>",
+                                                                                "<punchline_effect>", "</punchline_effect>",
+                                                                                "<population>", "</population>",
+                                                                                "<interventions>", "</interventions>",
+                                                                                "<outcomes>", "</outcomes>"])
+    bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
+    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_sep_linearized_per_study.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_dev_sep_linearized_per_study.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_test_sep_linearized.csv'], batch_size = 1)
 
     summary_data.prepare_data()
     summary_data.setup("stage")
-    it = summary_data.train_dataloader()
-    batches = iter(it)
-    batch = next(batches)
-    print(batch[0])
-    print(tokenizer.decode(batch[0][0]))
-    #print(next(batch))
+    train_data = summary_data.train_dataloader()
+    train_batches = iter(train_data)
+    batch= next(train_batches)
+    print(batch[1])
+    print(batch[2])
