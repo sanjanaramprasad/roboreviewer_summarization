@@ -199,21 +199,19 @@ class BartForDataToText(BartPretrainedModel):
         
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
         encoder_outputs_list = []
-        attn_mask_list = [attention_mask_col0, attention_mask_col1, attention_mask_col2, \
-                            attention_mask_col3, attention_mask_col4]
 
         encoder_output_list = []
         attn_mask_list = []
 
         for chunk_idx in range(0, input_ids.shape[1], 1024):
-            input_ids_chunk = input_ids[:,i: i+1024]
-            attention_mask_chunk = attention_masks[:,i: i+1024]
+            input_ids_chunk = input_ids[:,chunk_idx: chunk_idx+1024]
+            attention_mask_chunk = attention_masks[:,chunk_idx: chunk_idx+1024]
 
             if input_ids_chunk[0][0] != -2:
                 encoder_outputs = self._get_encoder_outputs(
                             encoder = self.encoder, 
                             encoder_outputs = encoder_outputs, 
-                            input_ids = inpur_ids_chunk,
+                            input_ids = input_ids_chunk,
                             attention_mask = attention_mask_chunk,
                             head_mask = head_mask,
                             inputs_embeds = inputs_embeds,
@@ -317,7 +315,7 @@ class BartForDataToText(BartPretrainedModel):
         attention_masks = None,
         head_mask=None,
         use_cache=None,
-        encoder_outputs = None
+        encoder_outputs = None,
         **kwargs
     ):
         # cut decoder_input_ids if past is used

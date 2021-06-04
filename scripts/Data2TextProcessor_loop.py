@@ -121,9 +121,9 @@ class SummaryDataModule(pl.LightningDataModule):
 
     # Loads and splits the data into training, validation and test sets with a 60/20/20 split
     def prepare_data(self):
-        self.train = pd.read_csv(self.data_files[0])[:100]
-        self.validate = pd.read_csv(self.data_files[1])[:100]
-        self.test = pd.read_csv(self.data_files[2])[:100]
+        self.train = pd.read_csv(self.data_files[0])
+        self.validate = pd.read_csv(self.data_files[1])
+        self.test = pd.read_csv(self.data_files[2])
 
 
     def setup(self, stage):
