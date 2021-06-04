@@ -146,3 +146,4 @@ if __name__ == '__main__':
     batch= next(train_batches)
     print(batch[1])
     print(batch[2])
+    print(tokenizer.decode(batch[0][0]))

@@ -44,7 +44,7 @@ from Data2TextProcessor_linearize import SummaryDataModule
 learning_rate = 3e-5 
 max_epochs = 25
 
-logger = TensorBoardLogger('tb_logs', name='my_model_epoch_bartconditional%s_%s'%(str(max_epochs), str(learning_rate)))
+logger = TensorBoardLogger('tb_logs_final', name='my_model_epoch_bartconditional%s_%s'%(str(max_epochs), str(learning_rate)))
 
 
 train_count = 0
@@ -163,9 +163,9 @@ class LitModel(pl.LightningModule):
 
 def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana'):
     if data_type == 'robo':
-        train_file = path + '/roboreviewer_summarization/data/robo_train_sep_linearized.csv'
-        dev_file = path + '/roboreviewer_summarization/data/robo_dev_sep_linearized.csv'
-        test_file = path + '/roboreviewer_summarization/data/robo_test_sep_linearized.csv'
+        train_file = path + '/roboreviewer_summarization/data/robo_train_linearized.csv'
+        dev_file = path + '/roboreviewer_summarization/data/robo_dev_linearized.csv'
+        test_file = path + '/roboreviewer_summarization/data/robo_test_linearized.csv'
     
     elif data_type =='webnlg':
         train_file = path + '/roboreviewer_summarization/data/web_nlg_train.csv'
@@ -179,7 +179,7 @@ def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana'):
 
 
 def main():
-    additional_special_tokens = ["<study>", "</study>", 
+    additional_special_tokens = ["<sep>", "<study>", "</study>", 
             "<outcomes>", "</outcomes>", 
             "<punchline_text>", "</punchline_text>", 
             "<population>", "</population>", 
@@ -216,7 +216,44 @@ def main():
     trainer.fit(model, summary_data)
     trainer.save_checkpoint("robo_model_epoch%s_adam_%s_bartconditional.ckpt"%(str(learning_rate), str(max_epochs)))
 
+def inference(checkpoint_file):
+    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
+    #model = LitModel.load_from_checkpoint(checkpoint_path="webnlg_model_14_sgd.ckpt")
+    #bart_model = BartForDataToText.from_pretrained('facebook/bart-base')
+    #bart_model._make_duplicate_encoders()
+    hparams = argparse.Namespace()
+    rouge = Rouge()
+    hparams.freeze_encoder = True
+    hparams.freeze_embeds = True
+    hparams.eval_beams = 4
+    model = LitModel.load_from_checkpoint(checkpoint_path=checkpoint_file)
+    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_field_sep.csv',
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_dev_field_sep.csv',
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_test_field_sep.csv'], batch_size = 1)
+    summary_data.prepare_data()
 
+    summary_data.setup("stage")
+    val_data = summary_data.val_dataloader(data_type = 'robo')
+
+    #num_val = len(list(val_data))
+    num_val = 2
+    print("NUM EXAMPLES", num_val)
+    it = iter(val_data)
+    ind = 0
+    model_out = []
+    references = []
+    while(ind < num_val):
+        text = next(it)
+        generated_ids = self.model.generate(
+                text["input_ids"],
+                attention_mask=text["attention_mask"],
+                use_cache=True,
+                decoder_start_token_id = self.tokenizer.pad_token_id,
+                num_beams= 2,
+                max_length = 45,
+                early_stopping = True
+        )
 if __name__ == '__main__': 
     main()
+    #inference()
    

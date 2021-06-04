@@ -5,9 +5,9 @@ from transformers.models.bart.configuration_bart import BartConfig
 import torch
 import torch.distributed as dist
 from torch.nn import functional as Få
-from BartForDataToTextGeneration_addition import BartForDataToText
+from BartForDataToTextGeneration import BartForDataToText
 from transformers.generation_utils import GenerationMixin
-from run_experiment_decoder_linearize import LitModel
+from run_experiment import LitModel
 from transformers import BartTokenizer
 from Data2TextProcessor_1 import SummaryDataModule
 import argparse
@@ -489,7 +489,7 @@ if __name__ == '__main__':
     hparams.freeze_encoder = True
     hparams.freeze_embeds = True
     hparams.eval_beams = 4
-    model = LitModel.load_from_checkpoint(checkpoint_path="/home/sanjana/roboreviewer_summarization/scripts/checkpoint_files/3e-5_linearize_mod/epoch=16-loss=0.47.ckpt")
+    model = LitModel.load_from_checkpoint(checkpoint_path="/home/sanjana/roboreviewer_summarization/scripts//checkpoint_files_final/3e-5_addition/epoch=4-val_loss=2.88.ckpt")
     #model = LitModel(learning_rate = 1e-5, tokenizer = tokenizer, model = bart_model, hparams = hparams)
     '''summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/web_nlg_train.csv', 
                                            '/home/sanjana/roboreviewer_summarization/data/web_nlg_test.csv', 
@@ -506,8 +506,8 @@ if __name__ == '__main__':
     val_data = summary_data.val_dataloader(data_type = 'robo')
 
     #train_data = summary_data.train_dataloader()
-    num_val = len(list(val_data))
-    #num_val = 50
+    #num_val = len(list(val_data))
+    num_val = 5
     print("NUM EXAMPLES", num_val)
     it = iter(val_data)
     ind = 0
@@ -529,10 +529,10 @@ if __name__ == '__main__':
             references.append(target)
 
             #scores = rouge.get_scores(target, reference)
-            #print("TARGET : ", target)
-            #print("GENERATED :", model_output)
+            print("TARGET : ", target)
+            print("GENERATED :", model_output)
             #print("SCORES", scores)
-            #print('=' * 130)
+            print('=' * 130)
     print(rouge.get_scores(model_out, references, avg=True))
 #print(references)
 #print(model_out)

@@ -9,8 +9,8 @@ from torch import nn
 import torch
 #additional_special_tokens = []
 
-additional_special_tokens=["<attribute>",  "</attribute>"]
-model = BartForDataToText.from_pretrained('facebook/bart-base')
+additional_special_tokens=[ "<sep>"]
+'''model = BartForDataToText.from_pretrained('facebook/bart-base')
 
 #model._make_duplicate_encoders()
 tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
@@ -23,6 +23,37 @@ summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roborev
                                            '/home/sanjana/roboreviewer_summarization/data/robo_test_sep.csv'], batch_size = 1)
 summary_data.prepare_data()
 
+summary_data.setup("stage")
+test_data = summary_data.test_dataloader(data_type = 'robo')
+it = iter(test_data)
+'''
+
+def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana'):
+    if data_type == 'robo':
+        train_file = path + '/roboreviewer_summarization/data/robo_train_sep.csv'
+        dev_file = path + '/roboreviewer_summarization/data/robo_dev_sep.csv'
+        test_file = path + '/roboreviewer_summarization/data/robo_test_sep.csv'
+
+    elif data_type =='webnlg':
+        train_file = path + '/roboreviewer_summarization/data/web_nlg_train.csv'
+        dev_file = path + '/roboreviewer_summarization/data/web_nlg_dev.csv'
+        test_file = path + '/roboreviewer_summarization/data/web_nlg_test.csv'
+
+    data_files = [train_file, dev_file, test_file]
+    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1)
+    summary_data.prepare_data()
+    return summary_data
+
+
+additional_special_tokens=["<attribute>",  "</attribute>", "<sep>"]
+tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>",
+                                                    eos_token="</s>",
+                                                    pad_token = "<pad>")
+#tokenizer.add_tokens(additional_special_tokens)
+model = BartForDataToText.from_pretrained('facebook/bart-base')
+model._make_duplicate_encoders()
+#model.resize_token_embeddings(len(tokenizer))
+summary_data = make_data(tokenizer, path = '/home/sanjana')
 summary_data.setup("stage")
 test_data = summary_data.test_dataloader(data_type = 'robo')
 it = iter(test_data)
@@ -95,7 +126,7 @@ class BartForDataToTextGenerationTester():
             encoder_outputs_col3 = self.encoder_col3(\
                                     input_ids = data[6],
                                     attention_mask = data[7])
-            print(encoder_outputs_col3[0].shape)
+            print(encoder_outputs_col3[0])
             self.encoder_outputs_list.append(encoder_outputs_col3)
             self.attn_list.append(data[7])
         return
@@ -108,7 +139,7 @@ class BartForDataToTextGenerationTester():
             encoder_outputs_col4 = self.encoder_col4(\
                                     input_ids = data[8],
                                     attention_mask = data[9])
-            print(encoder_outputs_col4[0].shape)
+            print(encoder_outputs_col4[0])
             self.encoder_outputs_list.append(encoder_outputs_col4)
             self.attn_list.append(data[9])
         return
@@ -119,13 +150,14 @@ class BartForDataToTextGenerationTester():
 
     def test_encoder_addition(self):
         encoder_outputs_added =  model._get_sum_encoder_outputs(self.encoder_outputs_list)
-        print(encoder_outputs_added[0].shape)
+        print(encoder_outputs_added[0])
      
     def test_attn_masks_OR(self):
         attention_added = model._get_attention_masks_OR(self.attn_list)
         print(attention_added.shape)
 
     def test_model_forward(self):
+   
         data = next(it)
         input_ids_col0 = data[0] if len(data) >1 else None
         attention_mask_col0 = data[1] if len(data) >1 else None
@@ -167,8 +199,36 @@ class BartForDataToTextGenerationTester():
         print("OUTPUTS", outputs[0])
         print('=' *13)
 
-    
 
+def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana'):
+    if data_type == 'robo':
+        train_file = path + '/roboreviewer_summarization/data/robo_train_sep.csv'
+        dev_file = path + '/roboreviewer_summarization/data/robo_dev_sep.csv'
+        test_file = path + '/roboreviewer_summarization/data/robo_test_sep.csv'
+
+    elif data_type =='webnlg':
+        train_file = path + '/roboreviewer_summarization/data/web_nlg_train.csv'
+        dev_file = path + '/roboreviewer_summarization/data/web_nlg_dev.csv'
+        test_file = path + '/roboreviewer_summarization/data/web_nlg_test.csv'
+
+    data_files = [train_file, dev_file, test_file]
+    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1)
+    summary_data.prepare_data()
+    return summary_data
+
+'''
+additional_special_tokens=["<attribute>",  "</attribute>", "<sep>"]
+tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>",
+                                                    eos_token="</s>",
+                                                    pad_token = "<pad>")
+tokenizer.add_tokens(additional_special_tokens)
+bart_model = BartForDataToText.from_pretrained('facebook/bart-base')
+bart_model._make_duplicate_encoders()
+bart_model.model.resize_token_embeddings(len(tokenizer))
+summary_data = make_data(tokenizer, path = '/home/sanjana')
+
+    
+'''
     
         
 obj = BartForDataToTextGenerationTester()
@@ -179,9 +239,9 @@ obj.test_get_encoders()
 obj.test_encoder3()
 obj.test_encoder4()
 #obj.test_encoder_concat()
-#obj.test_encoder_addition()
+obj.test_encoder_addition()
 #obj.test_attn_masks_OR()
-obj.test_model_forward()
+#obj.test_model_forward()
 
 print(obj.encoder_col3.layers[0].final_layer_norm.weight.grad==obj.encoder_col4.layers[0].final_layer_norm.weight.grad)
 #print(obj.encoder_col3.layers[-1].final_layer_norm.weight.grad ==obj.encoder_col4.layers[-1].final_layer_norm.weight)

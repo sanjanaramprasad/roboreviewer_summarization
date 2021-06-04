@@ -25,7 +25,7 @@ def shift_tokens_right(input_ids, pad_token_id):
     prev_output_tokens[:, 1:] = input_ids[:, :-1]
     return prev_output_tokens
 
-def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=512, pad_to_max_length=True, return_tensors="pt"):
+def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=1024, pad_to_max_length=True, return_tensors="pt"):
     ''' Function that tokenizes a sentence 
         Args: tokenizer - the BART tokenizer; source and target sentences are the source and target sentences
         Returns: Dictionary with keys: input_ids, attention_mask, target_ids
@@ -37,12 +37,12 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=5
     
     def run_bart(snippet):
         encoded_dict = tokenizer(
-            snippet,
-            max_length=max_length,
-            padding="max_length" if pad_to_max_length else None,
-            truncation=True,
-            return_tensors=return_tensors,
-            add_prefix_space = True
+          snippet,
+          max_length=max_length,
+          padding="max_length" if pad_to_max_length else None,
+          truncation=True,
+          return_tensors=return_tensors,
+          add_prefix_space = True
         )
         return encoded_dict
     
@@ -78,8 +78,9 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=5
     sentence_dict = eval(source_sentences[0])
     sentence_keys = list(sentence_dict.keys())
     sentence_keys_map = { key : 'col%s'%(str(i)) for i, key in enumerate(sentence_keys) }
-    print(sentence_keys_map)
+    #print(sentence_keys_map)
     for sentence, tgt_sentence in list(zip(source_sentences, target_sentences)):
+        
         sentence_dict = eval(sentence)
         #sentence_dict = json.loads(sentence.replace("\'", "\""))
         #print(sentence_dict)
@@ -206,9 +207,9 @@ class SummaryDataModule(pl.LightningDataModule):
 
 
 if __name__ == '__main__':
-    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
-                                                    eos_token="</s>", 
-                                                    pad_token = "<pad>")
+    additional_special_tokens = ["<attribute>", "</attribute>", "<sep>"]
+    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
+    tokenizer.add_tokens(additional_special_tokens)
     #bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
     summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_sep.csv', 
                                            '/home/sanjana/roboreviewer_summarization/data/robo_dev_sep.csv', 
@@ -219,6 +220,8 @@ if __name__ == '__main__':
     it = summary_data.train_dataloader()
     batches = iter(it)
     batch = next(batches)
-    print(batch[0])
+    #print(batch[0])
+    #print(batch[0][0])
+    #print('=' * 13)
     print(tokenizer.decode(batch[0][0]))
     #print(next(batch))

@@ -167,9 +167,9 @@ class SummaryDataModule(pl.LightningDataModule):
   
     # Loads and splits the data into training, validation and test sets with a 60/20/20 split
     def prepare_data(self):
-        self.train = pd.read_csv(self.data_files[0])
-        self.validate = pd.read_csv(self.data_files[1])
-        self.test = pd.read_csv(self.data_files[2])
+        self.train = pd.read_csv(self.data_files[0])[:10]
+        self.validate = pd.read_csv(self.data_files[1])[:10]
+        self.test = pd.read_csv(self.data_files[2])[:10]
         #print(self.test)
 
     # encode the sentences using the tokenizer  
@@ -213,3 +213,25 @@ class SummaryDataModule(pl.LightningDataModule):
                                 self.test['labels'])
         test_data = DataLoader(dataset, batch_size = self.batch_size)                   
         return test_data
+
+
+
+
+
+
+if __name__ == '__main__':
+    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
+                                                    eos_token="</s>", 
+                                                    pad_token = "<pad>")
+    #bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
+    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_sep.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_dev_sep.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_test_sep.csv'], batch_size = 1)
+
+    summary_data.prepare_data()
+    summary_data.setup("stage")
+    it = summary_data.train_dataloader()
+    batches = iter(it)
+    batch = next(batches)
+    print(batch[0])
+    print(tokenizer.decode(batch[0][0]))

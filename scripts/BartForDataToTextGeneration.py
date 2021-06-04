@@ -201,7 +201,7 @@ class BartForDataToText(BartPretrainedModel):
         output_attentions=None,
         output_hidden_states=None,
         return_dict=None,
-        encoder_combination_type = 'linearize'
+        encoder_combination_type = 'addition'
     ):
         
         
