@@ -9,11 +9,14 @@ import torch
 from pytorch_lightning.callbacks import ModelCheckpoint
 from transformers import BartTokenizer, BartForCausalLM, BartForConditionalGeneration, BeamSearchScorer, LogitsProcessorList, MinLengthLogitsProcessor, TopKLogitsWarper, TemperatureLogitsWarper
 import torch
+from torch import nn
 
 import math
 import random
 import re
 import argparse
+global max_list_len 
+max_list_len =0
 
 def shift_tokens_right(input_ids, pad_token_id):
     """ Shift input ids one token to the right, and wrap the last non pad token (usually <eos>).
@@ -25,6 +28,7 @@ def shift_tokens_right(input_ids, pad_token_id):
     prev_output_tokens[:, 1:] = input_ids[:, :-1]
     return prev_output_tokens
 
+#max_list_len = 0
 def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=1024, pad_to_max_length=True, return_tensors="pt"):
     ''' Function that tokenizes a sentence 
         Args: tokenizer - the BART tokenizer; source and target sentences are the source and target sentences
@@ -35,9 +39,11 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=1
     attention_masks = []
     target_ids = []
     tokenized_sentences = {}
-
+    max_list_len = 0
     for sentence_list in source_sentences:
         sentence_list = eval(sentence_list)
+        sentence_ids = []
+        sentence_masks = []
         for sentence in sentence_list:
             #print(sentence)
             encoded_dict = tokenizer(
@@ -48,12 +54,35 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=1
             return_tensors=return_tensors,
             add_prefix_space = True
             )
+            #print(encoded_dict['input_ids'].shape)
+            sentence_ids.append(encoded_dict['input_ids'])
+            sentence_masks.append(encoded_dict['attention_mask'])
+        #if len(sentence_ids) > max_list_len:
+        #max_list_len =  len(sentence_ids)
+        
+        sentence_ids = torch.cat(sentence_ids, dim = 1)
+        #print(sentence_ids.shape)
+        if sentence_ids.shape[1] > max_list_len:
+            max_list_len = sentence_ids.shape[1]
+        sentence_masks = torch.cat(sentence_masks, dim = 1)
+        input_ids.append(sentence_ids)
+        attention_masks.append(sentence_masks)
 
-            input_ids.append(encoded_dict['input_ids'])
-            attention_masks.append(encoded_dict['attention_mask'])
+    input_ids_padded = []
+    attention_masks_padded = []
+    for inp in input_ids:
+        inp_padded = nn.ConstantPad1d((0, max_list_len - inp.shape[1]),-2)(inp)
+        #print(inp_padded.shape)
+        input_ids_padded.append(inp_padded)
+    
+    for attn in attention_masks:
+        attn_padded = nn.ConstantPad1d((0, max_list_len - attn.shape[1]),-2)(attn)
+        attention_masks_padded.append(attn_padded)
 
-    input_ids = torch.cat(input_ids, dim = 0)
-    attention_masks = torch.cat(attention_masks, dim = 0)
+    print(max_list_len)
+    #print(input_ids_padded[0].shape)
+    input_ids = torch.cat(input_ids_padded, dim=0)
+    attention_masks = torch.cat(attention_masks_padded, dim=0)
 
     for sentence in target_sentences:
         encoded_dict = tokenizer(
@@ -92,9 +121,9 @@ class SummaryDataModule(pl.LightningDataModule):
 
     # Loads and splits the data into training, validation and test sets with a 60/20/20 split
     def prepare_data(self):
-        self.train = pd.read_csv(self.data_files[0])
-        self.validate = pd.read_csv(self.data_files[1])
-        self.test = pd.read_csv(self.data_files[2])
+        self.train = pd.read_csv(self.data_files[0])[:100]
+        self.validate = pd.read_csv(self.data_files[1])[:100]
+        self.test = pd.read_csv(self.data_files[2])[:100]
 
 
     def setup(self, stage):
@@ -145,5 +174,17 @@ if __name__ == '__main__':
     train_data = summary_data.train_dataloader()
     train_batches = iter(train_data)
     batch= next(train_batches)
-    print(batch[1])
-    print(batch[2])
+    current_ind = 0
+    print(batch)
+    source = batch[0]
+    print(source.shape)
+    #print(max_list_len) 
+    print(source.shape[1]) 
+    #print(tokenizer.decode(source[0][:1024]))
+    for i in range(0, source.shape[1], 1024):
+        chunk = source[:,i : i+ 1024]
+        if chunk[0][0] != -2:
+            print(tokenizer.decode(chunk[0]))
+        #print(source[:,i : i+ 1024].shape)
+    #print(batch[1])
+    #print(batch[2])
