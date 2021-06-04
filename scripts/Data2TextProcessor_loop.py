@@ -37,6 +37,7 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=1
     tokenized_sentences = {}
 
     for sentence_list in source_sentences:
+        sentence_list = eval(sentence_list)
         for sentence in sentence_list:
             #print(sentence)
             encoded_dict = tokenizer(
@@ -128,16 +129,16 @@ class SummaryDataModule(pl.LightningDataModule):
 
 if __name__ == '__main__':
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', 
-                                                    additional_special_tokens=["<study>",  "</study>",
+                                                    additional_special_tokens=["<study>", "<sep>", "</study>",
                                                                                 "<punchline_text>", "</punchline_text>",
                                                                                 "<punchline_effect>", "</punchline_effect>",
                                                                                 "<population>", "</population>",
                                                                                 "<interventions>", "</interventions>",
                                                                                 "<outcomes>", "</outcomes>"])
     bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
-    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_sep_linearized_per_study.csv', 
-                                           '/home/sanjana/roboreviewer_summarization/data/robo_dev_sep_linearized_per_study.csv', 
-                                           '/home/sanjana/roboreviewer_summarization/data/robo_test_sep_linearized.csv'], batch_size = 1)
+    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_linearized_per_study.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_dev_linearized_per_study.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_test_linearized_per_study.csv'], batch_size = 1)
 
     summary_data.prepare_data()
     summary_data.setup("stage")
