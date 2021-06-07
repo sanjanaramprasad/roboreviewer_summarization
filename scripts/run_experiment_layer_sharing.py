@@ -32,7 +32,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.callbacks import ModelCheckpoint
-from BartForDataToTextGeneration import BartForDataToText
+from BartForDataToTextGeneration_layer_sharing import BartForDataToText
 import math
 import random
 import re
@@ -42,9 +42,8 @@ from Data2TextProcessor_1 import SummaryDataModule
 #from transformers.modeling_bart import shift_tokens_right
 
 learning_rate = 3e-5 
-max_epochs = 25
-
-logger = TensorBoardLogger('tb_logs_final', name='my_model_final_epoch%s_%s_addition_layer_sharing'%(str(max_epochs), str(learning_rate)))
+max_epochs = 6
+logger = TensorBoardLogger('tb_logs_final', name='my_model_final_epoch%s_%s_linearize_layer_sharing_l2'%(str(max_epochs), str(learning_rate)))
 
 
 train_count = 0
@@ -178,7 +177,7 @@ class LitModel(pl.LightningModule):
             labels = tgt_ids,
             decoder_input_ids = None,
             use_cache = False,
-            encoder_combination_type = 'linearize'
+            encoder_combination_type = 'addition'
         )
         
         lm_logits = outputs[1]
@@ -234,7 +233,7 @@ class LitModel(pl.LightningModule):
             labels = tgt_ids,
             decoder_input_ids = None,
             use_cache = False,
-            encoder_combination_type = 'linearize'
+            encoder_combination_type = 'addition'
         )
 
 
@@ -292,7 +291,7 @@ def main():
     eval_beams = 4
 
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
-    checkpoint = ModelCheckpoint('checkpoint_files_final/3e-5_addition_layer_sharing/',
+    checkpoint = ModelCheckpoint('checkpoint_files_final/3e-5_linearize_layer_sharing_l2/',
                                 filename = '{epoch}-{val_loss:.2f}',
                                 save_top_k=15,
                                 monitor = 'val_loss')
@@ -305,7 +304,7 @@ def main():
                         callbacks=[checkpoint])
 
     trainer.fit(model, summary_data)
-    trainer.save_checkpoint("robo_model_epoch%s_adam_%s_addition_layer_sharing.ckpt"%(str(learning_rate), str(max_epochs)))
+    trainer.save_checkpoint("robo_model_epoch%s_adam_%s_linearize_layer_sharing.ckpt"%(str(learning_rate), str(max_epochs)))
 
 
 if __name__ == '__main__': 

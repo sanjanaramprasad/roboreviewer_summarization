@@ -120,7 +120,8 @@ class BartForDataToTextGenerationTester():
 
     def test_encoder3(self):
         data = next(it)
-        print(len(data))
+        print(data[0].shape)
+        #print(len(data))
         if len(data) > 7:
             print('ENCODING 3')
             encoder_outputs_col3 = self.encoder_col3(\
@@ -232,16 +233,16 @@ summary_data = make_data(tokenizer, path = '/home/sanjana')
     
         
 obj = BartForDataToTextGenerationTester()
-obj.test_get_encoders()
+#obj.test_get_encoders()
 #obj.test_encoder0()
 #obj.test_encoder1()
 #obj.test_encoder2()
-obj.test_encoder3()
-obj.test_encoder4()
+#obj.test_encoder3()
+#obj.test_encoder4()
 #obj.test_encoder_concat()
-obj.test_encoder_addition()
+#obj.test_encoder_addition()
 #obj.test_attn_masks_OR()
-#obj.test_model_forward()
+obj.test_model_forward()
 
 print(obj.encoder_col3.layers[0].final_layer_norm.weight.grad==obj.encoder_col4.layers[0].final_layer_norm.weight.grad)
 #print(obj.encoder_col3.layers[-1].final_layer_norm.weight.grad ==obj.encoder_col4.layers[-1].final_layer_norm.weight)

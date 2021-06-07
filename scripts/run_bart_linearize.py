@@ -40,6 +40,7 @@ import argparse
 from pytorch_lightning.loggers import TensorBoardLogger
 from Data2TextProcessor_linearize import SummaryDataModule
 #from transformers.modeling_bart import shift_tokens_right
+from rouge import Rouge
 
 learning_rate = 3e-5 
 max_epochs = 25
@@ -227,33 +228,45 @@ def inference(checkpoint_file):
     hparams.freeze_embeds = True
     hparams.eval_beams = 4
     model = LitModel.load_from_checkpoint(checkpoint_path=checkpoint_file)
-    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_field_sep.csv',
-                                           '/home/sanjana/roboreviewer_summarization/data/robo_dev_field_sep.csv',
-                                           '/home/sanjana/roboreviewer_summarization/data/robo_test_field_sep.csv'], batch_size = 1)
+    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_linearized.csv',
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_dev_linearized.csv',
+                                           '/home/sanjana/roboreviewer_summarization/data/robo_test_linearized.csv'], batch_size = 1)
     summary_data.prepare_data()
 
     summary_data.setup("stage")
     val_data = summary_data.val_dataloader(data_type = 'robo')
 
     #num_val = len(list(val_data))
-    num_val = 2
+    num_val = 5
     print("NUM EXAMPLES", num_val)
     it = iter(val_data)
     ind = 0
     model_out = []
     references = []
-    while(ind < num_val):
-        text = next(it)
-        generated_ids = self.model.generate(
-                text["input_ids"],
-                attention_mask=text["attention_mask"],
+    rouge = Rouge()
+    '''while(ind < num_val):
+        ind += 1
+        text = next(it)'''
+    for text in it:
+        generated_ids = model.model.generate(
+                text[0],
+                attention_mask=text[1],
                 use_cache=True,
-                decoder_start_token_id = self.tokenizer.pad_token_id,
-                num_beams= 2,
-                max_length = 45,
+                decoder_start_token_id = tokenizer.pad_token_id,
+                num_beams= 4,
+                max_length = 300,
+                repetition_penalty = 1.1,
                 early_stopping = True
         )
+    
+        model_output = " ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in generated_ids])
+        #print("="*13)
+        #reference = data[ind]
+        target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in text[-1]])
+        references.append(target)
+        model_out.append(model_output)
+    print(rouge.get_scores(model_out, references, avg=True))
 if __name__ == '__main__': 
-    main()
-    #inference()
+    #main()
+    inference('/home/sanjana/roboreviewer_summarization/epoch=6-val_loss=3.25.ckpt')
    

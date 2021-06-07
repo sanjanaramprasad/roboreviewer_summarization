@@ -44,7 +44,7 @@ from Data2TextProcessor_1 import SummaryDataModule
 learning_rate = 3e-5 
 max_epochs = 25
 
-logger = TensorBoardLogger('tb_logs_final', name='my_model_final_epoch%s_%s_addition_layer_sharing'%(str(max_epochs), str(learning_rate)))
+logger = TensorBoardLogger('tb_logs_final', name='my_model_final_epoch%s_%s_linearize'%(str(max_epochs), str(learning_rate)))
 
 
 train_count = 0
@@ -292,7 +292,7 @@ def main():
     eval_beams = 4
 
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
-    checkpoint = ModelCheckpoint('checkpoint_files_final/3e-5_addition_layer_sharing/',
+    checkpoint = ModelCheckpoint('checkpoint_files_final/3e-5_linear/',
                                 filename = '{epoch}-{val_loss:.2f}',
                                 save_top_k=15,
                                 monitor = 'val_loss')
@@ -305,7 +305,7 @@ def main():
                         callbacks=[checkpoint])
 
     trainer.fit(model, summary_data)
-    trainer.save_checkpoint("robo_model_epoch%s_adam_%s_addition_layer_sharing.ckpt"%(str(learning_rate), str(max_epochs)))
+    trainer.save_checkpoint("robo_model_epoch%s_adam_%s_linear.ckpt"%(str(learning_rate), str(max_epochs)))
 
 
 if __name__ == '__main__': 
