@@ -179,14 +179,14 @@ class LitModel(pl.LightningModule):
             labels = tgt_ids,
             decoder_input_ids = None,
             use_cache = False,
-            encoder_combination_type = 'linearize'
+            encoder_combination_type = 'addition'
         )
         
-        lm_logits = outputs[1]
+        loss = outputs[0]
         # Create the loss function
-        ce_loss_fct = torch.nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
+        #ce_loss_fct = torch.nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
         # Calculate the loss on the un-shifted tokens
-        loss = ce_loss_fct(lm_logits.view(-1, lm_logits.shape[-1]), tgt_ids.view(-1))
+        #loss = ce_loss_fct(lm_logits.view(-1, lm_logits.shape[-1]), tgt_ids.view(-1))
         tensorboard_logs = {'loss': loss}
         self.logger.experiment.add_scalar("Train Loss", loss, self.current_epoch)
         epoch_dictionary={
@@ -235,16 +235,16 @@ class LitModel(pl.LightningModule):
             labels = tgt_ids,
             decoder_input_ids = None,
             use_cache = False,
-            encoder_combination_type = 'linearize'
+            encoder_combination_type = 'addition'
         )
 
 
-        lm_logits = outputs[1]
+        val_loss = outputs[0]
         #print("LM LOGITS", lm_logits)
         #print("TGT IDS", tgt_ids)
 
-        ce_loss_fct = torch.nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
-        val_loss = ce_loss_fct(lm_logits.view(-1, lm_logits.shape[-1]), tgt_ids.view(-1))
+        #ce_loss_fct = torch.nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
+        #val_loss = ce_loss_fct(lm_logits.view(-1, lm_logits.shape[-1]), tgt_ids.view(-1))
 
         tensorboard_logs = {'val_loss': val_loss}
         self.logger.experiment.add_scalar("Val Loss", val_loss, self.current_epoch)
@@ -278,7 +278,13 @@ def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana'):
 
 
 def main():
-    additional_special_tokens=["<attribute>",  "</attribute>", "<sep>"]
+    #additional_special_tokens=["<attribute>",  "</attribute>", "<sep>"]
+    
+    additional_special_tokens = ["<sep>",
+            "<outcomes>", "</outcomes>",
+            "<punchline_text>", "</punchline_text>",
+            "<population>", "</population>",
+            "<interventions>", "</interventions>"]
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
                                                     eos_token="</s>", 
                                                     pad_token = "<pad>")
