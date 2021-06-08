@@ -1,13 +1,26 @@
 import torch
 from torch import nn
-from transformers.models.bart.modeling_bart import BartEncoder, BartDecoder, BartPretrainedModel, shift_tokens_right, BartDecoderLayer
+from transformers.models.bart.modeling_bart import BartEncoder, BartDecoder, BartPretrainedModel, shift_tokens_right, BartDecoderLayer, BartLearnedPositionalEmbedding, BartAttention, _make_causal_mask, _expand_mask
 from transformers.models.bart.configuration_bart import BartConfig
 from transformers.modeling_outputs import BaseModelOutput,Seq2SeqLMOutput,Seq2SeqModelOutput, Seq2SeqQuestionAnsweringModelOutput,Seq2SeqSequenceClassifierOutput
 from transformers.modeling_utils import PreTrainedModel
 from torch.nn import CrossEntropyLoss, MSELoss
 import copy
-
-class BartDecoderLayerMulti(BartDecoderLayer):
+import torch.nn.functional as F
+from typing import Optional, Tuple
+from transformers.activations import ACT2FN
+from BartForDataToTextGeneration import BartForDataToText
+import random
+from transformers.modeling_outputs import (
+    BaseModelOutput,
+    BaseModelOutputWithPastAndCrossAttentions,
+    CausalLMOutputWithCrossAttentions,
+    Seq2SeqLMOutput,
+    Seq2SeqModelOutput,
+    Seq2SeqQuestionAnsweringModelOutput,
+    Seq2SeqSequenceClassifierOutput,
+)
+class BartDecoderLayerMulti(nn.Module):
 
     def __init__(self, config : BartConfig):
         super().__init__()
@@ -31,16 +44,27 @@ class BartDecoderLayerMulti(BartDecoderLayer):
             is_decoder=True,
         )
 
-        self.encoder_attn_1 = copy.deepcopy(self.encoder_attn)
-        self.encoder_attn_2 = copy.deepcopy(self.encoder_attn)
-        self.encoder_attn_3 = copy.deepcopy(self.encoder_attn)
-        self.encoder_attn_4 = copy.deepcopy(self.encoder_attn)
+        #self.init_weights()
+
+        #self.encoder_attn_1 = copy.deepcopy(self.encoder_attn)
+        #self.encoder_attn_2 = copy.deepcopy(self.encoder_attn)
+        #self.encoder_attn_3 = copy.deepcopy(self.encoder_attn)
+        #self.encoder_attn_4 = copy.deepcopy(self.encoder_attn)
 
         self.encoder_attn_layer_norm = nn.LayerNorm(self.embed_dim)
         
         self.fc1 = nn.Linear(self.embed_dim, config.decoder_ffn_dim)
         self.fc2 = nn.Linear(config.decoder_ffn_dim, self.embed_dim)
         self.final_layer_norm = nn.LayerNorm(self.embed_dim)
+
+        #self.init_weights()
+
+
+    def _make_duplicate_attns(self):
+        self.encoder_attn_1 = copy.deepcopy(self.encoder_attn)
+        self.encoder_attn_2 = copy.deepcopy(self.encoder_attn)
+        self.encoder_attn_3 = copy.deepcopy(self.encoder_attn)
+        self.encoder_attn_4 = copy.deepcopy(self.encoder_attn)
 
     def forward(
         self,
@@ -96,14 +120,17 @@ class BartDecoderLayerMulti(BartDecoderLayer):
         hidden_states = F.dropout(hidden_states, p=self.dropout, training=self.training)
         hidden_states = residual + hidden_states
         hidden_states = self.self_attn_layer_norm(hidden_states)
+        
+        if encoder_hidden_states is not None:
+            residual = hidden_states
 
-
-        def cross_attn_block(encoder_hidden_states, encoder_attn, hidden_states, residual)
+        def cross_attn_block(encoder_attn, encoder_hidden_states, encoder_attention_mask, hidden_states, residual):
             # Cross-Attention Block
             cross_attn_present_key_value = None
             cross_attn_weights = None
+            #print(encoder_hidden_states is None)
             if encoder_hidden_states is not None:
-                residual = hidden_states
+                #residual = hidden_states
 
                 # cross_attn cached key/values tuple is at positions 3,4 of present_key_value tuple
                 cross_attn_past_key_value = past_key_value[-2:] if past_key_value is not None else None
@@ -116,20 +143,20 @@ class BartDecoderLayerMulti(BartDecoderLayer):
                     output_attentions=output_attentions,
                 )
             hidden_states = F.dropout(hidden_states, p=self.dropout, training=self.training)
-            hidden_states = residual + hidden_states
+            #hidden_states = residual + hidden_states
             #hidden_states = encoder_attn_layer_norm(hidden_states)
             return hidden_states, cross_attn_present_key_value
 
-        hidden_states_0, cross_attn_present_key_value_0 = cross_attn_block(encoder_hidden_states, encoder_attention_mask, hidden_states, residual)
-        hidden_states_1, cross_attn_present_key_value_1 = cross_attn_block(encoder_hidden_states1, encoder_attention_mask1, hidden_states, residual)
-        hidden_states_2, cross_attn_present_key_value_2 = cross_attn_block(encoder_hidden_states2, encoder_attention_mask2, hidden_states, residual)
-        hidden_states_3, cross_attn_present_key_value_3 = cross_attn_block(encoder_hidden_states3, encoder_attention_mask3, hidden_states, residual)
-        hidden_states_4, cross_attn_present_key_value_4 = cross_attn_block(encoder_hidden_states4, encoder_attention_mask4, hidden_states, residual)
+        hidden_states_0, cross_attn_present_key_value_0 = cross_attn_block(self.encoder_attn, encoder_hidden_states, encoder_attention_mask, hidden_states, residual)
+        hidden_states_1, cross_attn_present_key_value_1 = cross_attn_block(self.encoder_attn_1, encoder_hidden_states1, encoder_attention_mask1, hidden_states, residual)
+        hidden_states_2, cross_attn_present_key_value_2 = cross_attn_block(self.encoder_attn_2, encoder_hidden_states2, encoder_attention_mask2, hidden_states, residual)
+        hidden_states_3, cross_attn_present_key_value_3 = cross_attn_block(self.encoder_attn_3, encoder_hidden_states3, encoder_attention_mask3, hidden_states, residual)
+        hidden_states_4, cross_attn_present_key_value_4 = cross_attn_block(self.encoder_attn_4, encoder_hidden_states4, encoder_attention_mask4, hidden_states, residual)
         # add cross-attn to positions 3,4 of present_key_value tuple
-        hidden_states = hidden_states_0 + hidden_states_1 + hidden_states_2 + hidden_states_3 + hidden_states_4
-        #hidden_states = hidden_states_all + residual
+        hidden_states_all = hidden_states_0 + hidden_states_1 + hidden_states_2 + hidden_states_3 + hidden_states_4
+        hidden_states = hidden_states_all + residual
         hidden_states = self.encoder_attn_layer_norm(hidden_states)
-        present_key_value = present_key_value + cross_attn_present_key_value
+        present_key_value = present_key_value + cross_attn_present_key_value_0
 
 
         # Fully Connected
@@ -144,6 +171,7 @@ class BartDecoderLayerMulti(BartDecoderLayer):
         outputs = (hidden_states,)
 
         if output_attentions:
+            #print("outputting attentions")
             outputs += (self_attn_weights, cross_attn_present_key_value_0)
 
         if use_cache:
@@ -446,9 +474,17 @@ class BartDecoderMulti(BartPretrainedModel):
         )
 
 
+class BartEncoderShared():
+    def __init__(self, enc, layers ):
+        ind = 0
+        own_layers = enc.layers[3:]
+        for shared_layer in layers:
+            own_layers.insert(ind, shared_layer)
+            ind +=1
+        enc.layers = own_layers
 
-class BartForDataToText(BartPretrainedModel):
-    base_model_prefix = "model" d
+class BartForDataToTextDecoderMod(BartForDataToText):
+    base_model_prefix = "model" 
     _keys_to_ignore_on_load_missing = [r"final_logits_bias", r"lm_head\.weight"]
     
     def __init__(self, config: BartConfig):
@@ -475,6 +511,24 @@ class BartForDataToText(BartPretrainedModel):
         print("DIM", config.d_model)
         self.init_weights()
 
+        
+        
+    def _make_duplicate_decoder_layer_attns(self):
+        for each_layer in self.decoder.layers:
+            each_layer._make_duplicate_attns()
+            
+    def _make_duplicate_encoders(self, layer_share = True):
+        self.encoder1 = copy.deepcopy(self.encoder)
+        self.encoder2 = copy.deepcopy(self.encoder)
+        self.encoder3 = copy.deepcopy(self.encoder)
+        self.encoder4 = copy.deepcopy(self.encoder)
+        if layer_share:
+            BartEncoderShared(self.encoder1, self.encoder.layers[:3])
+            BartEncoderShared(self.encoder2, self.encoder.layers[:3])
+            BartEncoderShared(self.encoder3, self.encoder.layers[:3])
+            BartEncoderShared(self.encoder4, self.encoder.layers[:3])
+
+    
     def forward(
         self,
         input_ids_col0 = None,
@@ -597,14 +651,14 @@ class BartForDataToText(BartPretrainedModel):
                 input_ids_interventions,
                 input_ids_outcomes),0)'''
 
-        if encoder_combination_type == 'linearize':
+        '''if encoder_combination_type == "linearize":
             #print("Linearizing")
             encoder_outputs_col0 = self._forward_pass(encoder_outputs_col0, self.fc0)
             encoder_outputs_col1 = self._forward_pass(encoder_outputs_col1, self.fc1)
             encoder_outputs_col2 = self._forward_pass(encoder_outputs_col2, self.fc2)
             encoder_outputs_col3 = self._forward_pass(encoder_outputs_col3, self.fc3)
             encoder_outputs_col4 = self._forward_pass(encoder_outputs_col4, self.fc4)
-
+        '''
         if labels is not None:
             if decoder_input_ids is None:
                 decoder_input_ids = shift_tokens_right(
@@ -655,16 +709,22 @@ class BartForDataToText(BartPretrainedModel):
         decoder_outputs = self.decoder(
             input_ids=decoder_input_ids,
             attention_mask=decoder_attention_mask,
+            
             encoder_hidden_states=encoder_outputs_col0[0],
             encoder_attention_mask=attention_mask_col0,
+            
             encoder_hidden_states1=encoder_outputs_col1[0],
             encoder_attention_mask1=attention_mask_col1,
+            
             encoder_hidden_states2=encoder_outputs_col2[0],
             encoder_attention_mask2=attention_mask_col2,
+            
             encoder_hidden_states3=encoder_outputs_col3[0],
             encoder_attention_mask3=attention_mask_col3,
+            
             encoder_hidden_states4=encoder_outputs_col4[0],
             encoder_attention_mask4=attention_mask_col4,
+            
             head_mask=decoder_head_mask,
             cross_attn_head_mask=None,
             past_key_values=past_key_values,
@@ -685,9 +745,9 @@ class BartForDataToText(BartPretrainedModel):
             decoder_hidden_states=decoder_outputs.hidden_states,
             decoder_attentions=decoder_outputs.attentions,
             cross_attentions=decoder_outputs.cross_attentions,
-            encoder_last_hidden_state=encoder_outputs.last_hidden_state,
-            encoder_hidden_states=encoder_outputs.hidden_states,
-            encoder_attentions=encoder_outputs.attentions,
+            encoder_last_hidden_state=None,
+            encoder_hidden_states=None,
+            encoder_attentions=None,
             )
             
         lm_logits = self.lm_head(outputs[0]) + self.final_logits_bias

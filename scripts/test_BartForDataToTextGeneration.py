@@ -4,7 +4,7 @@ import torch.optim as optim
 #from BartForDataToTextGeneration import BartForDataToText
 from Data2TextProcessor_1 import SummaryDataModule
 
-from BartForDataToTextGeneration_decoder_mod import BartForDataToText
+from BartForDataToTextGeneration_decoder_mod import BartForDataToTextDecoderMod
 from torch import nn 
 import torch
 #additional_special_tokens = []
@@ -50,8 +50,9 @@ tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>",
                                                     eos_token="</s>",
                                                     pad_token = "<pad>")
 #tokenizer.add_tokens(additional_special_tokens)
-model = BartForDataToText.from_pretrained('facebook/bart-base')
+model = BartForDataToTextDecoderMod.from_pretrained('facebook/bart-base')
 model._make_duplicate_encoders()
+model._make_duplicate_decoder_layer_attns()
 #model.resize_token_embeddings(len(tokenizer))
 summary_data = make_data(tokenizer, path = '/home/sanjana')
 summary_data.setup("stage")
@@ -188,7 +189,8 @@ class BartForDataToTextGenerationTester():
             attention_mask_col3 = attention_mask_col3,
             attention_mask_col4 = attention_mask_col4,
             labels = data[6],
-            encoder_combination_type = 'addition'
+            encoder_combination_type = 'addition',
+            use_cache = False
         )
         tgt_ids = data[-1]
         optimizer = optim.Adam(model.parameters())
