@@ -4,7 +4,7 @@ import torch.optim as optim
 #from BartForDataToTextGeneration import BartForDataToText
 from Data2TextProcessor_1 import SummaryDataModule
 
-from BartForDataToTextGeneration import BartForDataToText
+from BartForDataToTextGeneration_decoder_mod import BartForDataToText
 from torch import nn 
 import torch
 #additional_special_tokens = []
@@ -188,7 +188,7 @@ class BartForDataToTextGenerationTester():
             attention_mask_col3 = attention_mask_col3,
             attention_mask_col4 = attention_mask_col4,
             labels = data[6],
-            encoder_combination_type = 'linearize'
+            encoder_combination_type = 'addition'
         )
         tgt_ids = data[-1]
         optimizer = optim.Adam(model.parameters())
@@ -244,5 +244,5 @@ obj = BartForDataToTextGenerationTester()
 #obj.test_attn_masks_OR()
 obj.test_model_forward()
 
-print(obj.encoder_col3.layers[0].final_layer_norm.weight.grad==obj.encoder_col4.layers[0].final_layer_norm.weight.grad)
+#print(obj.encoder_col3.layers[0].final_layer_norm.weight.grad==obj.encoder_col4.layers[0].final_layer_norm.weight.grad)
 #print(obj.encoder_col3.layers[-1].final_layer_norm.weight.grad ==obj.encoder_col4.layers[-1].final_layer_norm.weight)
