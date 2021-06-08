@@ -32,7 +32,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.callbacks import ModelCheckpoint
-from BartForDataToTextGeneration import BartForDataToText
+from BartForDataToTextGeneration_decoder_mod import BartForDataToTextDecoderMod
 import math
 import random
 import re
@@ -42,9 +42,9 @@ from Data2TextProcessor_1 import SummaryDataModule
 #from transformers.modeling_bart import shift_tokens_right
 
 learning_rate = 3e-5 
-max_epochs = 25
+max_epochs = 10
 
-logger = TensorBoardLogger('tb_logs_final', name='my_model_final_epoch%s_%s_addition_layer_sharing'%(str(max_epochs), str(learning_rate)))
+logger = TensorBoardLogger('tb_logs_final', name='my_model_final_epoch%s_%s_decomod_layer_sharing'%(str(max_epochs), str(learning_rate)))
 
 
 train_count = 0
@@ -104,6 +104,7 @@ class LitModel(pl.LightningModule):
         self.tokenizer = tokenizer
         self.model = model
         self.model._make_duplicate_encoders()
+        self.model._make_duplicate_decoder_layer_attns()
         self.model.resize_token_embeddings(len(self.tokenizer))
         self.learning_rate = learning_rate
         self.freeze_encoder = freeze_encoder
@@ -283,7 +284,7 @@ def main():
                                                     pad_token = "<pad>")
 
     tokenizer.add_tokens(additional_special_tokens)
-    bart_model = BartForDataToText.from_pretrained('facebook/bart-base')    
+    bart_model = BartForDataToTextDecoderMod.from_pretrained('facebook/bart-base')    
     summary_data = make_data(tokenizer, path = '/home/sanjana')
 
     #hparams = argparse.Namespace()
@@ -292,7 +293,7 @@ def main():
     eval_beams = 4
 
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
-    checkpoint = ModelCheckpoint('checkpoint_files_final/3e-5_addition_layer_sharing/',
+    checkpoint = ModelCheckpoint('checkpoint_files_final/3e-5_decomod_layer_sharing/',
                                 filename = '{epoch}-{val_loss:.2f}',
                                 save_top_k=15,
                                 monitor = 'val_loss')
@@ -305,7 +306,7 @@ def main():
                         callbacks=[checkpoint])
 
     trainer.fit(model, summary_data)
-    trainer.save_checkpoint("robo_model_epoch%s_adam_%s_addition_layer_sharing.ckpt"%(str(learning_rate), str(max_epochs)))
+    trainer.save_checkpoint("robo_model_epoch%s_adam_%s_decomod_layer_sharing.ckpt"%(str(learning_rate), str(max_epochs)))
 
 
 if __name__ == '__main__': 
