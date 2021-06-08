@@ -7,7 +7,7 @@ import torch.distributed as dist
 from torch.nn import functional as Få
 from BartForDataToTextGeneration_layer_sharing import BartForDataToText
 from transformers.generation_utils import GenerationMixin
-from run_experiment_layer_sharing import LitModel
+from run_experiment import LitModel
 from transformers import BartTokenizer
 from Data2TextProcessor_1 import SummaryDataModule
 import argparse
@@ -193,8 +193,9 @@ class Data2TextGenerator(GenerationMixin):
         synced_gpus: Optional[bool] = None,
         **model_kwargs, 
     ):
-
-
+        #return_dict_in_generate = None
+        #print("USE CACHE", use_cache)
+        use_cache = False
         input_ids_col0 = batch[0] if len(batch) >1 else None
         attention_mask_col0 = batch[1] if len(batch) >1 else None
 
@@ -489,7 +490,7 @@ if __name__ == '__main__':
     hparams.freeze_encoder = True
     hparams.freeze_embeds = True
     hparams.eval_beams = 4
-    model = LitModel.load_from_checkpoint(checkpoint_path="/home/sanjana/roboreviewer_summarization/scripts/checkpoint_files_final/3e-5_linearize_layer_sharing/epoch=3-val_loss=3.15.ckpt")
+    model = LitModel.load_from_checkpoint(checkpoint_path="/home/sanjana/roboreviewer_summarization/scripts/checkpoint_files_final/3e-5_decomod_layer_sharing/epoch=0-val_loss=0.26.ckpt")
     #model = LitModel(learning_rate = 1e-5, tokenizer = tokenizer, model = bart_model, hparams = hparams)
     '''summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/web_nlg_train.csv', 
                                            '/home/sanjana/roboreviewer_summarization/data/web_nlg_test.csv', 
@@ -506,7 +507,7 @@ if __name__ == '__main__':
     val_data = summary_data.val_dataloader(data_type = 'robo')
 
     #train_data = summary_data.train_dataloader()
-    num_val = len(list(val_data))
+    #num_val = len(list(val_data))
     num_val = 5
     print("NUM EXAMPLES", num_val)
     it = iter(val_data)
@@ -517,7 +518,8 @@ if __name__ == '__main__':
         first_batch = next(it)
         generator = Data2TextGenerator(model, tokenizer)
         #print("Target", first_batch[-1])
-        outputs = generator.generate(first_batch, num_beams = 4, num_beam_groups =1,  max_length = 400, min_length = 50)
+        outputs = generator.generate(first_batch, num_beams = 5, num_beam_groups =1,  max_length = 400, min_length = 50, repetition_penalty = 1.1, length_penalty = 2.1)
+        #outputs = generator.generate(first_batch, num_beams = 5, num_beam_groups =1,  max_length = 400, length_penalty = 2.1) 
         val_data = pd.read_csv('/home/sanjana/roboreviewer_summarization/data/robo_dev_sep.csv')
         target = val_data['target'][ind]
         ind += 1
@@ -530,13 +532,13 @@ if __name__ == '__main__':
             references.append(target)
             avg_len += first_batch[-1].shape[1]
             #scores = rouge.get_scores(target, reference)
-            #print("TARGET : ", target)
-            #print("GENERATED :", model_output)
-            #print("SCORES", scores)
-            #print('=' * 130)
+            print("TARGET : ", target)
+            print("GENERATED :", model_output)
+            print("SCORES", scores)
+            print('=' * 130)
     print(avg_len/num_val)
     print(rouge.get_scores(model_out, references, avg=True))
 #print(references)
 #print(model_out)
 df_write = pd.DataFrame(list(zip(references, model_out)), columns=["Reference Summary", "Generated Summary"])
-df_write.to_csv("model_epoch3e-05_adam_sum_layer_sharing.csv")
+df_write.to_csv("model_epoch3e-05_adam_sum.csv")
