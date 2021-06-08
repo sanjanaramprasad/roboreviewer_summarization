@@ -46,14 +46,14 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=1
         )
         return encoded_dict
     
-    def get_encoding(snippet):
+    def get_encoding(snippet, key):
         #print(snippet)
         if isinstance(snippet, list):
             snippet_processed = []
             for each in snippet:
                 enc = run_bart(each)
                 if len(enc['input_ids']) < 1000:
-                    each = "<attribute> " + each+" </attribute>"
+                    each = "<%s> "%key + each+" </%s>"%key
                     snippet_processed.append(each)
             snippet = " ".join(snippet_processed)
         #print(snippet)
@@ -78,6 +78,7 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=1
     sentence_dict = eval(source_sentences[0])
     sentence_keys = list(sentence_dict.keys())
     sentence_keys_map = { key : 'col%s'%(str(i)) for i, key in enumerate(sentence_keys) }
+    reverse_map = {v : k for k , v in sentence_keys_map.items()}
     #print(sentence_keys_map)
     for sentence, tgt_sentence in list(zip(source_sentences, target_sentences)):
         
@@ -100,7 +101,7 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=1
 
                 #print(sentence_dict['col%s'%(str(i))])
 
-                sentence_encoding = get_encoding(sentence_dict['col%s'%(str(i))])
+                sentence_encoding = get_encoding(sentence_dict['col%s'%(str(i))], reverse_map['col%s'%(str(i))] )
                 encoded_sentences[keys_ids].append(sentence_encoding['input_ids'])
                 encoded_sentences[attention_masks_ids].append(sentence_encoding['attention_mask'])
 
@@ -119,7 +120,9 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=1
     for i in range(0, sentence_dict_len):
         keys_ids = 'ids_col%s'%(str(i))
         attention_masks_ids = 'attention_masks_col%s'%(str(i))
+        #print(encoded_sentences[keys_ids])
         encoded_sentences[keys_ids] = torch.cat(encoded_sentences[keys_ids], dim = 0)
+        #print(encoded_sentences[keys_ids])
         encoded_sentences[attention_masks_ids] = torch.cat(encoded_sentences[attention_masks_ids], dim = 0)
 
     target_ids = torch.cat(target_ids, dim = 0)
@@ -141,7 +144,7 @@ class SummaryDataModule(pl.LightningDataModule):
 
     # Loads and splits the data into training, validation and test sets with a 60/20/20 split
     def prepare_data(self):
-        self.train = pd.read_csv(self.data_files[0])
+        self.train = pd.read_csv(self.data_files[0])[:10]
         self.validate = pd.read_csv(self.data_files[1])
         self.test = pd.read_csv(self.data_files[2])
 
@@ -208,7 +211,9 @@ class SummaryDataModule(pl.LightningDataModule):
 
 if __name__ == '__main__':
     additional_special_tokens = ["<attribute>", "</attribute>", "<sep>"]
-    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
+    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
+                                                    eos_token="</s>", 
+                                                    pad_token = "<pad>")
     tokenizer.add_tokens(additional_special_tokens)
     #bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
     summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_sep.csv', 
@@ -220,6 +225,7 @@ if __name__ == '__main__':
     it = summary_data.train_dataloader()
     batches = iter(it)
     batch = next(batches)
+    #print(len(batch))
     #print(batch[0])
     #print(batch[0][0])
     #print('=' * 13)
