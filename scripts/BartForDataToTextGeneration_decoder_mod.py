@@ -111,8 +111,8 @@ class BartDecoderLayerMulti(nn.Module):
         """
         #use_cache = False
         residual = hidden_states
-        if past_key_value:
-            print("PS Value", len(past_key_value))
+        #if past_key_value:
+        #print("PS Value", len(past_key_value))
         # Self Attention
         # decoder uni-directional self-attention cached key/values tuple is at positions 1,2
         self_attn_past_key_value = past_key_value[:2] if past_key_value is not None else None
@@ -164,8 +164,15 @@ class BartDecoderLayerMulti(nn.Module):
 
         cross_attn_past_key_value = past_key_value[4:6] if past_key_value is not None else None
         hidden_states_1, cross_attn_present_key_value_1 = cross_attn_block(self.encoder_attn_1, encoder_hidden_states1, encoder_attention_mask1, hidden_states, residual, cross_attn_past_key_value)
+
+        cross_attn_past_key_value = past_key_value[6:8] if past_key_value is not None else None
         hidden_states_2, cross_attn_present_key_value_2 = cross_attn_block(self.encoder_attn_2, encoder_hidden_states2, encoder_attention_mask2, hidden_states, residual, cross_attn_past_key_value)
+        
+        cross_attn_past_key_value = past_key_value[8:10] if past_key_value is not None else None
         hidden_states_3, cross_attn_present_key_value_3 = cross_attn_block(self.encoder_attn_3, encoder_hidden_states3, encoder_attention_mask3, hidden_states, residual, cross_attn_past_key_value)
+        
+
+        cross_attn_past_key_value = past_key_value[-2:] if past_key_value is not None else None
         hidden_states_4, cross_attn_present_key_value_4 = cross_attn_block(self.encoder_attn_4, encoder_hidden_states4, encoder_attention_mask4, hidden_states, residual, cross_attn_past_key_value)
         # add cross-attn to positions 3,4 of present_key_value tuple
         hidden_states_all = hidden_states_0 + hidden_states_1 + hidden_states_2 + hidden_states_3 + hidden_states_4
@@ -472,7 +479,7 @@ class BartDecoderMulti(BartPretrainedModel):
                 )
             hidden_states = layer_outputs[0]
             if use_cache:
-                print("OUTPUT ATTNS", output_attentions)
+                #print("OUTPUT ATTNS", output_attentions)
                 #next_decoder_cache += (layer_outputs[3 if output_attentions else 1],)
                 next_decoder_cache += (layer_outputs[3 if output_attentions else 1],)
             if output_attentions:
@@ -549,12 +556,12 @@ class BartForDataToTextDecoderMod(BartForDataToText):
         self.encoder2 = copy.deepcopy(self.encoder)
         self.encoder3 = copy.deepcopy(self.encoder)
         self.encoder4 = copy.deepcopy(self.encoder)
-        if layer_share:
+        '''if layer_share:
             BartEncoderShared(self.encoder1, self.encoder.layers[:3])
             BartEncoderShared(self.encoder2, self.encoder.layers[:3])
             BartEncoderShared(self.encoder3, self.encoder.layers[:3])
             BartEncoderShared(self.encoder4, self.encoder.layers[:3])
-
+        '''
     
     def forward(
         self,
