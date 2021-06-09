@@ -41,7 +41,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from Data2TextProcessor_linearize import SummaryDataModule
 #from transformers.modeling_bart import shift_tokens_right
 from rouge import Rouge
-
+from nltk.translate import meteor_score
 learning_rate = 3e-5 
 max_epochs = 25
 
@@ -236,14 +236,15 @@ def inference(checkpoint_file):
     summary_data.setup("stage")
     val_data = summary_data.val_dataloader(data_type = 'robo')
 
-    #num_val = len(list(val_data))
-    num_val = 5
+    num_val = len(list(val_data))
+    #num_val = 5
     print("NUM EXAMPLES", num_val)
     it = iter(val_data)
     ind = 0
     model_out = []
     references = []
     rouge = Rouge()
+    meteor_scores = []
     '''while(ind < num_val):
         ind += 1
         text = next(it)'''
@@ -253,9 +254,9 @@ def inference(checkpoint_file):
                 attention_mask=text[1],
                 use_cache=True,
                 decoder_start_token_id = tokenizer.pad_token_id,
-                num_beams= 4,
+                num_beams= 3,
+                min_length = 70,
                 max_length = 300,
-                repetition_penalty = 1.1,
                 early_stopping = True
         )
     
@@ -265,8 +266,12 @@ def inference(checkpoint_file):
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in text[-1]])
         references.append(target)
         model_out.append(model_output)
-    print(rouge.get_scores(model_out, references, avg=True))
+        met_score = round(meteor_score.meteor_score([target], model_output), 4)
+        meteor_scores.append(met_score)
+    #print(rouge.get_scores(model_out, references, avg=True))
+    print("ROGUE", rouge.get_scores(model_out, references, avg=True))
+    print("METEOR", sum(meteor_scores)/len(meteor_scores))
 if __name__ == '__main__': 
     #main()
-    inference('/home/sanjana/roboreviewer_summarization/epoch=6-val_loss=3.25.ckpt')
+    inference('/home/sanjana/roboreviewer_summarization/scripts/checkpoint_files_final/3e-5_bartcond_linearized/epoch=2-val_loss=2.79.ckpt')
    
