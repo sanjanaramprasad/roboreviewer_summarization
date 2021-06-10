@@ -94,6 +94,7 @@ class BartDecoderLayerMulti(nn.Module):
         past_key_value: Optional[Tuple[torch.Tensor]] = None,
         output_attentions: Optional[bool] = False,
         use_cache: Optional[bool] = True,
+	encoder_combination = 'addition'
     ):
         """
         Args:
@@ -148,7 +149,7 @@ class BartDecoderLayerMulti(nn.Module):
 
                 # cross_attn cached key/values tuple is at positions 3,4 of present_key_value tuple
                 #cross_attn_past_key_value = past_key_value[beg_id:end_id] if past_key_value is not None else None
-                hidden_states, cross_attn_weights, cross_attn_present_key_value = encoder_attn(
+                enc_hidden_states, cross_attn_weights, cross_attn_present_key_value = encoder_attn(
                     hidden_states=hidden_states,
                     key_value_states=encoder_hidden_states,
                     attention_mask=encoder_attention_mask,
@@ -156,11 +157,11 @@ class BartDecoderLayerMulti(nn.Module):
                     past_key_value=cross_attn_past_key_value,
                     output_attentions=output_attentions,
                 )
-            hidden_states = F.dropout(hidden_states, p=self.dropout, training=self.training)
+            enc_hidden_states = F.dropout(enc_hidden_states, p=self.dropout, training=self.training)
             #hidden_states = residual + hidden_states
             #hidden_states = encoder_attn_layer_norm(hidden_states)
             #print("CROSS ATTN WEIGHTS", cross_attn_weights.shape)
-            return hidden_states, cross_attn_present_key_value
+            return enc_hidden_states, cross_attn_present_key_value
 
         cross_attn_past_key_value = past_key_value[2:4] if past_key_value is not None else None
         hidden_states_0, cross_attn_present_key_value_0 = cross_attn_block(self.encoder_attn, encoder_hidden_states, encoder_attention_mask, hidden_states, residual, cross_attn_past_key_value)
@@ -178,34 +179,38 @@ class BartDecoderLayerMulti(nn.Module):
         cross_attn_past_key_value = past_key_value[-2:] if past_key_value is not None else None
         hidden_states_4, cross_attn_present_key_value_4 = cross_attn_block(self.encoder_attn_4, encoder_hidden_states4, encoder_attention_mask4, hidden_states, residual, cross_attn_past_key_value)
         # add cross-attn to positions 3,4 of present_key_value tuple
-        #hidden_states_all = hidden_states_0 + hidden_states_1 + hidden_states_2 + hidden_states_3 + hidden_states_4
+        if encoder_combination == 'addition':
+               hidden_states_all = hidden_states_0 + hidden_states_1 + hidden_states_2 + hidden_states_3 + hidden_states_4
         
-        hidden_states_concat = torch.cat([hidden_states_0, hidden_states_1, hidden_states_2, hidden_states_3, hidden_states_4], dim =2)
-        ## concatenate hidden states 
-        concat_attn_past_key_value = past_key_value[10:12] if past_key_value is not None else None
-        hidden_states_concat, concat_attn_weights, concat_attn_present_key_value = self.concat_attn(
+        else:
+                hidden_states_concat = torch.cat([hidden_states_0, hidden_states_1, hidden_states_2, hidden_states_3, hidden_states_4], dim =2)
+                ## concatenate hidden states 
+                concat_attn_past_key_value = past_key_value[10:12] if past_key_value is not None else None
+                hidden_states_concat, concat_attn_weights, concat_attn_present_key_value = self.concat_attn(
                 hidden_states = hidden_states_concat,
                 past_key_value = concat_attn_past_key_value,
                 attention_mask = None,
                 layer_head_mask=layer_head_mask,
-            output_attentions=output_attentions,
-        )
+            	output_attentions=output_attentions,
+        	)
 
-        hidden_states_concat = self.activation_fn(self.fc_concat1(hidden_states_concat))
-        hidden_states_concat = F.dropout(hidden_states_concat, p=self.activation_dropout, training=self.training)
-        hidden_states_concat = self.activation_fn(self.fc_concat2(hidden_states_concat))
-        hidden_states_concat = F.dropout(hidden_states_concat, p=self.activation_dropout, training=self.training)
-        hidden_states_concat = self.fc_concat3(hidden_states_concat)
-        hidden_states_all_concat = F.dropout(hidden_states_concat, p=self.dropout, training=self.training)
+                hidden_states_concat = self.activation_fn(self.fc_concat1(hidden_states_concat))
+                hidden_states_concat = F.dropout(hidden_states_concat, p=self.activation_dropout, training=self.training)
+                hidden_states_concat = self.activation_fn(self.fc_concat2(hidden_states_concat))
+                hidden_states_concat = F.dropout(hidden_states_concat, p=self.activation_dropout, training=self.training)
+                hidden_states_concat = self.fc_concat3(hidden_states_concat)
+                hidden_states_all = F.dropout(hidden_states_concat, p=self.dropout, training=self.training)
         
         ## self attention over concatenated hidden states 
         ## pass the hidden states through a fcn 
 
-        hidden_states = hidden_states_all_concat + residual
+        hidden_states = hidden_states_all + residual
         hidden_states = self.encoder_attn_layer_norm(hidden_states)
         #print("BEFORE", len(present_key_value))
-        present_key_value = present_key_value + cross_attn_present_key_value_0 + cross_attn_present_key_value_1 + cross_attn_present_key_value_2 + cross_attn_present_key_value_3 + cross_attn_present_key_value_4, concat_attn_present_key_value 
-        #print("AFTER", len(present_key_value))
+        present_key_value = present_key_value + cross_attn_present_key_value_0 + cross_attn_present_key_value_1 + cross_attn_present_key_value_2 + cross_attn_present_key_value_3 + cross_attn_present_key_value_4          
+        if encoder_combination != 'addition':
+	        present_key_value = present_key_value + concat_attn_present_key_value
+	#print("AFTER", len(present_key_value))
         # Fully Connected
         residual = hidden_states
         hidden_states = self.activation_fn(self.fc1(hidden_states))
@@ -303,6 +308,7 @@ class BartDecoderMulti(BartPretrainedModel):
         use_cache=None,
         output_attentions=None,
         output_hidden_states=None,
+        encoder_combination = 'addition',
         return_dict=None,
     ):
         r"""
@@ -488,6 +494,7 @@ class BartDecoderMulti(BartPretrainedModel):
                     ),
                     past_key_value=past_key_value,
                     output_attentions=output_attentions,
+                    encoder_combination = encoder_combination,
                     use_cache=use_cache,
                 )
             hidden_states = layer_outputs[0]
@@ -550,11 +557,11 @@ class BartForDataToTextDecoderMod(BartForDataToText):
 
         self.register_buffer("final_logits_bias", torch.zeros((1, self.shared.num_embeddings)))
         self.lm_head = nn.Linear(config.d_model, self.shared.num_embeddings, bias=False)
-        self.fc0 = nn.Linear(config.d_model, 154)
-        self.fc1 = nn.Linear(config.d_model, 154)
-        self.fc2 = nn.Linear(config.d_model, 154)
-        self.fc3 = nn.Linear(config.d_model, 153)
-        self.fc4 = nn.Linear(config.d_model, 153)
+        ##self.fc0 = nn.Linear(config.d_model, 154)
+        #elf.fc1 = nn.Linear(config.d_model, 154)
+        ##self.fc2 = nn.Linear(config.d_model, 154)
+        ##self.fc3 = nn.Linear(config.d_model, 153)
+        ##self.fc4 = nn.Linear(config.d_model, 153)
         print("DIM", config.d_model)
         self.init_weights()
 
@@ -779,6 +786,7 @@ class BartForDataToTextDecoderMod(BartForDataToText):
             use_cache=use_cache,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
+            encoder_combination = encoder_combination_type,
             return_dict=return_dict,
         )
         
