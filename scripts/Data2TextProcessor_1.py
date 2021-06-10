@@ -54,6 +54,7 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=1
             for each in snippet:
                 enc = run_bart(each)
                 if len(enc['input_ids']) < 1000:
+                    ##key = "attribute"
                     each = "<%s> "%key + each+" </%s>"%key
                     snippet_processed.append(each)
             snippet = " ".join(snippet_processed)
