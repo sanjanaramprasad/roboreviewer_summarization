@@ -1,8 +1,9 @@
 
+from Data2TextProcessor_1 import SummaryDataModule
 from transformers import BartTokenizer, BartForCausalLM, BartForConditionalGeneration, BeamSearchScorer, LogitsProcessorList, MinLengthLogitsProcessor, TopKLogitsWarper, TemperatureLogitsWarper
 import torch.optim as optim
 #from BartForDataToTextGeneration import BartForDataToText
-from Data2TextProcessor_1 import SummaryDataModule
+#from Data2TextProcessor_1 import SummaryDataModule
 
 from BartForDataToTextGeneration_decoder_mod import BartForDataToTextDecoderMod
 #from BartForDataToTextGeneration_addition import BartForDataToText
@@ -60,10 +61,12 @@ tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>",
 model = BartForDataToTextDecoderMod.from_pretrained('facebook/bart-base')
 model._make_duplicate_encoders(layer_share = False)
 model._make_duplicate_decoder_layer_attns()
-#model.resize_token_embeddings(len(tokenizer))
-summary_data = make_data(tokenizer, path = '/home/sanjana')
+model.resize_token_embeddings(len(tokenizer))
+print("Loading Data ...")
+summary_data = make_data(tokenizer, path = '/home/ramprasad.sa')
 summary_data.setup("stage")
 test_data = summary_data.test_dataloader(data_type = 'robo')
+print("Done.")
 it = iter(test_data)
 
 class BartForDataToTextGenerationTester():
@@ -183,7 +186,7 @@ class BartForDataToTextGenerationTester():
         input_ids_col4 = data[8] if len(data) >9 else None
         attention_mask_col4 = data[9] if len(data) >9 else None
 
-        
+        print("forward...") 
         outputs = model(
             input_ids_col0 = input_ids_col0,
             input_ids_col1 = input_ids_col1,

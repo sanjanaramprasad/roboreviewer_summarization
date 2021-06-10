@@ -1,7 +1,9 @@
+import pandas as pd 
+from Data2TextProcessor_linearize import SummaryDataModule 
 import transformers
 import torch
 from torch.utils.data import DataLoader, TensorDataset, random_split, RandomSampler, Dataset
-import pandas as pd
+##import pandas as pd
 import numpy as np
 from transformers import BartTokenizer, BartForCausalLM, BartForConditionalGeneration, BeamSearchScorer, LogitsProcessorList, MinLengthLogitsProcessor, TopKLogitsWarper, TemperatureLogitsWarper
 from transformers.generation_beam_search import BeamScorer, BeamSearchScorer
@@ -38,10 +40,13 @@ import random
 import re
 import argparse
 from pytorch_lightning.loggers import TensorBoardLogger
-from Data2TextProcessor_linearize import SummaryDataModule
+## from Data2TextProcessor_linearize import SummaryDataModule
 #from transformers.modeling_bart import shift_tokens_right
 from rouge import Rouge
+import nltk
 from nltk.translate import meteor_score
+
+##import pandas as pd
 learning_rate = 3e-5 
 max_epochs = 25
 
@@ -228,16 +233,16 @@ def inference(checkpoint_file):
     hparams.freeze_embeds = True
     hparams.eval_beams = 4
     model = LitModel.load_from_checkpoint(checkpoint_path=checkpoint_file)
-    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_linearized.csv',
-                                           '/home/sanjana/roboreviewer_summarization/data/robo_dev_linearized.csv',
-                                           '/home/sanjana/roboreviewer_summarization/data/robo_test_linearized.csv'], batch_size = 1)
+    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/ramprasad.sa/roboreviewer_summarization/data/robo_train_linearized.csv',
+                                           '/home/ramprasad.sa/roboreviewer_summarization/data/robo_dev_linearized.csv',
+                                           '/home/ramprasad.sa/roboreviewer_summarization/data/robo_test_linearized.csv'], batch_size = 1)
     summary_data.prepare_data()
 
     summary_data.setup("stage")
     val_data = summary_data.val_dataloader(data_type = 'robo')
 
     num_val = len(list(val_data))
-    #num_val = 5
+    num_val = 5
     print("NUM EXAMPLES", num_val)
     it = iter(val_data)
     ind = 0
@@ -245,6 +250,7 @@ def inference(checkpoint_file):
     references = []
     rouge = Rouge()
     meteor_scores = []
+    bleu_scores =[]
     '''while(ind < num_val):
         ind += 1
         text = next(it)'''
@@ -268,10 +274,13 @@ def inference(checkpoint_file):
         model_out.append(model_output)
         met_score = round(meteor_score.meteor_score([target], model_output), 4)
         meteor_scores.append(met_score)
+        BLEUscore = nltk.translate.bleu_score.sentence_bleu([target], model_output)
+        bleu_scores.append(BLEUscore)
     #print(rouge.get_scores(model_out, references, avg=True))
     print("ROGUE", rouge.get_scores(model_out, references, avg=True))
     print("METEOR", sum(meteor_scores)/len(meteor_scores))
+    print("BLEU", sum(bleu_scores)/len(bleu_scores))
 if __name__ == '__main__': 
     #main()
-    inference('/home/sanjana/roboreviewer_summarization/scripts/checkpoint_files_final/3e-5_bartcond_linearized/epoch=2-val_loss=2.79.ckpt')
+    inference('/home/ramprasad.sa/roboreviewer_summarization/epoch=2-val_loss=2.79.ckpt')
    

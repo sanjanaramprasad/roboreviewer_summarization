@@ -26,11 +26,11 @@ class BartForDataToText(BartPretrainedModel):
         
         self.register_buffer("final_logits_bias", torch.zeros((1, self.shared.num_embeddings)))
         self.lm_head = nn.Linear(config.d_model, self.shared.num_embeddings, bias=False)
-        self.fc0 = nn.Linear(config.d_model, 154)
-        self.fc1 = nn.Linear(config.d_model, 154)
-        self.fc2 = nn.Linear(config.d_model, 154)
-        self.fc3 = nn.Linear(config.d_model, 153)
-        self.fc4 = nn.Linear(config.d_model, 153)
+        self.fc0 = nn.Linear(config.d_model * 5, config.d_model)
+        #self.fc1 = nn.Linear(config.d_model, 154)
+        #self.fc2 = nn.Linear(config.d_model, 154)
+        #self.fc3 = nn.Linear(config.d_model, 153)
+        #self.fc4 = nn.Linear(config.d_model, 153)
         print("DIM", config.d_model)
         self.init_weights()
         
@@ -294,14 +294,14 @@ class BartForDataToText(BartPretrainedModel):
                 input_ids_interventions,
                 input_ids_outcomes),0)'''
 
-        if encoder_combination_type == 'linearize':
+        '''if encoder_combination_type == 'linearize':
             #print("Linearizing")
             encoder_outputs_col0 = self._forward_pass(encoder_outputs_col0, self.fc0)
             encoder_outputs_col1 = self._forward_pass(encoder_outputs_col1, self.fc1)
             encoder_outputs_col2 = self._forward_pass(encoder_outputs_col2, self.fc2)
             encoder_outputs_col3 = self._forward_pass(encoder_outputs_col3, self.fc3)
             encoder_outputs_col4 = self._forward_pass(encoder_outputs_col4, self.fc4)
-
+        '''
         if labels is not None:
             if decoder_input_ids is None:
                 decoder_input_ids = shift_tokens_right(
@@ -336,7 +336,9 @@ class BartForDataToText(BartPretrainedModel):
         elif encoder_combination_type == 'linearize':
             encoder_outputs = self._get_concat_encoder_outputs([encoder_outputs_col0, encoder_outputs_col1, encoder_outputs_col2, \
                             encoder_outputs_col3, encoder_outputs_col4])
-            #print("ENC OUTPUT", encoder_outputs.shape)
+            ##print("ENC OUTPUT", encoder_outputs[0].shape)
+            encoder_outputs = self._forward_pass(encoder_outputs, self.fc0)
+            ##print("ENC OUTPUT", encoder_outputs[0].shape)
             if attention_mask_col0 is None:
                 attn_mask = attention_mask_col0
             else:

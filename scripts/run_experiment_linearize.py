@@ -1,7 +1,8 @@
+import pandas as pd
 import transformers
 import torch
 from torch.utils.data import DataLoader, TensorDataset, random_split, RandomSampler, Dataset
-import pandas as pd
+#import pandas as pd
 import numpy as np
 from transformers import BartTokenizer, BartForCausalLM, BartForConditionalGeneration, BeamSearchScorer, LogitsProcessorList, MinLengthLogitsProcessor, TopKLogitsWarper, TemperatureLogitsWarper
 from transformers.generation_beam_search import BeamScorer, BeamSearchScorer
@@ -272,7 +273,7 @@ def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana'):
         test_file = path + '/roboreviewer_summarization/data/web_nlg_test.csv'
 
     data_files = [train_file, dev_file, test_file]
-    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1)
+    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 3)
     summary_data.prepare_data()
     return summary_data
 
@@ -293,8 +294,7 @@ def main():
 
     tokenizer.add_tokens(additional_special_tokens)
     bart_model = BartForDataToText.from_pretrained('facebook/bart-base')    
-    summary_data = make_data(tokenizer, path = '/home/sanjana')
-
+    summary_data = make_data(tokenizer, path = '/home/ramprasad.sa')
     #hparams = argparse.Namespace()
     freeze_encoder = True
     freeze_embeds = True

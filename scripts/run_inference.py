@@ -1,3 +1,4 @@
+import pandas as pd
 import warnings
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
@@ -11,11 +12,13 @@ from run_experiment import LitModel
 from transformers import BartTokenizer
 from Data2TextProcessor_1 import SummaryDataModule
 import argparse
-import pandas as pd
+#import pandas as pd
 from rouge import Rouge
 from transformers.generation_beam_search import BeamScorer, BeamSearchScorer
 from transformers.file_utils import ModelOutput
 import pandas as pd
+import nltk
+from nltk.translate import meteor_score
 
 class Data2TextGenerator(GenerationMixin):
 
@@ -195,7 +198,7 @@ class Data2TextGenerator(GenerationMixin):
     ):
         #return_dict_in_generate = None
         #print("USE CACHE", use_cache)
-        use_cache = False
+        #use_cache = False
         input_ids_col0 = batch[0] if len(batch) >1 else None
         attention_mask_col0 = batch[1] if len(batch) >1 else None
 
@@ -490,7 +493,7 @@ if __name__ == '__main__':
     hparams.freeze_encoder = True
     hparams.freeze_embeds = True
     hparams.eval_beams = 4
-    model = LitModel.load_from_checkpoint(checkpoint_path="/home/sanjana/roboreviewer_summarization/scripts/checkpoint_files_final/3e-5_decomod_layer_sharing/epoch=0-val_loss=0.26.ckpt")
+    model = LitModel.load_from_checkpoint(checkpoint_path="/home/ramprasad.sa/roboreviewer_summarization/scripts/3e-5_decodmod/epoch=4-val_loss=0.25.ckpt")
     #model = LitModel(learning_rate = 1e-5, tokenizer = tokenizer, model = bart_model, hparams = hparams)
     '''summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/web_nlg_train.csv', 
                                            '/home/sanjana/roboreviewer_summarization/data/web_nlg_test.csv', 
@@ -498,29 +501,32 @@ if __name__ == '__main__':
     summary_data.prepare_data()
     summary_data.setup("stage")'''
 
-    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_sep.csv',
-        '/home/sanjana/roboreviewer_summarization/data/robo_dev_sep.csv',
-        '/home/sanjana/roboreviewer_summarization/data/robo_test_sep.csv'], batch_size = 1)
+    print("Loading data...")
+    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/ramprasad.sa/roboreviewer_summarization/data/robo_train_sep.csv',
+        '/home/ramprasad.sa/roboreviewer_summarization/data/robo_dev_sep.csv',
+        '/home/ramprasad.sa/roboreviewer_summarization/data/robo_test_sep.csv'], batch_size = 1)
     summary_data.prepare_data()
 
     summary_data.setup("stage")
     val_data = summary_data.val_dataloader(data_type = 'robo')
 
     #train_data = summary_data.train_dataloader()
-    #num_val = len(list(val_data))
-    num_val = 5
+    num_val = len(list(val_data))
+    #num_val = 5
     print("NUM EXAMPLES", num_val)
     it = iter(val_data)
     ind = 0
     model_out = []
     references = []
+    meteor_scores = []
+    bleu_scores =[]
     while(ind < num_val):
         first_batch = next(it)
         generator = Data2TextGenerator(model, tokenizer)
         #print("Target", first_batch[-1])
-        outputs = generator.generate(first_batch, num_beams = 5, num_beam_groups =1,  max_length = 400, min_length = 50, repetition_penalty = 1.1, length_penalty = 2.1)
+        outputs = generator.generate(first_batch, num_beams = 3, num_beam_groups =1,  max_length = 400, min_length = 70, no_repeat_ngram_size =3, early_stopping = True)        
         #outputs = generator.generate(first_batch, num_beams = 5, num_beam_groups =1,  max_length = 400, length_penalty = 2.1) 
-        val_data = pd.read_csv('/home/sanjana/roboreviewer_summarization/data/robo_dev_sep.csv')
+        val_data = pd.read_csv('/home/ramprasad.sa/roboreviewer_summarization/data/robo_dev_sep.csv')
         target = val_data['target'][ind]
         ind += 1
         rouge = Rouge()
@@ -531,14 +537,20 @@ if __name__ == '__main__':
             model_out.append(model_output)
             references.append(target)
             avg_len += first_batch[-1].shape[1]
+            met_score = round(meteor_score.meteor_score([target], model_output), 4)
+            meteor_scores.append(met_score)
+            BLEUscore = nltk.translate.bleu_score.sentence_bleu([target], model_output)
+            bleu_scores.append(BLEUscore)
             #scores = rouge.get_scores(target, reference)
-            print("TARGET : ", target)
-            print("GENERATED :", model_output)
-            print("SCORES", scores)
-            print('=' * 130)
+            #print("TARGET : ", target)
+            #print("GENERATED :", model_output)
+            #print("SCORES", scores)
+            #print('=' * 130)
     print(avg_len/num_val)
-    print(rouge.get_scores(model_out, references, avg=True))
+    print("ROGUE", rouge.get_scores(model_out, references, avg=True))
+    print("METEOR", sum(meteor_scores)/len(meteor_scores))
+    print("BLEU", sum(bleu_scores)/len(bleu_scores))
 #print(references)
 #print(model_out)
 df_write = pd.DataFrame(list(zip(references, model_out)), columns=["Reference Summary", "Generated Summary"])
-df_write.to_csv("model_epoch3e-05_adam_sum.csv")
+df_write.to_csv("model_epoch3e-05_bart_decoder_add.csv")

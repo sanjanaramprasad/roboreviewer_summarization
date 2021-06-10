@@ -1,6 +1,7 @@
+import pandas as pd
 import transformers
 from torch.utils.data import DataLoader, TensorDataset, random_split, RandomSampler, Dataset
-import pandas as pd
+#import pandas as pd
 import numpy as np
 from transformers import BartTokenizer, BartForCausalLM, BartForConditionalGeneration, BeamSearchScorer, LogitsProcessorList, MinLengthLogitsProcessor, TopKLogitsWarper, TemperatureLogitsWarper, BartModel
 import torch.nn.functional as F
@@ -216,9 +217,9 @@ if __name__ == '__main__':
                                                     pad_token = "<pad>")
     tokenizer.add_tokens(additional_special_tokens)
     #bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
-    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_sep.csv', 
-                                           '/home/sanjana/roboreviewer_summarization/data/robo_dev_sep.csv', 
-                                           '/home/sanjana/roboreviewer_summarization/data/robo_test_sep.csv'], batch_size = 1)
+    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/ramprasad.sa/roboreviewer_summarization/data/robo_train_sep.csv', 
+                                           '/home/ramprasad.sa/roboreviewer_summarization/data/robo_dev_sep.csv', 
+                                           '/home/ramprasad.sa/roboreviewer_summarization/data/robo_test_sep.csv'], batch_size = 1)
 
     summary_data.prepare_data()
     summary_data.setup("stage")
