@@ -57,12 +57,15 @@ class BartDecoderLayerMulti(nn.Module):
         self.fc2 = nn.Linear(config.decoder_ffn_dim, self.embed_dim)
         self.final_layer_norm = nn.LayerNorm(self.embed_dim)
 
-        '''self.concat_attn = BartAttention(
+        self.concat_attn = BartAttention(
                 embed_dim = self.embed_dim * 5,
                 num_heads = config.decoder_attention_heads,
                 dropout=config.attention_dropout,
             is_decoder=True,
-        )'''
+        )
+        self.fc_concat1 = nn.Linear(self.embed_dim * 5, (self.embed_dim * 5) * 2)
+        self.fc_concat2 = nn.Linear((self.embed_dim * 5) * 2, (self.embed_dim * 5))
+        self.fc_concat3 = nn.Linear(self.embed_dim * 5, self.embed_dim )
         #self.init_weights()
 
 
@@ -175,23 +178,33 @@ class BartDecoderLayerMulti(nn.Module):
         cross_attn_past_key_value = past_key_value[-2:] if past_key_value is not None else None
         hidden_states_4, cross_attn_present_key_value_4 = cross_attn_block(self.encoder_attn_4, encoder_hidden_states4, encoder_attention_mask4, hidden_states, residual, cross_attn_past_key_value)
         # add cross-attn to positions 3,4 of present_key_value tuple
-        hidden_states_all = hidden_states_0 + hidden_states_1 + hidden_states_2 + hidden_states_3 + hidden_states_4
-        #hidden_states_concat = torch.cat([hidden_states_0, hidden_states_1, hidden_states_2, hidden_states_3, hidden_states_4], dim =2)
-        #print(attention_mask.shape)
-        '''hidden_states_concat, concat_attn_weights, _ = self.concat_attn(
+        #hidden_states_all = hidden_states_0 + hidden_states_1 + hidden_states_2 + hidden_states_3 + hidden_states_4
+        
+        hidden_states_concat = torch.cat([hidden_states_0, hidden_states_1, hidden_states_2, hidden_states_3, hidden_states_4], dim =2)
+        ## concatenate hidden states 
+        concat_attn_past_key_value = past_key_value[10:12] if past_key_value is not None else None
+        hidden_states_concat, concat_attn_weights, concat_attn_present_key_value = self.concat_attn(
                 hidden_states = hidden_states_concat,
-                past_key_value=None,
-                attention_mask=attention_mask,
+                past_key_value = concat_attn_past_key_value,
+                attention_mask = None,
                 layer_head_mask=layer_head_mask,
             output_attentions=output_attentions,
         )
 
-        print(hidden_states_concat.shape)
-        #print("HS SHAPE", hidden_states_all.shape)'''
-        hidden_states = hidden_states_all + residual
+        hidden_states_concat = self.activation_fn(self.fc_concat1(hidden_states_concat))
+        hidden_states_concat = F.dropout(hidden_states_concat, p=self.activation_dropout, training=self.training)
+        hidden_states_concat = self.activation_fn(self.fc_concat2(hidden_states_concat))
+        hidden_states_concat = F.dropout(hidden_states_concat, p=self.activation_dropout, training=self.training)
+        hidden_states_concat = self.fc_concat3(hidden_states_concat)
+        hidden_states_all_concat = F.dropout(hidden_states_concat, p=self.dropout, training=self.training)
+        
+        ## self attention over concatenated hidden states 
+        ## pass the hidden states through a fcn 
+
+        hidden_states = hidden_states_all_concat + residual
         hidden_states = self.encoder_attn_layer_norm(hidden_states)
         #print("BEFORE", len(present_key_value))
-        present_key_value = present_key_value + cross_attn_present_key_value_0 + cross_attn_present_key_value_1 + cross_attn_present_key_value_2 + cross_attn_present_key_value_3 + cross_attn_present_key_value_4 
+        present_key_value = present_key_value + cross_attn_present_key_value_0 + cross_attn_present_key_value_1 + cross_attn_present_key_value_2 + cross_attn_present_key_value_3 + cross_attn_present_key_value_4, concat_attn_present_key_value 
         #print("AFTER", len(present_key_value))
         # Fully Connected
         residual = hidden_states
