@@ -199,8 +199,8 @@ class BartForDataToTextGenerationTester():
             attention_mask_col3 = attention_mask_col3,
             attention_mask_col4 = attention_mask_col4,
             labels = data[6],
-            encoder_combination_type = 'linearize',
-            use_cache = True
+            encoder_combination_type = 'hierarch',
+            use_cache = False
         )
         tgt_ids = data[-1]
         optimizer = optim.Adam(model.parameters())
