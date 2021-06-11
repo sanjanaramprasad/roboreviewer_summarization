@@ -484,35 +484,38 @@ class Data2TextGenerator(GenerationMixin):
             )
 
 
-def sample_score(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalty):
+def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalty, generator):
     references = []
-    targets = []
+    model_out = []
     rouge = Rouge()
+    #generator = Data2TextGenerator(model, tokenizer)
+    meteor_scores = []
+    bleu_scores =[]
     for each in sample:
         outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length =min_len, repetition_penalty = r_penalty, length_penalty = l_penalty                                    )
         model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[-1]])
         if model_output.strip():
-            targets.append(model_output)
+            model_out.append(model_output)
             references.append(target)
             #avg_len += first_batch[-1].shape[1]
             met_score = round(meteor_score.meteor_score([target], model_output), 4)
             meteor_scores.append(met_score)
             BLEUscore = nltk.translate.bleu_score.sentence_bleu([target], model_output)
             bleu_scores.append(BLEUscore)
-        print('='*13)
-        print("Values: num_beam:%s || min_len:%s || r_penalty:%s || l_penalty:%s"%( beam, min_len, r_penalty, l_penalty))
-        #print(avg_len/num_val)
-        rougeScores = rouge.get_scores(model_out, references, avg=True)
-        print("ROGUE", rougeScores)
-        print("METEOR", sum(meteor_scores)/len(meteor_scores))
-        print("BLEU", sum(bleu_scores)/len(bleu_scores))
-    return references, targets, rougeScores[0]['rouge-1']['f'], rougeScores[0]['rouge-l']['f']
+    print('='*13)
+    print("Values: num_beam:%s || min_len:%s || r_penalty:%s || l_penalty:%s"%( nbeams, min_len, r_penalty, l_penalty))
+    #print(avg_len/num_val)
+    rougeScores = rouge.get_scores(model_out, references, avg=True)
+    print("ROGUE", rougeScores)
+    print("METEOR", sum(meteor_scores)/len(meteor_scores))
+    print("BLEU", sum(bleu_scores)/len(bleu_scores))
+    return references, model_out, rougeScores['rouge-1']['f'], rougeScores['rouge-l']['f']
 
 def parameter_search(sample, model, tokenizer):
 
         num_beams_list = [3,5]
-        min_lengths = [50,70,30,90]
+        min_lengths = [70,50,30,90]
         repetition_penalties = [1.0, 1.1, 1.2, 1.3]
         length_penalties = [1.0, 2.0, 3.0, 5.0]
         #rouge = Rouge()
@@ -530,12 +533,13 @@ def parameter_search(sample, model, tokenizer):
                 for min_len in min_lengths:
                     for r_penalty in repetition_penalties:
                         for l_penalty in length_penalties:
-                            references, targets, rou1, roul = sample_scorer(sample, model, tokenizer, nbeams = beam, min_len = min_len, r_penalty = r_penalty, l_penalty = l_penalty)
+                            references, targets, rou1, roul = sample_scorer(sample, model, tokenizer, nbeams = beam, min_len = min_len, r_penalty = r_penalty, l_penalty = l_penalty, generator = generator)
                             if roul > max_roul:
                                 final_num_beam = beam
                                 final_min_len = min_len
                                 final_rpenalty = r_penalty
                                 final_lpenalty = l_penalty
+                                max_roul = roul
         return final_num_beam, final_min_len, final_rpenalty, final_lpenalty
         
 if __name__ == '__main__':
