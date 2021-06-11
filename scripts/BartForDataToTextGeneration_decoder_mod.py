@@ -58,7 +58,7 @@ class BartDecoderLayerMulti(nn.Module):
         self.final_layer_norm = nn.LayerNorm(self.embed_dim)
 
         self.concat_attn = BartAttention(
-                embed_dim = self.embed_dim * 5,
+                embed_dim = self.embed_dim,
                 num_heads = config.decoder_attention_heads,
                 dropout=config.attention_dropout,
             is_decoder=True,
@@ -185,8 +185,15 @@ class BartDecoderLayerMulti(nn.Module):
         else:
                 hidden_states_concat = torch.cat([hidden_states_0, hidden_states_1, hidden_states_2, hidden_states_3, hidden_states_4], dim =2)
                 ## concatenate hidden states 
+                hidden_states_concat = self.activation_fn(self.fc_concat1(hidden_states_concat))
+                hidden_states_concat = F.dropout(hidden_states_concat, p=self.activation_dropout, training=self.training)
+                hidden_states_concat = self.activation_fn(self.fc_concat2(hidden_states_concat))
+                hidden_states_concat = F.dropout(hidden_states_concat, p=self.activation_dropout, training=self.training)
+                hidden_states_concat = self.fc_concat3(hidden_states_concat)
+                hidden_states_concat = F.dropout(hidden_states_concat, p=self.dropout, training=self.training)
+                
                 concat_attn_past_key_value = past_key_value[10:12] if past_key_value is not None else None
-                hidden_states_concat, concat_attn_weights, concat_attn_present_key_value = self.concat_attn(
+                hidden_states_all, concat_attn_weights, concat_attn_present_key_value = self.concat_attn(
                 hidden_states = hidden_states_concat,
                 past_key_value = concat_attn_past_key_value,
                 attention_mask = None,
@@ -194,12 +201,12 @@ class BartDecoderLayerMulti(nn.Module):
             	output_attentions=output_attentions,
         	)
 
-                hidden_states_concat = self.activation_fn(self.fc_concat1(hidden_states_concat))
-                hidden_states_concat = F.dropout(hidden_states_concat, p=self.activation_dropout, training=self.training)
-                hidden_states_concat = self.activation_fn(self.fc_concat2(hidden_states_concat))
-                hidden_states_concat = F.dropout(hidden_states_concat, p=self.activation_dropout, training=self.training)
-                hidden_states_concat = self.fc_concat3(hidden_states_concat)
-                hidden_states_all = F.dropout(hidden_states_concat, p=self.dropout, training=self.training)
+                #hidden_states_concat = self.activation_fn(self.fc_concat1(hidden_states_concat))
+                #hidden_states_concat = F.dropout(hidden_states_concat, p=self.activation_dropout, training=self.training)
+                #hidden_states_concat = self.activation_fn(self.fc_concat2(hidden_states_concat))
+                #hidden_states_concat = F.dropout(hidden_states_concat, p=self.activation_dropout, training=self.training)
+                #hidden_states_concat = self.fc_concat3(hidden_states_concat)
+                #hidden_states_all = F.dropout(hidden_states_concat, p=self.dropout, training=self.training)
         
         ## self attention over concatenated hidden states 
         ## pass the hidden states through a fcn 

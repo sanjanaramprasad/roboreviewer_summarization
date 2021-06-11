@@ -1,3 +1,5 @@
+import pandas as pd
+from Data2TextProcessor import SummaryDataModule
 import transformers
 import torch
 from torch.utils.data import DataLoader, TensorDataset, random_split, RandomSampler, Dataset
@@ -38,13 +40,13 @@ import random
 import re
 import argparse
 from pytorch_lightning.loggers import TensorBoardLogger
-from Data2TextProcessor_1 import SummaryDataModule
+#from Data2TextProcessor_1 import SummaryDataModule
 #from transformers.modeling_bart import shift_tokens_right
 
 learning_rate = 3e-5 
 max_epochs = 10
 
-logger = TensorBoardLogger('tb_logs_final', name='my_model_final_epoch%s_%s_decomod'%(str(max_epochs), str(learning_rate)))
+logger = TensorBoardLogger('tb_logs_final', name='my_model_final_epoch%s_%s_decomod_fancy'%(str(max_epochs), str(learning_rate)))
 
 
 train_count = 0
@@ -179,7 +181,7 @@ class LitModel(pl.LightningModule):
             labels = tgt_ids,
             decoder_input_ids = None,
             use_cache = False,
-            encoder_combination_type = 'addition'
+            encoder_combination_type = 'linearize'
         )
         
         loss = outputs[0]
@@ -235,7 +237,7 @@ class LitModel(pl.LightningModule):
             labels = tgt_ids,
             decoder_input_ids = None,
             use_cache = False,
-            encoder_combination_type = 'addition'
+            encoder_combination_type = 'linearize'
         )
 
 
@@ -293,19 +295,19 @@ def main():
 
     tokenizer.add_tokens(additional_special_tokens)
     bart_model = BartForDataToTextDecoderMod.from_pretrained('facebook/bart-base')    
-    summary_data = make_data(tokenizer, path = '/home/sanjana')
+    summary_data = make_data(tokenizer, path = '/home/ramprasad.sa')
 
     #hparams = argparse.Namespace()
     freeze_encoder = False
-    freeze_embeds = False
+    freeze_embeds = True
     eval_beams = 4
 
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
-    checkpoint = ModelCheckpoint('checkpoint_files_final/3e-5_decomod/',
+    checkpoint = ModelCheckpoint('checkpoint_files_final/3e-5_decomod_fancy/',
                                 filename = '{epoch}-{val_loss:.2f}',
-                                save_top_k=15,
+                                save_top_k=6,
                                 monitor = 'val_loss')
-    trainer = pl.Trainer(gpus=2, accelerator='dp', 
+    trainer = pl.Trainer(gpus=1,  
 			max_epochs = max_epochs,
                         min_epochs = 1,
                         auto_lr_find = False,
