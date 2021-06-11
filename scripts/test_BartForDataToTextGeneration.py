@@ -63,7 +63,7 @@ model._make_duplicate_encoders(layer_share = False)
 model._make_duplicate_decoder_layer_attns()
 model.resize_token_embeddings(len(tokenizer))
 print("Loading Data ...")
-summary_data = make_data(tokenizer, path = '/home/ramprasad.sa')
+summary_data = make_data(tokenizer, path = '/home/sanjana')
 summary_data.setup("stage")
 test_data = summary_data.test_dataloader(data_type = 'robo')
 print("Done.")
@@ -199,8 +199,8 @@ class BartForDataToTextGenerationTester():
             attention_mask_col3 = attention_mask_col3,
             attention_mask_col4 = attention_mask_col4,
             labels = data[6],
-            encoder_combination_type = 'linearize',
-            use_cache = True
+            encoder_combination_type = 'addition',
+            use_cache = False
         )
         tgt_ids = data[-1]
         optimizer = optim.Adam(model.parameters())

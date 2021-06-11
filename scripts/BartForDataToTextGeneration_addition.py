@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 from torch import nn
 from transformers.models.bart.modeling_bart import BartEncoder, BartDecoder, BartPretrainedModel, shift_tokens_right
 from transformers.models.bart.configuration_bart import BartConfig
@@ -6,6 +7,7 @@ from transformers.modeling_outputs import BaseModelOutput,Seq2SeqLMOutput,Seq2Se
 from transformers.modeling_utils import PreTrainedModel
 from torch.nn import CrossEntropyLoss, MSELoss
 import copy
+from transformers.activations import ACT2FN
 
 class BartForDataToText(BartPretrainedModel):
     base_model_prefix = "model"
@@ -16,7 +18,9 @@ class BartForDataToText(BartPretrainedModel):
         print(config.encoder_layers)
         padding_idx, vocab_size = config.pad_token_id, config.vocab_size
         self.shared = nn.Embedding(vocab_size, config.d_model, padding_idx)
-        
+        self.dropout = config.dropout
+        self.activation_fn = ACT2FN[config.activation_function]
+        self.activation_dropout = config.activation_dropout
         self.encoder = BartEncoder(config, self.shared)
         
 
@@ -26,7 +30,9 @@ class BartForDataToText(BartPretrainedModel):
         
         self.register_buffer("final_logits_bias", torch.zeros((1, self.shared.num_embeddings)))
         self.lm_head = nn.Linear(config.d_model, self.shared.num_embeddings, bias=False)
-        self.fc0 = nn.Linear(config.d_model * 5, config.d_model)
+        self.fc0 = nn.Linear(config.d_model * 5, config.d_model * 10)
+        self.fc1 = nn.Linear(config.d_model * 10, 3072)
+        self.final_layer = nn.Linear(3072, config.d_model)
         #self.fc1 = nn.Linear(config.d_model, 154)
         #self.fc2 = nn.Linear(config.d_model, 154)
         #self.fc3 = nn.Linear(config.d_model, 153)
@@ -162,7 +168,15 @@ class BartForDataToText(BartPretrainedModel):
         enc_outputs = []
         for i in range(0,3):
             if len(encoder_outputs) > i:
-                enc_outputs.append(fcn(encoder_outputs[i]))
+                #fcn(encoder_outputs[i]))
+                layer_1 = self.activation_fn(self.fc0(encoder_outputs[i]))
+                layer_1 = F.dropout(layer_1, p=self.activation_dropout, training=self.training)
+                layer_2 = self.activation_fn(self.fc1(layer_1))
+                layer_2 = F.dropout(layer_2, p=self.activation_dropout, training=self.training)
+                final_layer = self.final_layer(layer_2)
+                final_layer = F.dropout(final_layer,  p=self.dropout, training=self.training)
+                enc_outputs.append(final_layer)
+
 
         encoder_outputs = BaseModelOutput(
                 last_hidden_state=enc_outputs[0],
@@ -296,7 +310,7 @@ class BartForDataToText(BartPretrainedModel):
 
         '''if encoder_combination_type == 'linearize':
             #print("Linearizing")
-            encoder_outputs_col0 = self._forward_pass(encoder_outputs_col0, self.fc0)
+            iencoder_outputs_col0 = self._forward_pass(encoder_outputs_col0, self.fc0)
             encoder_outputs_col1 = self._forward_pass(encoder_outputs_col1, self.fc1)
             encoder_outputs_col2 = self._forward_pass(encoder_outputs_col2, self.fc2)
             encoder_outputs_col3 = self._forward_pass(encoder_outputs_col3, self.fc3)
@@ -338,7 +352,6 @@ class BartForDataToText(BartPretrainedModel):
                             encoder_outputs_col3, encoder_outputs_col4])
             ##print("ENC OUTPUT", encoder_outputs[0].shape)
             encoder_outputs = self._forward_pass(encoder_outputs, self.fc0)
-            ##print("ENC OUTPUT", encoder_outputs[0].shape)
             if attention_mask_col0 is None:
                 attn_mask = attention_mask_col0
             else:
@@ -346,6 +359,7 @@ class BartForDataToText(BartPretrainedModel):
                     [attn_mask for attn_mask in attn_mask_list if not (attn_mask is None)]
 
                 )
+
 
 
         #print("ENC ATTNS", added_enc_attns)

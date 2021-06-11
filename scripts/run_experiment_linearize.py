@@ -33,7 +33,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.callbacks import ModelCheckpoint
-from BartForDataToTextGeneration import BartForDataToText
+from BartForDataToTextGeneration_addition import BartForDataToText
 import math
 import random
 import re
@@ -273,7 +273,7 @@ def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana'):
         test_file = path + '/roboreviewer_summarization/data/web_nlg_test.csv'
 
     data_files = [train_file, dev_file, test_file]
-    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 3)
+    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 2)
     summary_data.prepare_data()
     return summary_data
 
@@ -296,7 +296,7 @@ def main():
     bart_model = BartForDataToText.from_pretrained('facebook/bart-base')    
     summary_data = make_data(tokenizer, path = '/home/ramprasad.sa')
     #hparams = argparse.Namespace()
-    freeze_encoder = True
+    freeze_encoder = False
     freeze_embeds = True
     eval_beams = 4
 

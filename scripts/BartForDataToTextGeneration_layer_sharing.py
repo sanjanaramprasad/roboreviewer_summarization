@@ -11,7 +11,7 @@ import copy
 class BartEncoderShared():
     def __init__(self, enc, layers ):
         ind = 0
-        own_layers = enc.layers[3:]
+        own_layers = enc.layers[4:]
         for shared_layer in layers:
             own_layers.insert(ind, shared_layer)
             ind +=1
