@@ -210,7 +210,7 @@ class BartForDataToTextGenerationTester():
         print('=' *13)
 
 
-    def test_model_forward_bart_encoder_straight_addition(self):
+    def test_model_forward_bart_encoder_straight(self):
         from BartForDataToTextGeneration_encoder_combination import BartForDataToText
         from Data2TextProcessor_1 import SummaryDataModule
         model = BartForDataToText.from_pretrained('facebook/bart-base')
@@ -262,8 +262,9 @@ class BartForDataToTextGenerationTester():
  
         
 obj = BartForDataToTextGenerationTester()
-
-obj.test_model_forward_bart_encoder_loop_per_study()
-obj.test_model_forward_bart_encoder_straight_addition()
+obj.test_model_forward_bart_encoder_loop_per_study(encoder_combination_type = 'addition')
+obj.test_model_forward_bart_encoder_straight(encoder_combination_type = 'addition')
+obj.test_model_forward_bart_encoder_loop_per_study(encoder_combination_type = 'linearize')
+obj.test_model_forward_bart_encoder_straight(encoder_combination_type = 'linearize')
 #print(obj.encoder_col3.layers[0].final_layer_norm.weight.grad==obj.encoder_col4.layers[0].final_layer_norm.weight.grad)
 #print(obj.encoder_col3.layers[-1].final_layer_norm.weight.grad ==obj.encoder_col4.layers[-1].final_layer_norm.weight)
