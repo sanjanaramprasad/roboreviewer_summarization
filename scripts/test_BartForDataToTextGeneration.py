@@ -210,6 +210,53 @@ class BartForDataToTextGenerationTester():
         print('=' *13)
 
 
+    def test_model_forward_bart_encoder_straight_addition(self):
+        from BartForDataToTextGeneration_encoder_combination import BartForDataToText
+        from Data2TextProcessor_1 import SummaryDataModule
+        model = BartForDataToText.from_pretrained('facebook/bart-base')
+        model._make_duplicate_encoders(layer_share = False)
+        model.resize_token_embeddings(len(tokenizer))
+        print("Loading Data ...")
+        summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/sanjana', files = ['robo_train_sep.csv', 
+                            'robo_dev_sep.csv', 'robo_test_sep.csv'])
+        summary_data.setup("stage")
+        test_data = summary_data.test_dataloader(data_type = 'robo')
+        print("Done.")
+        it = iter(test_data)
+        
+        data = next(it)
+        input_ids_col0, attention_mask_col0, input_ids_col1, attention_mask_col1, \
+            input_ids_col2, attention_mask_col2, \
+            input_ids_col3, attention_mask_col3, \
+            input_ids_col4, attention_mask_col4 = get_data(data)
+
+        print("forward...") 
+        outputs = model(
+            input_ids_col0 = input_ids_col0,
+            input_ids_col1 = input_ids_col1,
+            input_ids_col2 = input_ids_col2, 
+            input_ids_col3 = input_ids_col3,
+            input_ids_col4 = input_ids_col4,
+            attention_mask_col0 = attention_mask_col0,
+            attention_mask_col1 = attention_mask_col1,
+            attention_mask_col2 = attention_mask_col2,
+            attention_mask_col3 = attention_mask_col3,
+            attention_mask_col4 = attention_mask_col4,
+            labels = data[-1],
+            encoder_forward_startegy = 'straight',
+            encoder_combination_type = 'addition',
+            use_cache = True
+        )
+        tgt_ids = data[-1]
+        optimizer = optim.Adam(model.parameters())
+        loss = outputs[0]
+        #ce_loss_fct = torch.nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
+        #loss = ce_loss_fct(lm_logits.view(-1, lm_logits.shape[-1]), tgt_ids.view(-1))
+        optimizer.zero_grad()
+        loss.backward()
+        print("OUTPUTS", outputs[0])
+        print('=' *13)
+
 
 
  
@@ -217,6 +264,6 @@ class BartForDataToTextGenerationTester():
 obj = BartForDataToTextGenerationTester()
 
 obj.test_model_forward_bart_encoder_loop_per_study()
-
+obj.test_model_forward_bart_encoder_straight_addition()
 #print(obj.encoder_col3.layers[0].final_layer_norm.weight.grad==obj.encoder_col4.layers[0].final_layer_norm.weight.grad)
 #print(obj.encoder_col3.layers[-1].final_layer_norm.weight.grad ==obj.encoder_col4.layers[-1].final_layer_norm.weight)
