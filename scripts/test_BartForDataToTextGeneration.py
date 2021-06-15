@@ -1,5 +1,5 @@
 
-from Data2TextProcessor_1 import SummaryDataModule
+#from Data2TextProcessor_1 import SummaryDataModule
 from transformers import BartTokenizer, BartForCausalLM, BartForConditionalGeneration, BeamSearchScorer, LogitsProcessorList, MinLengthLogitsProcessor, TopKLogitsWarper, TemperatureLogitsWarper
 import torch.optim as optim
 
@@ -10,7 +10,7 @@ import torch
 
 
 
-def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv']):
+def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv']):
     if data_type == 'robo':
         train_file = path + '/roboreviewer_summarization/data/%s'%(files[0])
         dev_file = path + '/roboreviewer_summarization/data/%s'%(files[1])
@@ -169,8 +169,8 @@ class BartForDataToTextGenerationTester():
         model._make_duplicate_encoders(layer_share = False)
         model.resize_token_embeddings(len(tokenizer))
         print("Loading Data ...")
-        summary_data = make_data(tokenizer, path = '/home/sanjana', files = ['robo_train_linearized_per_study.csv', 
-                            'robo_dev_linearized_per_study.csv', 'robo_test_linearized_per_study'])
+        summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/sanjana', files = ['robo_train_linearized_per_study.csv', 
+                            'robo_dev_linearized_per_study.csv', 'robo_test_linearized_per_study.csv'])
         summary_data.setup("stage")
         test_data = summary_data.test_dataloader(data_type = 'robo')
         print("Done.")
@@ -194,10 +194,10 @@ class BartForDataToTextGenerationTester():
             attention_mask_col2 = attention_mask_col2,
             attention_mask_col3 = attention_mask_col3,
             attention_mask_col4 = attention_mask_col4,
-            labels = data[6],
-            encoder_forward_startegy = 'single',
+            labels = data[-1],
+            encoder_forward_startegy = 'loop',
             encoder_combination_type = 'addition',
-            use_cache = False
+            use_cache = True
         )
         tgt_ids = data[-1]
         optimizer = optim.Adam(model.parameters())
