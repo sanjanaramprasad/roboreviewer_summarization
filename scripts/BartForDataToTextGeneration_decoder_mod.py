@@ -94,7 +94,7 @@ class BartDecoderLayerMulti(nn.Module):
         past_key_value: Optional[Tuple[torch.Tensor]] = None,
         output_attentions: Optional[bool] = False,
         use_cache: Optional[bool] = True,
-	encoder_combination = 'addition'
+	    decoder_combination = 'addition'
     ):
         """
         Args:
@@ -201,23 +201,18 @@ class BartDecoderLayerMulti(nn.Module):
             	output_attentions=output_attentions,
         	)
 
-                #hidden_states_concat = self.activation_fn(self.fc_concat1(hidden_states_concat))
-                #hidden_states_concat = F.dropout(hidden_states_concat, p=self.activation_dropout, training=self.training)
-                #hidden_states_concat = self.activation_fn(self.fc_concat2(hidden_states_concat))
-                #hidden_states_concat = F.dropout(hidden_states_concat, p=self.activation_dropout, training=self.training)
-                #hidden_states_concat = self.fc_concat3(hidden_states_concat)
-                #hidden_states_all = F.dropout(hidden_states_concat, p=self.dropout, training=self.training)
+                
         
         ## self attention over concatenated hidden states 
         ## pass the hidden states through a fcn 
 
         hidden_states = hidden_states_all + residual
         hidden_states = self.encoder_attn_layer_norm(hidden_states)
-        #print("BEFORE", len(present_key_value))
         present_key_value = present_key_value + cross_attn_present_key_value_0 + cross_attn_present_key_value_1 + cross_attn_present_key_value_2 + cross_attn_present_key_value_3 + cross_attn_present_key_value_4          
         if encoder_combination != 'addition':
 	        present_key_value = present_key_value + concat_attn_present_key_value
-	#print("AFTER", len(present_key_value))
+	
+
         # Fully Connected
         residual = hidden_states
         hidden_states = self.activation_fn(self.fc1(hidden_states))
@@ -230,7 +225,6 @@ class BartDecoderLayerMulti(nn.Module):
         outputs = (hidden_states,)
 
         if output_attentions:
-            #print("outputting attentions")
             outputs += (self_attn_weights, cross_attn_present_key_value_0)
 
         if use_cache:
@@ -315,7 +309,7 @@ class BartDecoderMulti(BartPretrainedModel):
         use_cache=None,
         output_attentions=None,
         output_hidden_states=None,
-        encoder_combination = 'addition',
+        decoder_combination = 'addition',
         return_dict=None,
     ):
         r"""
@@ -453,33 +447,7 @@ class BartDecoderMulti(BartPretrainedModel):
 
             past_key_value = past_key_values[idx] if past_key_values is not None else None
 
-            '''if getattr(self.config, "gradient_checkpointing", False) and self.training:
-
-                if use_cache:
-                    logger.warning(
-                        "`use_cache=True` is incompatible with `config.gradient_checkpointing=True`. Setting "
-                        "`use_cache=False`..."
-                    )
-                    use_cache = False
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        # None for past_key_value
-                        return module(*inputs, output_attentions, use_cache)
-
-                    return custom_forward
-
-                layer_outputs = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(decoder_layer),
-                    hidden_states,
-                    attention_mask,
-                    encoder_hidden_states,
-                    encoder_attention_mask,
-                    head_mask[idx] if head_mask is not None else None,
-                    cross_attn_head_mask[idx] if cross_attn_head_mask is not None else None,
-                    None,
-                )'''
-            #else:
+            
 
             layer_outputs = decoder_layer(
                     hidden_states,
@@ -501,13 +469,11 @@ class BartDecoderMulti(BartPretrainedModel):
                     ),
                     past_key_value=past_key_value,
                     output_attentions=output_attentions,
-                    encoder_combination = encoder_combination,
+                    decoder_combination = decoder_combination,
                     use_cache=use_cache,
                 )
             hidden_states = layer_outputs[0]
             if use_cache:
-                #print("OUTPUT ATTNS", output_attentions)
-                #next_decoder_cache += (layer_outputs[3 if output_attentions else 1],)
                 next_decoder_cache += (layer_outputs[3 if output_attentions else 1],)
             if output_attentions:
                 all_self_attns += (layer_outputs[1],)
@@ -564,11 +530,6 @@ class BartForDataToTextDecoderMod(BartForDataToText):
 
         self.register_buffer("final_logits_bias", torch.zeros((1, self.shared.num_embeddings)))
         self.lm_head = nn.Linear(config.d_model, self.shared.num_embeddings, bias=False)
-        ##self.fc0 = nn.Linear(config.d_model, 154)
-        #elf.fc1 = nn.Linear(config.d_model, 154)
-        ##self.fc2 = nn.Linear(config.d_model, 154)
-        ##self.fc3 = nn.Linear(config.d_model, 153)
-        ##self.fc4 = nn.Linear(config.d_model, 153)
         print("DIM", config.d_model)
         self.init_weights()
 
@@ -583,12 +544,12 @@ class BartForDataToTextDecoderMod(BartForDataToText):
         self.encoder2 = copy.deepcopy(self.encoder)
         self.encoder3 = copy.deepcopy(self.encoder)
         self.encoder4 = copy.deepcopy(self.encoder)
-        '''if layer_share:
+        if layer_share:
             BartEncoderShared(self.encoder1, self.encoder.layers[:3])
             BartEncoderShared(self.encoder2, self.encoder.layers[:3])
             BartEncoderShared(self.encoder3, self.encoder.layers[:3])
             BartEncoderShared(self.encoder4, self.encoder.layers[:3])
-        '''
+        
     
     def forward(
         self,
@@ -619,7 +580,7 @@ class BartForDataToTextDecoderMod(BartForDataToText):
         output_attentions=None,
         output_hidden_states=None,
         return_dict=None,
-        encoder_combination_type = 'addition'
+        decoder_combination = 'addition'
     ):
         
         
@@ -649,7 +610,6 @@ class BartForDataToTextDecoderMod(BartForDataToText):
                         output_attentions = output_attentions,
                         output_hidden_states = output_hidden_states,
                         return_dict = return_dict)
-            #encoder_outputs_list.append(encoder_outputs_col0)
 
         if not (input_ids_col1 is None):
             encoder_outputs_col1 = self._get_encoder_outputs(
@@ -662,7 +622,7 @@ class BartForDataToTextDecoderMod(BartForDataToText):
                         output_attentions = output_attentions,
                         output_hidden_states = output_hidden_states,
                         return_dict = return_dict)
-            #encoder_outputs_list.append(encoder_outputs_col1)
+            
 
         if not (input_ids_col2 is None):
             encoder_outputs_col2 = self._get_encoder_outputs(
@@ -675,7 +635,7 @@ class BartForDataToTextDecoderMod(BartForDataToText):
                         output_attentions = output_attentions,
                         output_hidden_states = output_hidden_states,
                         return_dict = return_dict)
-            #encoder_outputs_list.append(encoder_outputs_col2)
+            
         
         if not (input_ids_col3 is None):
             encoder_outputs_col3 = self._get_encoder_outputs(
@@ -688,7 +648,7 @@ class BartForDataToTextDecoderMod(BartForDataToText):
                         output_attentions = output_attentions,
                         output_hidden_states = output_hidden_states,
                         return_dict = return_dict)
-            #encoder_outputs_list.append(encoder_outputs_col3)
+            
         
         if not (input_ids_col4 is None):
             encoder_outputs_col4 = self._get_encoder_outputs(
@@ -701,25 +661,7 @@ class BartForDataToTextDecoderMod(BartForDataToText):
                         output_attentions = output_attentions,
                         output_hidden_states = output_hidden_states,
                         return_dict = return_dict)
-            #encoder_outputs_list.append(encoder_outputs_col4)
-        
-        ## Since BART decoder gets the same input as the encoder shifted right
-        ## concatenate the source input_ids fed to different encoders to feed to BART decoder
-        '''all_input_ids = torch.cat((
-                input_ids_punchline_texts,
-                input_ids_punchline_effects,
-                input_ids_populations,
-                input_ids_interventions,
-                input_ids_outcomes),0)'''
-
-        '''if encoder_combination_type == "linearize":
-            #print("Linearizing")
-            encoder_outputs_col0 = self._forward_pass(encoder_outputs_col0, self.fc0)
-            encoder_outputs_col1 = self._forward_pass(encoder_outputs_col1, self.fc1)
-            encoder_outputs_col2 = self._forward_pass(encoder_outputs_col2, self.fc2)
-            encoder_outputs_col3 = self._forward_pass(encoder_outputs_col3, self.fc3)
-            encoder_outputs_col4 = self._forward_pass(encoder_outputs_col4, self.fc4)
-        '''
+            
         if labels is not None:
             if decoder_input_ids is None:
                 decoder_input_ids = shift_tokens_right(
@@ -730,43 +672,7 @@ class BartForDataToTextDecoderMod(BartForDataToText):
             decoder_input_ids = shift_tokens_right(
                 all_input_ids, self.config.pad_token_id, self.config.decoder_start_token_id
             )
-            
-        '''encoder_outputs = [encoder_outputs_col0, encoder_outputs_col1, encoder_outputs_col2, \
-                            encoder_outputs_col3, encoder_outputs_col4]
 
-        encoder_outputs_list = [each for each in encoder_outputs if not (each is None)]
-
-        if encoder_combination_type =='addition':
-        
-            encoder_outputs = self._get_sum_encoder_outputs(
-                    encoder_outputs_list
-                )
-        
-
-            if attention_mask_col0 is None:
-                attn_mask = attention_mask_col0
-            else:
-                attn_mask = self._get_attention_masks_OR(
-                    [attn_mask for attn_mask in attn_mask_list if not (attn_mask is None)]
-
-                )
-
-        elif encoder_combination_type == 'linearize':
-            encoder_outputs = self._get_concat_encoder_outputs([encoder_outputs_col0, encoder_outputs_col1, encoder_outputs_col2, \
-                            encoder_outputs_col3, encoder_outputs_col4])
-            #print("ENC OUTPUT", encoder_outputs.shape)
-            if attention_mask_col0 is None:
-                attn_mask = attention_mask_col0
-            else:
-                attn_mask= self._get_attention_masks_OR(
-                    [attn_mask for attn_mask in attn_mask_list if not (attn_mask is None)]
-
-                )'''
-
-
-        #print("ENC ATTNS", added_enc_attns)
-        #print(attention_mask_punchline_texts)
-        # decoder outputs consists of (dec_features, past_key_value, dec_hidden, dec_attn)
         decoder_outputs = self.decoder(
             input_ids=decoder_input_ids,
             attention_mask=decoder_attention_mask,
@@ -793,7 +699,7 @@ class BartForDataToTextDecoderMod(BartForDataToText):
             use_cache=use_cache,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
-            encoder_combination = encoder_combination_type,
+            decoder_combination = decoder_combination,
             return_dict=return_dict,
         )
         
