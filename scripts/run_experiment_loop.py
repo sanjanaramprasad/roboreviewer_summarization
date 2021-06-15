@@ -42,7 +42,7 @@ from Data2TextProcessor_loop import SummaryDataModule
 #from transformers.modeling_bart import shift_tokens_right
 
 learning_rate = 3e-5 
-max_epochs = 25
+max_epochs = 10
 
 logger = TensorBoardLogger('tb_logs_final', name='my_model_epoch_loop%s_%s'%(str(max_epochs), str(learning_rate)))
 
@@ -107,8 +107,8 @@ class LitModel(pl.LightningModule):
         attention_mask= batch[1]
         tgt_ids = batch[-1]
         outputs = self(
-            input_ids= input_ids,
-            attention_mask= attention_mask,
+            input_ids_col0= input_ids,
+            attention_mask_col0= attention_mask,
             labels = tgt_ids,
             decoder_input_ids = None,
             use_cache = False,
@@ -133,8 +133,8 @@ class LitModel(pl.LightningModule):
         attention_mask= batch[1]
         tgt_ids = batch[-1]
         outputs = self(
-            input_ids= input_ids,
-            attention_mask= attention_mask,
+            input_ids_col0= input_ids,
+            attention_mask_col0= attention_mask,
             labels = tgt_ids,
             decoder_input_ids = None,
             use_cache = False,
@@ -224,7 +224,7 @@ def inference(checkpoint_file):
     #bart_model._make_duplicate_encoders()
     hparams = argparse.Namespace()
     rouge = Rouge()
-    hparams.freeze_encoder = True
+    hparams.freeze_encoder = False
     hparams.freeze_embeds = True
     hparams.eval_beams = 4
     model = LitModel.load_from_checkpoint(checkpoint_path=checkpoint_file)
