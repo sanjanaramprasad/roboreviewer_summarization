@@ -232,7 +232,6 @@ class BartForDataToText(BartPretrainedModel):
                             return_dict = return_dict)
 
         else:
-            print(len(encoder_output_list))
             encoder_outputs = self._get_sum_encoder_outputs(encoder_output_list)
 
         attn_mask = self._get_attention_masks_OR(attn_mask_list) if attn_mask_list else None
@@ -284,7 +283,9 @@ class BartForDataToText(BartPretrainedModel):
         
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
         
-        
+        attn_mask_list = []
+        encoder_outputs_list =[]
+
         if encoder_forward_startegy == 'single':
             encoder_outputs_list = []
             
@@ -299,7 +300,8 @@ class BartForDataToText(BartPretrainedModel):
                             output_attentions = output_attentions,
                             output_hidden_states = output_hidden_states,
                             return_dict = return_dict)
-                #encoder_outputs_list.append(encoder_outputs_col0)
+                encoder_outputs_list.append(encoder_outputs_col0)
+                attn_mask_list.append(attention_mask_col0)
 
             if not (input_ids_col1 is None):
                 encoder_outputs_col1 = self._get_encoder_outputs(
@@ -312,7 +314,8 @@ class BartForDataToText(BartPretrainedModel):
                             output_attentions = output_attentions,
                             output_hidden_states = output_hidden_states,
                             return_dict = return_dict)
-                #encoder_outputs_list.append(encoder_outputs_col1)
+                encoder_outputs_list.append(encoder_outputs_col1)
+                attn_mask_list.append(attention_mask_col1)
 
             if not (input_ids_col2 is None):
                 encoder_outputs_col2 = self._get_encoder_outputs(
@@ -325,7 +328,8 @@ class BartForDataToText(BartPretrainedModel):
                             output_attentions = output_attentions,
                             output_hidden_states = output_hidden_states,
                             return_dict = return_dict)
-                #encoder_outputs_list.append(encoder_outputs_col2)
+                encoder_outputs_list.append(encoder_outputs_col2)
+                attn_mask_list.append(attention_mask_col2)
         
             if not (input_ids_col3 is None):
                 encoder_outputs_col3 = self._get_encoder_outputs(
@@ -338,7 +342,8 @@ class BartForDataToText(BartPretrainedModel):
                             output_attentions = output_attentions,
                             output_hidden_states = output_hidden_states,
                             return_dict = return_dict)
-                #encoder_outputs_list.append(encoder_outputs_col3)
+                encoder_outputs_list.append(encoder_outputs_col3)
+                attn_mask_list.append(attention_mask_col3)
         
             if not (input_ids_col4 is None):
                 encoder_outputs_col4 = self._get_encoder_outputs(
@@ -351,58 +356,49 @@ class BartForDataToText(BartPretrainedModel):
                             output_attentions = output_attentions,
                             output_hidden_states = output_hidden_states,
                             return_dict = return_dict)
-                #encoder_outputs_list.append(encoder_outputs_col4)
-
-            encoder_outputs = [encoder_outputs_col0, encoder_outputs_col1, encoder_outputs_col2, \
-                                encoder_outputs_col3, encoder_outputs_col4]
-
-            encoder_outputs_list = [each for each in encoder_outputs if not (each is None)]
-            attn_mask_list = [attention_mask_col0, attention_mask_col1, attention_mask_col2, \
-                            attention_mask_col3, attention_mask_col4]
+                encoder_outputs_list.append(encoder_outputs_col4)
+                attn_mask_list.append(attention_mask_col4)
             
 
         else:
-            attn_mask_list = []
             if input_ids_col0 is not None:
                 #print(encoder_outputs_col0)
                 encoder_outputs_col0, attn_mask0 = self._loop_encoders( self.encoder, encoder_outputs_col0, input_ids_col0,\
                      attention_mask_col0, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds,  inc_count = 1024)
+                encoder_outputs_list.append(encoder_outputs_col0)
                 attn_mask_list.append(attn_mask0)
 
             if input_ids_col1 is not None:
                 encoder_outputs_col1, attn_mask1 = self._loop_encoders( self.encoder1, encoder_outputs_col1, input_ids_col1,\
                      attention_mask_col1, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, inc_count = 1024)
+                encoder_outputs_list.append(encoder_outputs_col1)
                 attn_mask_list.append(attn_mask1)
 
             if input_ids_col2 is not None:
                 encoder_outputs_col2, attn_mask2 = self._loop_encoders( self.encoder2, encoder_outputs_col2, input_ids_col2,\
                      attention_mask_col2, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, inc_count = 1024)
+                encoder_outputs_list.append(encoder_outputs_col2)
                 attn_mask_list.append(attn_mask2)
 
             if input_ids_col3 is not None:
                 encoder_outputs_col3, attn_mask3 = self._loop_encoders( self.encoder3, encoder_outputs_col3, input_ids_col3,\
                      attention_mask_col3, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, inc_count = 1024)
+                encoder_outputs_list.append(encoder_outputs_col3)
                 attn_mask_list.append(attn_mask3)
 
             if input_ids_col4 is not None:
                 encoder_outputs_col4, attn_mask4 = self._loop_encoders( self.encoder4, encoder_outputs_col4, input_ids_col4,\
                      attention_mask_col4, output_attentions, output_hidden_states, head_mask, return_dict,inputs_embeds, inc_count = 1024)
+                encoder_outputs_list.append(encoder_outputs_col4)
                 attn_mask_list.append(attn_mask4)
-            
-            encoder_outputs = [encoder_outputs_col0, encoder_outputs_col1, encoder_outputs_col2, \
-                                encoder_outputs_col3, encoder_outputs_col4]
-
-            encoder_outputs_list = [each for each in encoder_outputs if not (each is None)]
-
-            #attn_mask_list = [attn_mask0, attn_mask1, attn_mask2, attn_mask3, attn_mask4]
-            #encoder_outputs_list = [each for each in encoder_outputs if not (each is None)]
+        
 
         if len(encoder_outputs_list) == 1:
             encoder_outputs = encoder_outputs_list[0]
             attn_mask = attn_mask_list[0]
 
         else:
-            attn_mask_list = [attn_mask for attn_mask in attn_mask_list if not (attn_mask is None)]
+    
             if encoder_combination_type =='addition':
         
                 encoder_outputs = self._get_sum_encoder_outputs(
