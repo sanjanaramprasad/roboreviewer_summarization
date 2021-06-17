@@ -42,11 +42,15 @@ from pytorch_lightning.loggers import TensorBoardLogger
 import os
 import pytorch_lightning as pl
 
-
+def freeze_params(model):
+    ''' Function that takes a model as input (or part of a model) and freezes the layers for faster training
+        adapted from finetune.py '''
+    for layer in model.parameters():
+        layer.requires_grade = False
 
 class LitModel(pl.LightningModule):
     # Instantiate the model
-    def __init__(self, learning_rate, tokenizer, model, encoder_forward_startegy, encoder_combination_type, layer_share ,freeze_encoder, freeze_embeds, logger):
+    def __init__(self, learning_rate, tokenizer, model, encoder_forward_startegy, encoder_combination_type, layer_share ,freeze_encoder, freeze_embeds):
         super().__init__()
         self.tokenizer = tokenizer
         self.model = model
