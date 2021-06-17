@@ -6,11 +6,13 @@ from transformers.models.bart.configuration_bart import BartConfig
 import torch
 import torch.distributed as dist
 from torch.nn import functional as F
-from BartForDataToTextGeneration_layer_sharing import BartForDataToText
+#from BartForDataToTextGeneration_layer_sharing import BartForDataToText
+from BartForDataToTextGeneration_encoder_combination import BartForDataToText
 from transformers.generation_utils import GenerationMixin
-from run_experiment_linearize import LitModel
+##from run_experiment_linearize import LitModel
+from run_experiment_encoder_combination import LitModel
 from transformers import BartTokenizer
-from Data2TextProcessor_1 import SummaryDataModule
+from Data2TextProcessor_loop import SummaryDataModule
 import argparse
 #import pandas as pd
 from rouge import Rouge
@@ -541,21 +543,49 @@ def parameter_search(sample, model, tokenizer):
                                 final_lpenalty = l_penalty
                                 max_roul = roul
         return final_num_beam, final_min_len, final_rpenalty, final_lpenalty
+
+def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv']):
+    if data_type == 'robo':
+        train_file = path + '/roboreviewer_summarization/data/%s'%(files[0])
+        dev_file = path + '/roboreviewer_summarization/data/%s'%(files[1])
+        test_file = path + '/roboreviewer_summarization/data/%s'%(files[2])
+
+    elif data_type =='webnlg':
+        train_file = path + '/roboreviewer_summarization/data/web_nlg_train.csv'
+        dev_file = path + '/roboreviewer_summarization/data/web_nlg_dev.csv'
+        test_file = path + '/roboreviewer_summarization/data/web_nlg_test.csv'
+
+    data_files = [train_file, dev_file, test_file]
+    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1)
+    summary_data.prepare_data()
+    return summary_data
+
         
 if __name__ == '__main__':
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
     hparams = argparse.Namespace()
-    hparams.freeze_encoder = True
-    hparams.freeze_embeds = True
+    freeze_encoder = True
+    freeze_embeds = True
     hparams.eval_beams = 4
-    model_path = '3e-5_linearize/epoch=4-val_loss=0.26.ckpt'
-    model = LitModel.load_from_checkpoint(checkpoint_path="/home/sanjana/roboreviewer_summarization/scripts/checkpoint_files_final/%s"%(model_path))
+    model_path = '3e-5_loop_addition_mod/epoch=8-loss=0.45.ckpt'
+    learning_rate = 3e-5
+    encoder_forward_startegy = 'loop'
+    encoder_combination_type = 'addition'
+    layer_share = False
+    bart_model = BartForDataToText.from_pretrained('facebook/bart-base')
+    model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, \
+                        encoder_forward_startegy = encoder_forward_startegy, encoder_combination_type = encoder_combination_type, layer_share = layer_share, freeze_encoder = freeze_encoder, \
+                            freeze_embeds = freeze_embeds)
+    model = model.load_from_checkpoint(checkpoint_path="/home/sanjana/roboreviewer_summarization/scripts/checkpoint_files/%s"%(model_path))
 
     print("Loading data...")
-    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_sep.csv',
+    '''summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_sep.csv',
         '/home/sanjana/roboreviewer_summarization/data/robo_dev_sep.csv',
-        '/home/sanjana/roboreviewer_summarization/data/robo_test_sep.csv'], batch_size = 1)
-    summary_data.prepare_data()
+        '/home/sanjana/roboreviewer_summarization/data/robo_test_sep.csv'], batch_size = 1)'''
+    from Data2TextProcessor_loop import SummaryDataModule
+    files = ['robo_train_linearized_per_study.csv', 'robo_dev_linearized_per_study.csv', 'robo_test_linearized_per_study.csv']
+    summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/sanjana', files = files) 
+    #summary_data.prepare_data()
 
     summary_data.setup("stage")
     val_data = summary_data.val_dataloader(data_type = 'robo')
