@@ -266,7 +266,7 @@ class BartForDataToText(BartPretrainedModel):
         output_attentions=None,
         output_hidden_states=None,
         return_dict=None,
-        encoder_forward_startegy = 'single',
+        encoder_forward_stratergy = 'single',
         encoder_combination_type = 'addition'
     ):
         
@@ -286,7 +286,7 @@ class BartForDataToText(BartPretrainedModel):
         attn_mask_list = []
         encoder_outputs_list =[]
 
-        if encoder_forward_startegy == 'single':
+        if encoder_forward_stratergy == 'single':
             encoder_outputs_list = []
             
             if not (input_ids_col0 is None):

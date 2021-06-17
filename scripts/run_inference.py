@@ -145,33 +145,33 @@ class Data2TextGenerator(GenerationMixin):
                 encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
                 attention_mask_col0 = encoder_kwargs.get("attention_mask_col0", None)
                 encoder_outputs = encoder_kwargs.get('encoder_outputs_col0', None)
-                if encoder_forward_startegy == 'single':
+                if encoder_forward_stratergy == 'single':
                     model_kwargs["encoder_outputs_col0"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col0, encoder_outputs = encoder_outputs, input_ids = input_ids_col0, attention_mask = attention_mask_col0)
                 else:
                     model_kwargs["encoder_outputs_col0"] , _ = self.model._loop_encoders(encoder_col0, encoder_outputs, input_ids_col0, attention_mask_col0, inc_count = 256)
 
-            if encoder_forward_startegy == 'single':
+            if encoder_forward_stratergy == 'single':
                  if not(input_ids_col1 is None):
                      encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
                      attention_mask_col1 = encoder_kwargs.get("attention_mask_col1", None)
                      encoder_outputs = encoder_kwargs.get('encoder_outputs_col1', None)
                      model_kwargs["encoder_outputs_col1"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col1, encoder_outputs = encoder_outputs, input_ids = input_ids_col1, attention_mask = attention_mask_col1)
 
-            if encoder_forward_startegy == 'single':
+            if encoder_forward_stratergy == 'single':
                  if not(input_ids_col2 is None):
                      encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
                      attention_mask_col2 = encoder_kwargs.get("attention_mask_col2", None)
                      encoder_outputs = encoder_kwargs.get('encoder_outputs_col2', None)
                      model_kwargs["encoder_outputs_col2"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col2, encoder_outputs = encoder_outputs, input_ids = input_ids_col2, attention_mask = attention_mask_col2)
 
-            if encoder_forward_startegy == 'single':
+            if encoder_forward_stratergy == 'single':
                  if not(input_ids_col3 is None):
                      encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
                      attention_mask_col3 = encoder_kwargs.get("attention_mask_col0", None)
                      encoder_outputs = encoder_kwargs.get('encoder_outputs_col3', None)
                      model_kwargs["encoder_outputs_col3"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col3, encoder_outputs = encoder_outputs, input_ids = input_ids_col3, attention_mask = attention_mask_col3)
 
-            if encoder_forward_startegy == 'single':
+            if encoder_forward_stratergy == 'single':
                  if not(input_ids_col4 is None):
                      encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
                      attention_mask_col0 = encoder_kwargs.get("attention_mask_col4", None)
@@ -511,7 +511,7 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     meteor_scores = []
     bleu_scores =[]
     for each in sample:
-        outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length =min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, encoder_forward_startegy = 'loop', encoder_combination_type = 'addition')
+        outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length =min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, encoder_forward_stratergy = 'loop', encoder_combination_type = 'addition')
         model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[-1]])
         if model_output.strip():
@@ -586,12 +586,12 @@ if __name__ == '__main__':
     hparams.eval_beams = 4
     model_path = '3e-5_loop_addition_mod/epoch=8-loss=0.45.ckpt'
     learning_rate = 3e-5
-    encoder_forward_startegy = 'loop'
+    encoder_forward_stratergy = 'loop'
     encoder_combination_type = 'addition'
     layer_share = False
     bart_model = BartForDataToText.from_pretrained('facebook/bart-base')
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, \
-                        encoder_forward_startegy = encoder_forward_startegy, encoder_combination_type = encoder_combination_type, layer_share = layer_share, freeze_encoder = freeze_encoder, \
+                        encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type, layer_share = layer_share, freeze_encoder = freeze_encoder, \
                             freeze_embeds = freeze_embeds)
     model = model.load_from_checkpoint(checkpoint_path="/home/sanjana/roboreviewer_summarization/scripts/checkpoint_files/%s"%(model_path))
 
