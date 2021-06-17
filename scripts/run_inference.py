@@ -72,34 +72,34 @@ class Data2TextGenerator(GenerationMixin):
             model_kwargs["attention_mask_col4"] = attention_mask_col4.index_select(0, expanded_return_idx)
 
         if is_encoder_decoder:
-            if encoder_outputs_col0 is not None
+            if encoder_outputs_col0 is not None:
                 encoder_outputs_col0["last_hidden_state"] = encoder_outputs_col0.last_hidden_state.index_select(
                     0, expanded_return_idx.to(encoder_outputs_col0.last_hidden_state.device)
                 )
                 model_kwargs["encoder_outputs_col0"] = encoder_outputs_col0
 
-            if encoder_outputs_col1 is not None
+            if encoder_outputs_col1 is not None:
                 encoder_outputs_col1["last_hidden_state"] = encoder_outputs_col1.last_hidden_state.index_select(
                     0, expanded_return_idx.to(encoder_outputs_col1.last_hidden_state.device)
                 )
                 model_kwargs["encoder_outputs_col1"] = encoder_outputs_col1
 
 
-            if encoder_outputs_col2 is not None
+            if encoder_outputs_col2 is not None:
                 encoder_outputs_col2["last_hidden_state"] = encoder_outputs_col2.last_hidden_state.index_select(
                     0, expanded_return_idx.to(encoder_outputs_col2.last_hidden_state.device)
                 )
                 model_kwargs["encoder_outputs_col2"] = encoder_outputs_col2
 
 
-            if encoder_outputs_col3 is not None
+            if encoder_outputs_col3 is not None:
                 encoder_outputs_col3["last_hidden_state"] = encoder_outputs_col3.last_hidden_state.index_select(
                     0, expanded_return_idx.to(encoder_outputs_col3.last_hidden_state.device)
                 )
                 model_kwargs["encoder_outputs_col3"] = encoder_outputs_col3
 
 
-            if encoder_outputs_col4 is not None
+            if encoder_outputs_col4 is not None:
                 encoder_outputs_col4["last_hidden_state"] = encoder_outputs_col4.last_hidden_state.index_select(
                     0, expanded_return_idx.to(encoder_outputs_col4.last_hidden_state.device)
                 )
