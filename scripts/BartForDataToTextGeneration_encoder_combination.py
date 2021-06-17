@@ -196,7 +196,7 @@ class BartForDataToText(BartPretrainedModel):
             )
         return encoder_outputs
 
-    def _loop_encoders(self, encoder, encoder_outputs, input_ids, attention_masks, output_attentions, output_hidden_states,head_mask, return_dict,inputs_embeds, inc_count = 1024):
+    def _loop_encoders(self, encoder, encoder_outputs, input_ids, attention_masks, output_attentions = None, output_hidden_states = None, head_mask = None, return_dict = None ,inputs_embeds = None, inc_count = 1024):
         encoder_output_list = []
         attn_mask_list = []
         for chunk_idx in range(0, input_ids.shape[1], inc_count):
