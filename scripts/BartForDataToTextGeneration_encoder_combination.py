@@ -201,7 +201,7 @@ class BartForDataToText(BartPretrainedModel):
         attn_mask_list = []
         for chunk_idx in range(0, input_ids.shape[1], inc_count):
             input_ids_chunk = input_ids[:,chunk_idx: chunk_idx+inc_count]
-            attention_mask_chunk = attention_masks[:,chunk_idx: chunk_idx+inc_count]
+            attention_mask_chunk = attention_masks[:,chunk_idx: chunk_idx+inc_count] if attention_masks else None
             if input_ids_chunk[0][0] != -2 and (encoder_outputs is None):
                 encoder_outputs_temp = self._get_encoder_outputs(
                             encoder = encoder, 
