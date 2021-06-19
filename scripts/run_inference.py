@@ -377,7 +377,7 @@ class Data2TextGenerator(GenerationMixin):
             input_ids, model_kwargs = self._expand_inputs_for_generation(
                 input_ids, expand_size=num_beams, is_encoder_decoder=self.config.is_encoder_decoder, **model_kwargs
             )
-            #print("BEAM SEARCH KWARGS", model_kwargs)
+            print("BEAM SEARCH KWARGS", model_kwargs)
             return self.model.beam_search(
                 input_ids,
                 beam_scorer,
@@ -584,16 +584,18 @@ if __name__ == '__main__':
     freeze_encoder = True
     freeze_embeds = True
     hparams.eval_beams = 4
-    model_path = '3e-5_loop_addition_mod/epoch=8-loss=0.45.ckpt'
+    model_path = '3e-5_loop_addition_mod/epoch=4-loss=0.57.ckpt'
     learning_rate = 3e-5
-    encoder_forward_stratergy = 'loop'
-    encoder_combination_type = 'addition'
+    ##encoder_forward_stratergy = 'single'
+    ##encoder_combination_type = 'addition'
     layer_share = False
     bart_model = BartForDataToText.from_pretrained('facebook/bart-base')
-    model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, \
-                        encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type, layer_share = layer_share, freeze_encoder = freeze_encoder, \
-                            freeze_embeds = freeze_embeds)
-    model = model.load_from_checkpoint(checkpoint_path="/home/sanjana/roboreviewer_summarization/scripts/checkpoint_files/%s"%(model_path))
+    '''model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type, layer_share = layer_share, freeze_encoder = freeze_encoder, \
+                            freeze_embeds = freeze_embeds)'''
+    encoder_forward_stratergy = 'loop'
+    encoder_combination_type = 'addition'
+
+    model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type, layer_share = layer_share, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds).load_from_checkpoint(checkpoint_path="/home/sanjana/roboreviewer_summarization/scripts/checkpoint_files/%s"%(model_path), encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type,)
 
     print("Loading data...")
     '''summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_sep.csv',
