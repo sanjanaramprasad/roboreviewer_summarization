@@ -512,9 +512,13 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     bleu_scores =[]
     for each in sample:
         outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length =min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, encoder_forward_stratergy = 'loop', encoder_combination_type = 'addition')
+        print("Outputs", outputs)
         model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[-1]])
         if model_output.strip():
+            print(model_output)
+            print(target)
+            print('=' * 13)
             model_out.append(model_output)
             references.append(target)
             #avg_len += first_batch[-1].shape[1]
@@ -579,7 +583,19 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/s
 
         
 if __name__ == '__main__':
-    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
+    additional_special_tokens = ["<sep>", "<study>", "</study>",
+            "<outcomes>", "</outcomes>",
+            "<punchline_text>", "</punchline_text>",
+            "<population>", "</population>",
+            "<interventions>", "</interventions>",
+            "<punchline_effect>", "</punchline_effect>"]
+
+    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>",
+                                                    eos_token="</s>",
+                                                    pad_token = "<pad>")
+
+    tokenizer.add_tokens(additional_special_tokens)
+    #tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
     hparams = argparse.Namespace()
     freeze_encoder = True
     freeze_embeds = True

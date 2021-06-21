@@ -181,10 +181,12 @@ if __name__ == '__main__':
     #print(max_list_len) 
     print(source.shape[1]) 
     #print(tokenizer.decode(source[0][:1024]))
-    for i in range(0, source.shape[1], 1024):
-        chunk = source[:,i : i+ 1024]
-        if chunk[0][0] != -2:
+    for i in range(0, source.shape[1], 256):
+        chunk = source[:,i : i+ 256]
+        if chunk[0][0] != -2 and chunk[0][0] != 1:
+            print(chunk)
             print(tokenizer.decode(chunk[0]))
-        #print(source[:,i : i+ 1024].shape)
+    print('=' * 13)
+    #print(source[:,i : i+ 1024].shape)
     #print(batch[1])
     #print(batch[2])
