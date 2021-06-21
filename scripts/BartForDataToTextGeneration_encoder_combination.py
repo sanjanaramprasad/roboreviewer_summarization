@@ -97,9 +97,6 @@ class BartForDataToText(BartPretrainedModel):
     def get_encoders(self):
         return self.encoder, self.encoder1, \
             self.encoder2, self.encoder3, self.encoder4
-
-    def get_encoder0_fcn(self):
-        return self.fc0_enc0, self.fc1_enc0, self.final_layer_enc0
     
     def get_decoder(self):
         self.decoder
@@ -336,6 +333,7 @@ class BartForDataToText(BartPretrainedModel):
         return_dict=None,
         encoder_forward_stratergy = 'single',
         encoder_combination_type = 'addition',
+        loop_strategy = 'addition',
         inc_count = 256
     ):
         
@@ -434,32 +432,53 @@ class BartForDataToText(BartPretrainedModel):
         else:
             #print("HERE")
             if input_ids_col0 is not None or encoder_outputs_col0 is not None:
+                fc0 = self.fc0_enc0 if loop_strategy != 'addition' else None
+                fc1 = self.fc1_enc0 if loop_strategy != 'addition' else None
+                final_layer = self.final_layer_enc0 if loop_strategy != 'addition' else None 
+                
                 encoder_outputs_col0, attention_mask_col0 = self._loop_encoders( self.encoder, encoder_outputs_col0, input_ids_col0,\
                      attention_mask_col0, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds,  \
-                          inc_count = inc_count, fc0 = self.fc0_enc0, fc1 = self.fc1_enc0, final_layer = self.final_layer_enc0)
+                          inc_count = inc_count, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
                 
 
             if input_ids_col1 is not None or encoder_outputs_col1 is not None:
+                fc0 = self.fc0_enc1 if loop_strategy != 'addition' else None
+                fc1 = self.fc1_enc1 if loop_strategy != 'addition' else None
+                final_layer = self.final_layer_enc1 if loop_strategy != 'addition' else None 
+
                 encoder_outputs_col1, attention_mask_col1 = self._loop_encoders( self.encoder1, encoder_outputs_col1, input_ids_col1,\
                      attention_mask_col1, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, \
-                         inc_count = inc_count, fc0 = self.fc0_enc1, fc1 = self.fc1_enc1, final_layer = self.final_layer_enc1)
+                         inc_count = inc_count, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
                 
             if input_ids_col2 is not None or encoder_outputs_col2 is not None:
+                
+                fc0 = self.fc0_enc2 if loop_strategy != 'addition' else None
+                fc1 = self.fc1_enc2 if loop_strategy != 'addition' else None
+                final_layer = self.final_layer_enc2 if loop_strategy != 'addition' else None 
+                
                 encoder_outputs_col2, attention_mask_col2 = self._loop_encoders( self.encoder2, encoder_outputs_col2, input_ids_col2,\
                      attention_mask_col2, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, \
-                        inc_count = inc_count, fc0 = self.fc0_enc2, fc1 = self.fc1_enc2, final_layer = self.final_layer_enc2)
+                        inc_count = inc_count, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
                 
 
             if input_ids_col3 is not None or encoder_outputs_col3 is not None:
+                fc0 = self.fc0_enc3 if loop_strategy != 'addition' else None
+                fc1 = self.fc1_enc3 if loop_strategy != 'addition' else None
+                final_layer = self.final_layer_enc3 if loop_strategy != 'addition' else None 
+                
                 encoder_outputs_col3, attention_mask_col3 = self._loop_encoders( self.encoder3, encoder_outputs_col3, input_ids_col3,\
                      attention_mask_col3, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, \
-                        inc_count = inc_count, fc0 = self.fc0_enc3, fc1 = self.fc1_enc3, final_layer = self.final_layer_enc3)
+                        inc_count = inc_count, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
                 
 
             if input_ids_col4 is not None or encoder_outputs_col4 is not None:
-                encoder_outputs_col4, attention_mask_col4 = self._loop_encoders( self.encoder4, encoder_outputs_col4, input_ids_col4,\
+                fc0 = self.fc0_enc4 if loop_strategy != 'addition' else None
+                fc1 = self.fc1_enc4 if loop_strategy != 'addition' else None
+                final_layer = self.final_layer_enc4 if loop_strategy != 'addition' else None 
+
+                encoder_outputs_col4, attention_mask_col4 = self.__get_loop_encoder_outputs( self.encoder4, encoder_outputs_col4, input_ids_col4,\
                      attention_mask_col4, output_attentions, output_hidden_states, head_mask, return_dict,inputs_embeds, \
-                        inc_count = inc_count, fc0 = self.fc0_enc4, fc1 = self.fc1_enc4, final_layer = self.final_layer_enc4)
+                        inc_count = inc_count, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
                 
         
        #print(encoder_outputs_list)

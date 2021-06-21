@@ -142,6 +142,7 @@ class Data2TextGenerator(GenerationMixin):
             encoder_kwargs = {
                 argument: value for argument, value in model_kwargs.items() if not argument.startswith("decoder_")
             }
+            loop_strategy = model_kwargs.get("loop_strategy", "addition")
             if not(input_ids_col0 is None):
                 encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
                 attention_mask_col0 = encoder_kwargs.get("attention_mask_col0", None)
@@ -149,8 +150,10 @@ class Data2TextGenerator(GenerationMixin):
 
                 if model_kwargs["encoder_forward_stratergy"] == 'single':
                     model_kwargs["encoder_outputs_col0"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col0, encoder_outputs = encoder_outputs, input_ids = input_ids_col0, attention_mask = attention_mask_col0)
-                else:
-                    fc0 , fc1, final_layer = self.model.get_encoder0_fcn()
+                else: 
+                    fc0 = self.fc0_enc0 if loop_strategy != 'addition' else None
+                    fc1 = self.fc1_enc0 if loop_strategy != 'addition' else None
+                    final_layer = self.final_layer_enc0 if loop_strategy != 'addition' else None 
                     model_kwargs["encoder_outputs_col0"] , _ = self.model._loop_encoders(encoder_col0, encoder_outputs, input_ids_col0, \
                         attention_mask_col0, inc_count = 256, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
 
@@ -163,8 +166,11 @@ class Data2TextGenerator(GenerationMixin):
                     if model_kwargs["encoder_forward_stratergy"] == 'single':
                         model_kwargs["encoder_outputs_col1"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col1, encoder_outputs = encoder_outputs, input_ids = input_ids_col1, attention_mask = attention_mask_col1)
                     else:
+                        fc0 = self.fc0_enc1 if loop_strategy != 'addition' else None
+                        fc1 = self.fc1_enc1 if loop_strategy != 'addition' else None
+                        final_layer = self.final_layer_enc1 if loop_strategy != 'addition' else None 
                         model_kwargs["encoder_outputs_col1"] , _ = self.model._loop_encoders(encoder_col1, encoder_outputs, input_ids_col1, \
-                            attention_mask_col1, inc_count = 256, fc0 = self.model.fc0_enc1, fc1 = self.model.fc1_enc1, final_layer = self.model.final_layer_enc1)
+                            attention_mask_col1, inc_count = 256, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
 
             if model_kwargs["encoder_forward_stratergy"] == 'single':
                  if not(input_ids_col2 is None):
@@ -175,8 +181,11 @@ class Data2TextGenerator(GenerationMixin):
                     if model_kwargs["encoder_forward_stratergy"] == 'single':
                         model_kwargs["encoder_outputs_col2"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col2, encoder_outputs = encoder_outputs, input_ids = input_ids_col2, attention_mask = attention_mask_col2)
                     else:
+                        fc0 = self.fc0_enc2 if loop_strategy != 'addition' else None
+                        fc1 = self.fc1_enc2 if loop_strategy != 'addition' else None
+                        final_layer = self.final_layer_enc2 if loop_strategy != 'addition' else None 
                         model_kwargs["encoder_outputs_col2"] , _ = self.model._loop_encoders(encoder_col2, encoder_outputs, input_ids_col2, \
-                            attention_mask_col2, inc_count = 256, fc0 = self.model.fc0_enc2, fc1 = self.model.fc1_enc2, final_layer = self.model.final_layer_enc2)
+                            attention_mask_col2, inc_count = 256, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
 
                      
 
@@ -189,8 +198,11 @@ class Data2TextGenerator(GenerationMixin):
                     if model_kwargs["encoder_forward_stratergy"] == 'single':
                         model_kwargs["encoder_outputs_col3"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col3, encoder_outputs = encoder_outputs, input_ids = input_ids_col3, attention_mask = attention_mask_col3)
                     else:
+                        fc0 = self.fc0_enc3 if loop_strategy != 'addition' else None
+                        fc1 = self.fc1_enc3 if loop_strategy != 'addition' else None
+                        final_layer = self.final_layer_enc3 if loop_strategy != 'addition' else None 
                         model_kwargs["encoder_outputs_col3"] , _ = self.model._loop_encoders(encoder_col3, encoder_outputs, input_ids_col3, \
-                            attention_mask_col3, inc_count = 256, fc0 = self.model.fc0_enc3, fc1 = self.model.fc1_enc3, final_layer = self.model.final_layer_enc3)
+                            attention_mask_col3, inc_count = 256, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
 
                      
 
@@ -203,8 +215,11 @@ class Data2TextGenerator(GenerationMixin):
                     if model_kwargs["encoder_forward_stratergy"] == 'single':
                         model_kwargs["encoder_outputs_col4"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col4, encoder_outputs = encoder_outputs, input_ids = input_ids_col4, attention_mask = attention_mask_col4)
                     else:
+                        fc0 = self.fc0_enc4 if loop_strategy != 'addition' else None
+                        fc1 = self.fc1_enc4 if loop_strategy != 'addition' else None
+                        final_layer = self.final_layer_enc4 if loop_strategy != 'addition' else None 
                         model_kwargs["encoder_outputs_col2"] , _ = self.model._loop_encoders(encoder_col4, encoder_outputs, input_ids_col4, \
-                            attention_mask_col4, inc_count = 256, fc0 = self.model.fc0_enc4, fc1 = self.model.fc1_enc4, final_layer = self.model.final_layer_enc4)
+                            attention_mask_col4, inc_count = 256, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
 
         return model_kwargs
         
