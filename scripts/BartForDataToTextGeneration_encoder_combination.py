@@ -300,14 +300,7 @@ class BartForDataToText(BartPretrainedModel):
         return encoder_outputs, attention_masks
 
 
-    def __get_loop_encoder_outputs(self, encoder, encoder_outputs, input_ids, attention_mask, \
-        output_attentions = None, output_hidden_states = None, head_mask = None, return_dict = None, inputs_embeds = None, inc_count = 256, fc0 = None, fc1 = None, final_layer = None):
-        if input_ids is not None or encoder_outputs is not None:
-            
-                encoder_outputs, attention_mask = self._loop_encoders( encoder, encoder_outputs, input_ids,\
-                     attention_mask, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds,  \
-                         fc0, fc1, final_layer, inc_count = inc_count)
-        return encoder_outputs, attention_mask
+    
 
     def forward(
         self,
@@ -438,30 +431,30 @@ class BartForDataToText(BartPretrainedModel):
         else:
             #print("HERE")
             if input_ids_col0 is not None or encoder_outputs_col0 is not None:
-                encoder_outputs_col0, attention_mask_col0 = self.__get_loop_encoder_outputs( self.encoder, encoder_outputs_col0, input_ids_col0,\
+                encoder_outputs_col0, attention_mask_col0 = self._loop_encoders( self.encoder, encoder_outputs_col0, input_ids_col0,\
                      attention_mask_col0, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds,  \
                           inc_count = inc_count, fc0 = self.fc0_enc0, fc1 = self.fc1_enc0, final_layer = self.final_layer_enc0)
                 
 
             if input_ids_col1 is not None or encoder_outputs_col1 is not None:
-                encoder_outputs_col1, attention_mask_col1 = self.__get_loop_encoder_outputs( self.encoder1, encoder_outputs_col1, input_ids_col1,\
+                encoder_outputs_col1, attention_mask_col1 = self._loop_encoders( self.encoder1, encoder_outputs_col1, input_ids_col1,\
                      attention_mask_col1, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, \
                          inc_count = inc_count, fc0 = self.fc0_enc1, fc1 = self.fc1_enc1, final_layer = self.final_layer_enc1)
                 
             if input_ids_col2 is not None or encoder_outputs_col2 is not None:
-                encoder_outputs_col2, attention_mask_col2 = self.__get_loop_encoder_outputs( self.encoder2, encoder_outputs_col2, input_ids_col2,\
+                encoder_outputs_col2, attention_mask_col2 = self._loop_encoders( self.encoder2, encoder_outputs_col2, input_ids_col2,\
                      attention_mask_col2, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, \
                         inc_count = inc_count, fc0 = self.fc0_enc2, fc1 = self.fc1_enc2, final_layer = self.final_layer_enc2)
                 
 
             if input_ids_col3 is not None or encoder_outputs_col3 is not None:
-                encoder_outputs_col3, attention_mask_col3 = self.__get_loop_encoder_outputs( self.encoder3, encoder_outputs_col3, input_ids_col3,\
+                encoder_outputs_col3, attention_mask_col3 = self._loop_encoders( self.encoder3, encoder_outputs_col3, input_ids_col3,\
                      attention_mask_col3, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, \
                         inc_count = inc_count, fc0 = self.fc0_enc3, fc1 = self.fc1_enc3, final_layer = self.final_layer_enc3)
                 
 
             if input_ids_col4 is not None or encoder_outputs_col4 is not None:
-                encoder_outputs_col4, attention_mask_col4 = self.__get_loop_encoder_outputs( self.encoder4, encoder_outputs_col4, input_ids_col4,\
+                encoder_outputs_col4, attention_mask_col4 = self._loop_encoders( self.encoder4, encoder_outputs_col4, input_ids_col4,\
                      attention_mask_col4, output_attentions, output_hidden_states, head_mask, return_dict,inputs_embeds, \
                         inc_count = inc_count, fc0 = self.fc0_enc4, fc1 = self.fc1_enc4, final_layer = self.final_layer_enc4)
                 
