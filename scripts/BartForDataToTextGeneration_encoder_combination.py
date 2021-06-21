@@ -465,7 +465,7 @@ class BartForDataToText(BartPretrainedModel):
 
         if len(encoder_outputs_list) == 1:
             encoder_outputs = encoder_outputs_list[0]
-            attn_mask = attn_mask_list[0]
+            attn_mask = attn_mask_list[0] if attn_mask_list else None
 
         else:
     
