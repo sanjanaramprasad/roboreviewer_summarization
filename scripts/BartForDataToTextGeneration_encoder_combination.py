@@ -229,7 +229,7 @@ class BartForDataToText(BartPretrainedModel):
 
     def _loop_encoders(self, encoder, encoder_outputs, input_ids, attention_masks, output_attentions = None, \
         output_hidden_states = None, head_mask = None, return_dict = None ,inputs_embeds = None, \
-            fc0 = self.fc0_enc0, fc1 = self.fc1_enc0, final_layer = self.final_layer_enc0, inc_count = 256):
+            fc0 = None, fc1 = None, final_layer = None, inc_count = 256):
         encoder_output_list = []
         
 
@@ -259,10 +259,16 @@ class BartForDataToText(BartPretrainedModel):
                     encoder_output_list.append(encoder_outputs_temp)
             
             #encoder_outputs = self._get_sum_encoder_outputs(encoder_output_list)
-            encoder_outputs_list = encoder_outputs_list[:13]
-            encoder_outputs = self._get_concat_encoder_outputs(encoder_outputs_list)
-            encoder_outputs = self._forward_pass(encoder_outputs, fc0, fc1, final_layer)
-            return encoder_outputs, None
+            
+            if fc0 is not None:
+                encoder_outputs_list = encoder_outputs_list[:13]
+                encoder_outputs = self._get_concat_encoder_outputs(encoder_outputs_list)
+                encoder_outputs = self._forward_pass(encoder_outputs, fc0, fc1, final_layer)
+                attn_mask = None
+            else:
+                encoder_outputs = self._get_sum_encoder_outputs(encoder_outputs_list)
+                attn_mask = attention_masks
+            return encoder_outputs, attn_mask
         
         elif encoder_outputs is not None:
             encoder_outputs = self._get_encoder_outputs(
