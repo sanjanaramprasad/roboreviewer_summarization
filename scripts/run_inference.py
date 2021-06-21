@@ -596,7 +596,7 @@ def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_ty
     freeze_embeds = True
     hparams.eval_beams = 4
     model_path = 'checkpoint_files/epoch=3-loss=0.39.ckpt'
-    model = LitModel.load_from_checkpoint(checkpoint_path="/home/sanjana/roboreviewer_summarization/scripts/checkpoint_files/%s"%(model_path), encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type,)
+    model = LitModel.load_from_checkpoint(checkpoint_path="/home/sanjana/roboreviewer_summarization/scripts/%s"%(model_path), encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type,)
 
 
     print("Loading data...")
