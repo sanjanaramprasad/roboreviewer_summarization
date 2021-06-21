@@ -254,7 +254,7 @@ def main(encoder_forward_stratergy = 'single', encoder_combination_type = 'addit
                                                     pad_token = "<pad>")
 
     tokenizer.add_tokens(additional_special_tokens) 
-    if encoder_forward_stratergy == 'loop' and group_key =='study':
+    if encoder_forward_stratergy == 'loop' :
         from Data2TextProcessor_loop import SummaryDataModule
         files = ['robo_train_linearized_per_study.csv', 
                             'robo_dev_linearized_per_study.csv', 'robo_test_linearized_per_study.csv']
