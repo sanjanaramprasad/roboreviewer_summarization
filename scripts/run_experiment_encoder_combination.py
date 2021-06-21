@@ -115,6 +115,7 @@ class LitModel(pl.LightningModule):
         tgt_ids = batch[-1]
         # Shift the decoder tokens right (but NOT the tgt_ids)
         # Run the model and get the logits
+        print(self.encoder_forward_stratergy, self.encoder_combination_type)
         outputs = self(
             input_ids_col0 = input_ids_col0,
             input_ids_col1 = input_ids_col1,
@@ -230,7 +231,7 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/s
 
 
 
-def main(encoder_forward_stratergy = 'straight', encoder_combination_type = 'addition', layer_share = False, group_key = 'strudy'):
+def main(encoder_forward_stratergy = 'single', encoder_combination_type = 'addition', layer_share = False, group_key = 'study'):
     #additional_special_tokens=["<attribute>",  "</attribute>", "<sep>"]
     #
 
@@ -253,7 +254,7 @@ def main(encoder_forward_stratergy = 'straight', encoder_combination_type = 'add
                             'robo_dev_linearized_per_study.csv', 'robo_test_linearized_per_study.csv']
         
 
-    elif encoder_forward_stratergy == 'straight':
+    elif encoder_forward_stratergy == 'single':
         from Data2TextProcessor import SummaryDataModule
         files = ['robo_train_sep.csv', 
                             'robo_dev_sep.csv', 'robo_test_sep.csv']
@@ -290,6 +291,6 @@ def main(encoder_forward_stratergy = 'straight', encoder_combination_type = 'add
 
 
 if __name__ == '__main__': 
-    main(encoder_forward_stratergy = 'loop', encoder_combination_type = 'addition')
+    main(encoder_forward_stratergy = 'single', encoder_combination_type = 'linearized')
            
 

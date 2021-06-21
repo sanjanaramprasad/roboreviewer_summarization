@@ -103,11 +103,11 @@ class BartForDataToText(BartPretrainedModel):
             encoder_outputs, 
             input_ids,
             attention_mask,
-            head_mask,
-            inputs_embeds,
-            output_attentions,
-            output_hidden_states,
-            return_dict):
+            head_mask = None,
+            inputs_embeds = None,
+            output_attentions = None,
+            output_hidden_states = None,
+            return_dict= None):
         
         if encoder_outputs is None:
             encoder_outputs = encoder(
@@ -198,12 +198,20 @@ class BartForDataToText(BartPretrainedModel):
 
     def _loop_encoders(self, encoder, encoder_outputs, input_ids, attention_masks, output_attentions = None, output_hidden_states = None, head_mask = None, return_dict = None ,inputs_embeds = None, inc_count = 1024):
         encoder_output_list = []
+    
         attn_mask_list = []
-        for chunk_idx in range(0, input_ids.shape[1], inc_count):
-            input_ids_chunk = input_ids[:,chunk_idx: chunk_idx+inc_count]
-            attention_mask_chunk = attention_masks[:,chunk_idx: chunk_idx+inc_count] if attention_masks else None
-            if input_ids_chunk[0][0] != -2 and (encoder_outputs is None):
-                encoder_outputs_temp = self._get_encoder_outputs(
+        chunk_shape = input_ids.shape[1] if input_ids is not None else None
+        chunk_shape = attention_masks.shape[1] if (attention_masks is not None and chunk_shape is None) else None
+        
+        print(chunk_shape)
+        if chunk_shape is not None:
+            for chunk_idx in range(0, chunk_shape, inc_count):
+                input_ids_chunk = input_ids[:,chunk_idx : chunk_idx+ inc_count] if input_ids is not None else None
+                attention_mask_chunk = attention_masks[:,chunk_idx: chunk_idx+inc_count] if attention_masks else None
+                print(input_ids_chunk, input_ids_chunk[0][0], encoder_outputs)
+                if input_ids_chunk is not None and input_ids_chunk[0][0] != -2 and (encoder_outputs is None):
+                    print("Here:")
+                    encoder_outputs_temp = self._get_encoder_outputs(
                             encoder = encoder, 
                             encoder_outputs = encoder_outputs, 
                             input_ids = input_ids_chunk,
@@ -213,12 +221,14 @@ class BartForDataToText(BartPretrainedModel):
                             output_attentions = output_attentions,
                             output_hidden_states = output_hidden_states,
                             return_dict = return_dict)
-                encoder_output_list.append(encoder_outputs_temp)
+                    encoder_output_list.append(encoder_outputs_temp)
 
-            if attention_mask_chunk is not None:
-                attn_mask_list.append(attention_mask_chunk)
+                if attention_mask_chunk is not None and attention_mask_chunk[0][0] != -2:
+                    attn_mask_list.append(attention_mask_chunk)
+            encoder_outputs = self._get_sum_encoder_outputs(encoder_output_list)
+            attention_masks = self._get_attention_masks_OR(attn_mask_list) if attn_mask_list else None
 
-        if encoder_outputs is not None:
+        elif encoder_outputs is not None:
 
             encoder_outputs = self._get_encoder_outputs(
                             encoder = encoder,
@@ -231,11 +241,9 @@ class BartForDataToText(BartPretrainedModel):
                             output_hidden_states = output_hidden_states,
                             return_dict = return_dict)
 
-        else:
-            encoder_outputs = self._get_sum_encoder_outputs(encoder_output_list)
-
-        attn_mask = self._get_attention_masks_OR(attn_mask_list) if attn_mask_list else None
-        return encoder_outputs, attn_mask
+        print(encoder_outputs)
+        print('=' * 13)
+        return encoder_outputs, attention_masks
 
     def forward(
         self,
@@ -285,7 +293,9 @@ class BartForDataToText(BartPretrainedModel):
         
         attn_mask_list = []
         encoder_outputs_list =[]
-
+        print(encoder_forward_stratergy, encoder_combination_type)
+        print(encoder_outputs_col0)
+        print(attention_mask_col0)
         if encoder_forward_stratergy == 'single':
             encoder_outputs_list = []
             
@@ -361,37 +371,45 @@ class BartForDataToText(BartPretrainedModel):
             
 
         else:
-            if input_ids_col0 is not None:
+            #print("HERE")
+            if input_ids_col0 is not None or encoder_outputs_col0 is not None:
                 #print(encoder_outputs_col0)
-                encoder_outputs_col0, attn_mask0 = self._loop_encoders( self.encoder, encoder_outputs_col0, input_ids_col0,\
+                #print(encoder_outputs_col0, attention_mask_col0)
+                encoder_outputs_col0, attention_mask_col0 = self._loop_encoders( self.encoder, encoder_outputs_col0, input_ids_col0,\
                      attention_mask_col0, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds,  inc_count = 1024)
                 encoder_outputs_list.append(encoder_outputs_col0)
-                attn_mask_list.append(attn_mask0)
+                #attn_mask_list.append(attn_mask0)
 
-            if input_ids_col1 is not None:
-                encoder_outputs_col1, attn_mask1 = self._loop_encoders( self.encoder1, encoder_outputs_col1, input_ids_col1,\
+            if input_ids_col1 is not None or encoder_outputs_col1 is not None:
+                encoder_outputs_col1, attention_mask_col1 = self._loop_encoders( self.encoder1, encoder_outputs_col1, input_ids_col1,\
                      attention_mask_col1, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, inc_count = 1024)
                 encoder_outputs_list.append(encoder_outputs_col1)
-                attn_mask_list.append(attn_mask1)
+                #attn_mask_list.append(attn_mask1)
 
-            if input_ids_col2 is not None:
-                encoder_outputs_col2, attn_mask2 = self._loop_encoders( self.encoder2, encoder_outputs_col2, input_ids_col2,\
+            if input_ids_col2 is not None or encoder_outputs_col2 is not None:
+                encoder_outputs_col2, attention_mask_col2 = self._loop_encoders( self.encoder2, encoder_outputs_col2, input_ids_col2,\
                      attention_mask_col2, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, inc_count = 1024)
                 encoder_outputs_list.append(encoder_outputs_col2)
-                attn_mask_list.append(attn_mask2)
+                #attn_mask_list.append(attn_mask2)
 
-            if input_ids_col3 is not None:
-                encoder_outputs_col3, attn_mask3 = self._loop_encoders( self.encoder3, encoder_outputs_col3, input_ids_col3,\
+            if input_ids_col3 is not None or encoder_outputs_col3 is not None:
+                encoder_outputs_col3, attention_mask_col3 = self._loop_encoders( self.encoder3, encoder_outputs_col3, input_ids_col3,\
                      attention_mask_col3, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, inc_count = 1024)
                 encoder_outputs_list.append(encoder_outputs_col3)
-                attn_mask_list.append(attn_mask3)
+                #attn_mask_list.append(attn_mask3)
 
-            if input_ids_col4 is not None:
-                encoder_outputs_col4, attn_mask4 = self._loop_encoders( self.encoder4, encoder_outputs_col4, input_ids_col4,\
+            if input_ids_col4 is not None or encoder_outputs_col4 is not None:
+                encoder_outputs_col4, attention_mask_col4 = self._loop_encoders( self.encoder4, encoder_outputs_col4, input_ids_col4,\
                      attention_mask_col4, output_attentions, output_hidden_states, head_mask, return_dict,inputs_embeds, inc_count = 1024)
                 encoder_outputs_list.append(encoder_outputs_col4)
-                attn_mask_list.append(attn_mask4)
+                #attn_mask_list.append(attn_mask4)
         
+       #print(encoder_outputs_list)
+        encoder_outputs = [encoder_outputs_col0, encoder_outputs_col1, encoder_outputs_col2, encoder_outputs_col3, encoder_outputs_col4]
+        encoder_outputs_list = [each for each in encoder_outputs if each is not None]
+        attention_masks = [attention_mask_col0, attention_mask_col1, attention_mask_col2, attention_mask_col3, attention_mask_col4]
+        attn_mask_list = [each for each in attention_masks if each is not None]
+
 
         if len(encoder_outputs_list) == 1:
             encoder_outputs = encoder_outputs_list[0]
@@ -497,6 +515,8 @@ class BartForDataToText(BartPretrainedModel):
         encoder_outputs_col2 = None,
         encoder_outputs_col3 = None,
         encoder_outputs_col4 = None,
+        encoder_forward_stratergy = 'single',
+        encoder_combination_type = 'addition',
         **kwargs
     ):
         # cut decoder_input_ids if past is used
@@ -521,8 +541,11 @@ class BartForDataToText(BartPretrainedModel):
             "attention_mask_col2": attention_mask_col2,
             "attention_mask_col3": attention_mask_col3,
             "attention_mask_col4": attention_mask_col4,
+            "encoder_forward_stratergy": encoder_forward_stratergy,
+            "encoder_combination_type": encoder_combination_type,
             "head_mask": head_mask,
             "use_cache": use_cache,  # change this to avoid caching (presumably for debugging)
+            
         }
         
     @staticmethod
