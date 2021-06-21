@@ -63,7 +63,7 @@ class BartForDataToText(BartPretrainedModel):
         self.fc1_enc3 = nn.Linear(config.d_model * 10, 3072)
         self.final_layer_emc3 = nn.Linear(3072, config.d_model)
 
-        self.fc0_enc4 = nn.Linear(cenc_concat_dim, config.d_model * 10)
+        self.fc0_enc4 = nn.Linear(enc_concat_dim, config.d_model * 10)
         self.fc1_enc4 = nn.Linear(config.d_model * 10, 3072)
         self.final_layer_enc4 = nn.Linear(3072, config.d_model)
         print("DIM", config.d_model)
