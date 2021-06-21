@@ -203,11 +203,11 @@ class BartForDataToText(BartPretrainedModel):
         for i in range(0,3):
             if len(encoder_outputs) > i:
                 #fcn(encoder_outputs[i]))
-                layer_1 = self.activation_fn(self.fc0(encoder_outputs[i]))
+                layer_1 = self.activation_fn(fc0(encoder_outputs[i]))
                 layer_1 = F.dropout(layer_1, p=self.activation_dropout, training=self.training)
-                layer_2 = self.activation_fn(self.fc1(layer_1))
+                layer_2 = self.activation_fn(fc1(layer_1))
                 layer_2 = F.dropout(layer_2, p=self.activation_dropout, training=self.training)
-                final_layer = self.final_layer(layer_2)
+                final_layer = final_layer(layer_2)
                 final_layer = F.dropout(final_layer,  p=self.dropout, training=self.training)
                 enc_outputs.append(final_layer)
 
@@ -266,7 +266,7 @@ class BartForDataToText(BartPretrainedModel):
                 encoder_outputs_padded = []
 
                 print(encoder_outputs[0].shape)
-                
+
                 for i in range(0,3):
                     if len(encoder_outputs) > i: 
                         encoder_outputs_i = nn.ConstantPad1d((0, (13 * 256) - encoder_outputs[i].shape[2]),1)(encoder_outputs[i])
