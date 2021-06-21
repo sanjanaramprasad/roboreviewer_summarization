@@ -198,7 +198,7 @@ class BartForDataToText(BartPretrainedModel):
             added_enc_attns = torch.as_tensor(added_enc_attns , device = attention_mask_list[0].device)
             return added_enc_attns
     
-    def _forward_pass(self, encoder_outputs, fc0 = self.fc0, fc1 = self.fc1, final_layer = self.final_layer):
+    def _forward_pass(self, encoder_outputs, fc0 , fc1, final_layer):
         enc_outputs = []
         for i in range(0,3):
             if len(encoder_outputs) > i:
@@ -467,7 +467,7 @@ class BartForDataToText(BartPretrainedModel):
                     )
             else:
                 encoder_outputs = self._get_concat_encoder_outputs(encoder_outputs_list)
-                encoder_outputs = self._forward_pass(encoder_outputs)
+                encoder_outputs = self._forward_pass(encoder_outputs, self.fc0, self.fc1, self.final_layer)
                 attn_mask = None
 
         
