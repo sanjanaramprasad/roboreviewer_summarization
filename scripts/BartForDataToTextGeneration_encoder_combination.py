@@ -196,25 +196,34 @@ class BartForDataToText(BartPretrainedModel):
             )
         return encoder_outputs
 
+    def _loop_attr(self, data ,inc_count):
+        data_chunks = []
+        if data:
+            for chunk_idx in range(0, data.shape[1], inc_count):
+                data_chunk = data[:,chunk_idx : chunk_idx+ inc_count]
+                data_chunks.append(data_chunk)
+        return data_chunks
+
     def _loop_encoders(self, encoder, encoder_outputs, input_ids, attention_masks, output_attentions = None, output_hidden_states = None, head_mask = None, return_dict = None ,inputs_embeds = None, inc_count = 1024):
         encoder_output_list = []
-    
-        attn_mask_list = []
-        chunk_shape = input_ids.shape[1] if input_ids is not None else None
-        chunk_shape = attention_masks.shape[1] if (attention_masks is not None and chunk_shape is None) else None
         
-        print(chunk_shape)
-        if chunk_shape is not None:
-            for chunk_idx in range(0, chunk_shape, inc_count):
-                input_ids_chunk = input_ids[:,chunk_idx : chunk_idx+ inc_count] if input_ids is not None else None
-                attention_mask_chunk = attention_masks[:,chunk_idx: chunk_idx+inc_count] if attention_masks else None
-                print(input_ids_chunk, input_ids_chunk[0][0], encoder_outputs)
-                if input_ids_chunk is not None and input_ids_chunk[0][0] != -2 and (encoder_outputs is None):
-                    print("Here:")
+
+        input_id_chunks = self._loop_attr(input_ids, inc_count)
+        attention_masks_chunks = self._loop_attr(attention_masks, inc_count)
+
+        if attention_masks_chunks:
+            attn_mask_list = [each for each in attention_masks_chunks if each[0][0] != -2]
+            attention_masks = self._get_attention_masks_OR(attn_mask_list) if attn_mask_list else None
+
+        if input_id_chunks:
+            for ind, inp_id in enumerate(input_id_chunks):
+                attention_mask_chunk = attention_masks_chunks[ind] if attention_masks_chunks else None
+                attention_mask_chunk = attention_mask_chunk if attention_mask_chunk[0][0] != -2 else None
+                if inp_id[0][0] != -2:
                     encoder_outputs_temp = self._get_encoder_outputs(
                             encoder = encoder, 
                             encoder_outputs = encoder_outputs, 
-                            input_ids = input_ids_chunk,
+                            input_ids = inp_id,
                             attention_mask = attention_mask_chunk,
                             head_mask = head_mask,
                             inputs_embeds = inputs_embeds,
@@ -222,27 +231,20 @@ class BartForDataToText(BartPretrainedModel):
                             output_hidden_states = output_hidden_states,
                             return_dict = return_dict)
                     encoder_output_list.append(encoder_outputs_temp)
-
-                if attention_mask_chunk is not None and attention_mask_chunk[0][0] != -2:
-                    attn_mask_list.append(attention_mask_chunk)
+            
             encoder_outputs = self._get_sum_encoder_outputs(encoder_output_list)
-            attention_masks = self._get_attention_masks_OR(attn_mask_list) if attn_mask_list else None
-
+        
         elif encoder_outputs is not None:
-
             encoder_outputs = self._get_encoder_outputs(
                             encoder = encoder,
                             encoder_outputs = encoder_outputs,
                             input_ids = input_ids,
-                            attention_mask = attention_mask,
+                            attention_mask = attention_masks,
                             head_mask = head_mask,
                             inputs_embeds = inputs_embeds,
                             output_attentions = output_attentions,
                             output_hidden_states = output_hidden_states,
                             return_dict = return_dict)
-
-        print(encoder_outputs)
-        print('=' * 13)
         return encoder_outputs, attention_masks
 
     def forward(
