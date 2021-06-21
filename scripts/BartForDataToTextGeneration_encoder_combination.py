@@ -161,8 +161,8 @@ class BartForDataToText(BartPretrainedModel):
 
         added_enc_outputs = BaseModelOutput(
                 last_hidden_state=torch.cat(encoder_outputs[0], dim =0 ),
-                hidden_states=torch.cat(encoder_outputs[1], dim =0 ) if len(encoder_outputs) > 1 else None,
-                attentions=torch.cat(encoder_outputs[2], dim =0 ) if len(encoder_outputs) > 2 else None,
+                hidden_states=torch.cat(encoder_outputs[1], dim =0 ) if len(encoder_outputs[1]) > 0 else None,
+                attentions=torch.cat(encoder_outputs[2], dim =0 ) if len(encoder_outputs[2]) > 0 else None,
             )
         #print(added_enc_outputs)
         return added_enc_outputs
@@ -179,8 +179,8 @@ class BartForDataToText(BartPretrainedModel):
             
         added_enc_outputs = BaseModelOutput(
                 last_hidden_state=torch.cat(encoder_outputs[0], dim =0 ),
-                hidden_states=torch.cat(encoder_outputs[1], dim =0 ) if len(encoder_outputs) > 1 else None,
-                attentions=torch.cat(encoder_outputs[2], dim =0 ) if len(encoder_outputs) > 2 else None,
+                hidden_states=torch.cat(encoder_outputs[1], dim =0 ) if len(encoder_outputs[1]) > 0 else None,
+                attentions=torch.cat(encoder_outputs[2], dim =0 ) if len(encoder_outputs[2]) > 0 else None,
             )
         #print(added_enc_outputs)
         return added_enc_outputs
