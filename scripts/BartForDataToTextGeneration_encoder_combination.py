@@ -97,6 +97,9 @@ class BartForDataToText(BartPretrainedModel):
     def get_encoders(self):
         return self.encoder, self.encoder1, \
             self.encoder2, self.encoder3, self.encoder4
+
+    def get_encoder0_fcn(self):
+        return self.fc0_enc0, self.fc1_enc0, self.final_layer_enc0
     
     def get_decoder(self):
         self.decoder
