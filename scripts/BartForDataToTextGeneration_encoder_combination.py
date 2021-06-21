@@ -313,7 +313,8 @@ class BartForDataToText(BartPretrainedModel):
         output_hidden_states=None,
         return_dict=None,
         encoder_forward_stratergy = 'single',
-        encoder_combination_type = 'addition'
+        encoder_combination_type = 'addition',
+        inc_count = 1024
     ):
         
         
