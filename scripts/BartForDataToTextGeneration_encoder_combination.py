@@ -307,7 +307,9 @@ class BartForDataToText(BartPretrainedModel):
                     exec("fc1 = self.fc1_enc%s"%enc_ind)
                     exec("final_layer = self.final_layer_enc%s"%enc_ind)
                 else:
-                    fc0 = None, fc1 = None, final_layer = None
+                    fc0 = None
+                    fc1 = None
+                    final_layer = None
                 encoder_outputs, attention_mask = self._loop_encoders( encoder, encoder_outputs, input_ids,\
                      attention_mask, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds,  \
                          fc0, fc1, final_layer, inc_count = inc_count)
