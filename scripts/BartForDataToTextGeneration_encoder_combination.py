@@ -304,7 +304,7 @@ class BartForDataToText(BartPretrainedModel):
         output_attentions = None, output_hidden_states = None, head_mask = None, return_dict = None, inputs_embeds = None, inc_count = 256, enc_ind = None):
         if input_ids is not None or encoder_outputs is not None:
                 
-                exec("fc0 = fc0_enc%s if enc_ind is not None else None"%enc_ind)
+                exec("fc0 = self.fc0_enc%s if enc_ind is not None else None"%enc_ind)
                 exec("fc1 = self.fc1_enc%s if enc_ind is not None else None"%enc_ind)
                 exec("final_layer = self.final_layer_enc%s if enc_ind is not None else None"%enc_ind)
 
