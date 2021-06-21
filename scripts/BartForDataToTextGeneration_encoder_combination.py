@@ -261,12 +261,12 @@ class BartForDataToText(BartPretrainedModel):
             #encoder_outputs = self._get_sum_encoder_outputs(encoder_output_list)
             
             if fc0 is not None:
-                encoder_outputs_list = encoder_outputs_list[:13]
-                encoder_outputs = self._get_concat_encoder_outputs(encoder_outputs_list)
+                encoder_output_list = encoder_output_list[:13]
+                encoder_outputs = self._get_concat_encoder_outputs(encoder_output_list)
                 encoder_outputs = self._forward_pass(encoder_outputs, fc0, fc1, final_layer)
                 attn_mask = None
             else:
-                encoder_outputs = self._get_sum_encoder_outputs(encoder_outputs_list)
+                encoder_outputs = self._get_sum_encoder_outputs(encoder_output_list)
                 attn_mask = attention_masks
             return encoder_outputs, attn_mask
         
