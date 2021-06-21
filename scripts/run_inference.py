@@ -595,7 +595,7 @@ def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_ty
     freeze_encoder = True
     freeze_embeds = True
     hparams.eval_beams = 4
-    model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, \
+    model = LitModel(learning_rate = 3e-5, tokenizer = tokenizer, model = bart_model, \
                 encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type, \
                     layer_share = layer_share, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds).load_from_checkpoint(checkpoint_path="/home/sanjana/roboreviewer_summarization/scripts/checkpoint_files/%s"%(model_path), encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type,)
 
