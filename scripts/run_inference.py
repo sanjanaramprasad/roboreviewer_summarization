@@ -6,11 +6,13 @@ from transformers.models.bart.configuration_bart import BartConfig
 import torch
 import torch.distributed as dist
 from torch.nn import functional as F
-from BartForDataToTextGeneration_layer_sharing import BartForDataToText
+#from BartForDataToTextGeneration_layer_sharing import BartForDataToText
+from BartForDataToTextGeneration_encoder_combination import BartForDataToText
 from transformers.generation_utils import GenerationMixin
-from run_experiment_linearize import LitModel
+##from run_experiment_linearize import LitModel
+from run_experiment_encoder_combination import LitModel
 from transformers import BartTokenizer
-from Data2TextProcessor_1 import SummaryDataModule
+from Data2TextProcessor_loop import SummaryDataModule
 import argparse
 #import pandas as pd
 from rouge import Rouge
@@ -70,32 +72,39 @@ class Data2TextGenerator(GenerationMixin):
             model_kwargs["attention_mask_col4"] = attention_mask_col4.index_select(0, expanded_return_idx)
 
         if is_encoder_decoder:
-            assert encoder_outputs_col0 is not None
-            encoder_outputs_col0["last_hidden_state"] = encoder_outputs_col0.last_hidden_state.index_select(
-                0, expanded_return_idx.to(encoder_outputs_col0.last_hidden_state.device)
-            )
+            if encoder_outputs_col0 is not None:
+                encoder_outputs_col0["last_hidden_state"] = encoder_outputs_col0.last_hidden_state.index_select(
+                    0, expanded_return_idx.to(encoder_outputs_col0.last_hidden_state.device)
+                )
+                model_kwargs["encoder_outputs_col0"] = encoder_outputs_col0
 
-            assert encoder_outputs_col1 is not None
-            encoder_outputs_col1["last_hidden_state"] = encoder_outputs_col1.last_hidden_state.index_select(
-                0, expanded_return_idx.to(encoder_outputs_col1.last_hidden_state.device)
-            )
-            assert encoder_outputs_col2 is not None
-            encoder_outputs_col2["last_hidden_state"] = encoder_outputs_col2.last_hidden_state.index_select(
-                0, expanded_return_idx.to(encoder_outputs_col2.last_hidden_state.device)
-            )
-            assert encoder_outputs_col3 is not None
-            encoder_outputs_col3["last_hidden_state"] = encoder_outputs_col3.last_hidden_state.index_select(
-                0, expanded_return_idx.to(encoder_outputs_col3.last_hidden_state.device)
-            )
-            assert encoder_outputs_col4 is not None
-            encoder_outputs_col4["last_hidden_state"] = encoder_outputs_col4.last_hidden_state.index_select(
-                0, expanded_return_idx.to(encoder_outputs_col4.last_hidden_state.device)
-            )
-            model_kwargs["encoder_outputs_col0"] = encoder_outputs_col0
-            model_kwargs["encoder_outputs_col1"] = encoder_outputs_col1
-            model_kwargs["encoder_outputs_col2"] = encoder_outputs_col2
-            model_kwargs["encoder_outputs_col3"] = encoder_outputs_col3
-            model_kwargs["encoder_outputs_col4"] = encoder_outputs_col4
+            if encoder_outputs_col1 is not None:
+                encoder_outputs_col1["last_hidden_state"] = encoder_outputs_col1.last_hidden_state.index_select(
+                    0, expanded_return_idx.to(encoder_outputs_col1.last_hidden_state.device)
+                )
+                model_kwargs["encoder_outputs_col1"] = encoder_outputs_col1
+
+
+            if encoder_outputs_col2 is not None:
+                encoder_outputs_col2["last_hidden_state"] = encoder_outputs_col2.last_hidden_state.index_select(
+                    0, expanded_return_idx.to(encoder_outputs_col2.last_hidden_state.device)
+                )
+                model_kwargs["encoder_outputs_col2"] = encoder_outputs_col2
+
+
+            if encoder_outputs_col3 is not None:
+                encoder_outputs_col3["last_hidden_state"] = encoder_outputs_col3.last_hidden_state.index_select(
+                    0, expanded_return_idx.to(encoder_outputs_col3.last_hidden_state.device)
+                )
+                model_kwargs["encoder_outputs_col3"] = encoder_outputs_col3
+
+
+            if encoder_outputs_col4 is not None:
+                encoder_outputs_col4["last_hidden_state"] = encoder_outputs_col4.last_hidden_state.index_select(
+                    0, expanded_return_idx.to(encoder_outputs_col4.last_hidden_state.device)
+                )
+                model_kwargs["encoder_outputs_col4"] = encoder_outputs_col4
+
         return input_ids, model_kwargs
 
 
@@ -117,6 +126,7 @@ class Data2TextGenerator(GenerationMixin):
         if not(attention_mask_col4 is None):
             model_kwargs["attention_mask_col4"] = attention_mask_col4
 
+        print(model_kwargs)
         return model_kwargs
 
     def _prepare_encoder_decoder_kwargs_for_generation(
@@ -132,32 +142,84 @@ class Data2TextGenerator(GenerationMixin):
             encoder_kwargs = {
                 argument: value for argument, value in model_kwargs.items() if not argument.startswith("decoder_")
             }
-            #print('ENC KWARGS', encoder_kwargs)
+            loop_strategy = model_kwargs.get("loop_strategy", "addition")
             if not(input_ids_col0 is None):
                 encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
-                encoder_kwargs["attention_mask"] = encoder_kwargs.get("attention_mask_col0", None)
-                #print(encoder_kwargs)
-                model_kwargs["encoder_outputs_col0"]: ModelOutput = encoder_col0(input_ids_col0, return_dict=True, **encoder_kwargs)
-            
-            if not(input_ids_col1 is None):
-                encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
-                encoder_kwargs["attention_mask"] = encoder_kwargs.get("attention_mask_col1", None)
-                model_kwargs["encoder_outputs_col1"]: ModelOutput = encoder_col1(input_ids_col1, return_dict=True, **encoder_kwargs)
-            
-            if not(input_ids_col2 is None):
-                encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
-                encoder_kwargs["attention_mask"] = encoder_kwargs.get("attention_mask_col2", None)
-                model_kwargs["encoder_outputs_col2"]: ModelOutput = encoder_col2(input_ids_col2, return_dict=True, **encoder_kwargs)
-            
-            if not(input_ids_col3 is None):
-                encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
-                encoder_kwargs["attention_mask"] = encoder_kwargs.get("attention_mask_col3", None)
-                model_kwargs["encoder_outputs_col3"]: ModelOutput = encoder_col3(input_ids_col3, return_dict=True, **encoder_kwargs)
-           
-            if not(input_ids_col4 is None):
-                encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
-                encoder_kwargs["attention_mask"] = encoder_kwargs.get("attention_mask_col4", None)
-                model_kwargs["encoder_outputs_col4"]: ModelOutput = encoder_col4(input_ids_col4, return_dict=True, **encoder_kwargs)
+                attention_mask_col0 = encoder_kwargs.get("attention_mask_col0", None)
+                encoder_outputs = encoder_kwargs.get('encoder_outputs_col0', None)
+
+                if model_kwargs["encoder_forward_stratergy"] == 'single':
+                    model_kwargs["encoder_outputs_col0"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col0, encoder_outputs = encoder_outputs, input_ids = input_ids_col0, attention_mask = attention_mask_col0)
+                else: 
+                    fc0 = self.fc0_enc0 if loop_strategy != 'addition' else None
+                    fc1 = self.fc1_enc0 if loop_strategy != 'addition' else None
+                    final_layer = self.final_layer_enc0 if loop_strategy != 'addition' else None 
+                    model_kwargs["encoder_outputs_col0"] , _ = self.model._loop_encoders(encoder_col0, encoder_outputs, input_ids_col0, \
+                        attention_mask_col0, inc_count = 256, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
+
+            if model_kwargs["encoder_forward_stratergy"] == 'single':
+                 if not(input_ids_col1 is None):
+                    encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
+                    attention_mask_col1 = encoder_kwargs.get("attention_mask_col1", None)
+                    encoder_outputs = encoder_kwargs.get('encoder_outputs_col1', None)
+
+                    if model_kwargs["encoder_forward_stratergy"] == 'single':
+                        model_kwargs["encoder_outputs_col1"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col1, encoder_outputs = encoder_outputs, input_ids = input_ids_col1, attention_mask = attention_mask_col1)
+                    else:
+                        fc0 = self.fc0_enc1 if loop_strategy != 'addition' else None
+                        fc1 = self.fc1_enc1 if loop_strategy != 'addition' else None
+                        final_layer = self.final_layer_enc1 if loop_strategy != 'addition' else None 
+                        model_kwargs["encoder_outputs_col1"] , _ = self.model._loop_encoders(encoder_col1, encoder_outputs, input_ids_col1, \
+                            attention_mask_col1, inc_count = 256, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
+
+            if model_kwargs["encoder_forward_stratergy"] == 'single':
+                 if not(input_ids_col2 is None):
+                    encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
+                    attention_mask_col2 = encoder_kwargs.get("attention_mask_col2", None)
+                    encoder_outputs = encoder_kwargs.get('encoder_outputs_col2', None)
+
+                    if model_kwargs["encoder_forward_stratergy"] == 'single':
+                        model_kwargs["encoder_outputs_col2"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col2, encoder_outputs = encoder_outputs, input_ids = input_ids_col2, attention_mask = attention_mask_col2)
+                    else:
+                        fc0 = self.fc0_enc2 if loop_strategy != 'addition' else None
+                        fc1 = self.fc1_enc2 if loop_strategy != 'addition' else None
+                        final_layer = self.final_layer_enc2 if loop_strategy != 'addition' else None 
+                        model_kwargs["encoder_outputs_col2"] , _ = self.model._loop_encoders(encoder_col2, encoder_outputs, input_ids_col2, \
+                            attention_mask_col2, inc_count = 256, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
+
+                     
+
+            if model_kwargs["encoder_forward_stratergy"] == 'single':
+                 if not(input_ids_col3 is None):
+                    encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
+                    attention_mask_col3 = encoder_kwargs.get("attention_mask_col3", None)
+                    encoder_outputs = encoder_kwargs.get('encoder_outputs_col3', None)
+                    
+                    if model_kwargs["encoder_forward_stratergy"] == 'single':
+                        model_kwargs["encoder_outputs_col3"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col3, encoder_outputs = encoder_outputs, input_ids = input_ids_col3, attention_mask = attention_mask_col3)
+                    else:
+                        fc0 = self.fc0_enc3 if loop_strategy != 'addition' else None
+                        fc1 = self.fc1_enc3 if loop_strategy != 'addition' else None
+                        final_layer = self.final_layer_enc3 if loop_strategy != 'addition' else None 
+                        model_kwargs["encoder_outputs_col3"] , _ = self.model._loop_encoders(encoder_col3, encoder_outputs, input_ids_col3, \
+                            attention_mask_col3, inc_count = 256, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
+
+                     
+
+            if model_kwargs["encoder_forward_stratergy"] == 'single':
+                 if not(input_ids_col4 is None):
+                    encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
+                    attention_mask_col4 = encoder_kwargs.get("attention_mask_col4", None)
+                    encoder_outputs = encoder_kwargs.get('encoder_outputs_col4', None)
+
+                    if model_kwargs["encoder_forward_stratergy"] == 'single':
+                        model_kwargs["encoder_outputs_col4"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col4, encoder_outputs = encoder_outputs, input_ids = input_ids_col4, attention_mask = attention_mask_col4)
+                    else:
+                        fc0 = self.fc0_enc4 if loop_strategy != 'addition' else None
+                        fc1 = self.fc1_enc4 if loop_strategy != 'addition' else None
+                        final_layer = self.final_layer_enc4 if loop_strategy != 'addition' else None 
+                        model_kwargs["encoder_outputs_col2"] , _ = self.model._loop_encoders(encoder_col4, encoder_outputs, input_ids_col4, \
+                            attention_mask_col4, inc_count = 256, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
 
         return model_kwargs
         
@@ -271,13 +333,9 @@ class Data2TextGenerator(GenerationMixin):
 
 
 
-            #print("INPUT IDS", input_ids)
-            #print("MODEL KWARGS", model_kwargs)
-        
-        #input_ids = torch.cat(input_list,1)
-            # determine generation mode
+            
         is_greedy_gen_mode = (num_beams == 1) and (num_beam_groups == 1) and do_sample is False
-        #is_greedy_gen_mode = True
+        
         is_sample_gen_mode = (num_beams == 1) and (num_beam_groups == 1) and do_sample is True
         is_beam_gen_mode = (num_beams > 1) and (num_beam_groups == 1) and do_sample is False
         is_beam_sample_gen_mode = (num_beams > 1) and (num_beam_groups == 1) and do_sample is True
@@ -314,7 +372,7 @@ class Data2TextGenerator(GenerationMixin):
         stopping_criteria = self._get_stopping_criteria(max_length=max_length, max_time=max_time)
 
         if is_greedy_gen_mode:
-            print("GREEDY SEARCHING")
+            #print("GREEDY SEARCHING")
             if num_return_sequences > 1:
                 raise ValueError(
                     f"num_return_sequences has to be 1, but is {num_return_sequences} when doing greedy search."
@@ -374,7 +432,7 @@ class Data2TextGenerator(GenerationMixin):
 
 
         elif is_group_beam_gen_mode:
-            print("GROUP BEAM SEARCHING")
+            #print("GROUP BEAM SEARCHING")
             batch_size = input_ids.shape[0]
 
             length_penalty = length_penalty if length_penalty is not None else self.config.length_penalty
@@ -492,10 +550,14 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     meteor_scores = []
     bleu_scores =[]
     for each in sample:
-        outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length =min_len, repetition_penalty = r_penalty, length_penalty = l_penalty                                    )
+        outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length =min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, encoder_forward_stratergy = 'loop', encoder_combination_type = 'addition')
+        print("Outputs", outputs)
         model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[-1]])
         if model_output.strip():
+            print(model_output)
+            print(target)
+            print('=' * 13)
             model_out.append(model_output)
             references.append(target)
             #avg_len += first_batch[-1].shape[1]
@@ -541,73 +603,75 @@ def parameter_search(sample, model, tokenizer):
                                 final_lpenalty = l_penalty
                                 max_roul = roul
         return final_num_beam, final_min_len, final_rpenalty, final_lpenalty
-        
-if __name__ == '__main__':
-    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
+
+def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv']):
+    if data_type == 'robo':
+        train_file = path + '/roboreviewer_summarization/data/%s'%(files[0])
+        dev_file = path + '/roboreviewer_summarization/data/%s'%(files[1])
+        test_file = path + '/roboreviewer_summarization/data/%s'%(files[2])
+
+    elif data_type =='webnlg':
+        train_file = path + '/roboreviewer_summarization/data/web_nlg_train.csv'
+        dev_file = path + '/roboreviewer_summarization/data/web_nlg_dev.csv'
+        test_file = path + '/roboreviewer_summarization/data/web_nlg_test.csv'
+
+    data_files = [train_file, dev_file, test_file]
+    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1)
+    summary_data.prepare_data()
+    return summary_data
+
+
+def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_type = 'addition'):
+    additional_special_tokens = ["<sep>", "<study>", "</study>",
+            "<outcomes>", "</outcomes>",
+            "<punchline_text>", "</punchline_text>",
+            "<population>", "</population>",
+            "<interventions>", "</interventions>",
+            "<punchline_effect>", "</punchline_effect>"]
+    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>",
+                                                    eos_token="</s>",
+                                                    pad_token = "<pad>")
+
+    tokenizer.add_tokens(additional_special_tokens)
+    #tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
     hparams = argparse.Namespace()
-    hparams.freeze_encoder = True
-    hparams.freeze_embeds = True
+    freeze_encoder = True
+    freeze_embeds = True
     hparams.eval_beams = 4
-    model_path = '3e-5_linearize/epoch=4-val_loss=0.26.ckpt'
-    model = LitModel.load_from_checkpoint(checkpoint_path="/home/sanjana/roboreviewer_summarization/scripts/checkpoint_files_final/%s"%(model_path))
+    model_path = 'checkpoint_files/3e-5_loop_addition_mod/epoch=3-loss=0.39.ckpt'
+    model = LitModel.load_from_checkpoint(checkpoint_path="/home/sanjana/roboreviewer_summarization/scripts/%s"%(model_path), encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type,)
+
 
     print("Loading data...")
-    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_sep.csv',
-        '/home/sanjana/roboreviewer_summarization/data/robo_dev_sep.csv',
-        '/home/sanjana/roboreviewer_summarization/data/robo_test_sep.csv'], batch_size = 1)
-    summary_data.prepare_data()
+    if encoder_forward_stratergy == 'loop':
+        from Data2TextProcessor_loop import SummaryDataModule
+        files = ['robo_train_linearized_per_study.csv', 
+                            'robo_dev_linearized_per_study.csv', 'robo_test_linearized_per_study.csv']
+        
 
+    elif encoder_forward_stratergy == 'single':
+        from Data2TextProcessor import SummaryDataModule
+        files = ['robo_train_sep.csv', 
+                            'robo_dev_sep.csv', 'robo_test_sep.csv']
+
+    
+    summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/sanjana', files = files)
     summary_data.setup("stage")
     val_data = summary_data.val_dataloader(data_type = 'robo')
 
-    num_val = len(list(val_data))
     num_val = 50
     print("NUM EXAMPLES", num_val)
     it = iter(val_data)
     import random
     sample = random.sample(list(it), num_val)
-    
+
     num_beams, min_len, repetition_penalty, length_penalty = parameter_search(sample, model, tokenizer)
     references, targets, _, _ = sample_score(list(it), model, tokenizer, num_beams, min_len, repetition_penalty, length_penalty)
     df_write = pd.DataFrame(list(zip(references, model_out)), columns=["Reference Summary", "Generated Summary"])
     file_name = '_'.join(model_path.split('/'))
     df_write.to_csv("%s.csv"%file_name)
 
-    '''model_out = []
-    references = []
-    meteor_scores = []
-    bleu_scores =[]
 
-    while(ind < num_val):
-        #first_batch = next(it)
-        first_batch = sample[ind]
-        generator = Data2TextGenerator(model, tokenizer)
-        #print("Target", first_batch[-1])
-        outputs = generator.generate(first_batch, num_beams = 3, num_beam_groups =1,  max_length = 400, min_length = 70, no_repeat_ngram_size =3, early_stopping = True)        
-        #outputs = generator.generate(first_batch, num_beams = 5, num_beam_groups =1,  max_length = 400, length_penalty = 2.1) 
-        val_data = pd.read_csv('/home/sanjana/roboreviewer_summarization/data/robo_dev_sep.csv')
-        target = val_data['target'][ind]
-        ind += 1
-        rouge = Rouge()
-        model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
-        target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in first_batch[-1]])
-        avg_len = 0
-        if model_output.strip():
-            model_out.append(model_output)
-            references.append(target)
-            avg_len += first_batch[-1].shape[1]
-            met_score = round(meteor_score.meteor_score([target], model_output), 4)
-            meteor_scores.append(met_score)
-            BLEUscore = nltk.translate.bleu_score.sentence_bleu([target], model_output)
-            bleu_scores.append(BLEUscore)
-            #scores = rouge.get_scores(target, reference)
-            #print("TARGET : ", target)
-            #print("GENERATED :", model_output)
-    #print(avg_len/num_val)
-    print("ROGUE", rouge.get_scores(model_out, references, avg=True))
-    print("METEOR", sum(meteor_scores)/len(meteor_scores))
-    print("BLEU", sum(bleu_scores)/len(bleu_scores))
-#print(references)
-#print(model_out)
-#df_write = pd.DataFrame(list(zip(references, model_out)), columns=["Reference Summary", "Generated Summary"])
-#df_write.to_csv("model_epoch3e-05_adam_sum.csv")'''
+        
+if __name__ == '__main__':
+    run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_type = 'addition')

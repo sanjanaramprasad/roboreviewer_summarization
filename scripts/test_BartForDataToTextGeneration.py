@@ -162,7 +162,7 @@ class BartForDataToTextGenerationTester():
 
     
 
-    def test_model_forward_bart_encoder_loop_per_study(self):
+    def test_model_forward_bart_encoder_loop_per_study(self, encoder_combination_type):
         from BartForDataToTextGeneration_encoder_combination import BartForDataToText
         from Data2TextProcessor_loop import SummaryDataModule
         model = BartForDataToText.from_pretrained('facebook/bart-base')
@@ -195,7 +195,7 @@ class BartForDataToTextGenerationTester():
             attention_mask_col3 = attention_mask_col3,
             attention_mask_col4 = attention_mask_col4,
             labels = data[-1],
-            encoder_forward_startegy = 'loop',
+            encoder_forward_stratergy = 'loop',
             encoder_combination_type = 'addition',
             use_cache = True
         )
@@ -263,8 +263,8 @@ class BartForDataToTextGenerationTester():
         
 obj = BartForDataToTextGenerationTester()
 obj.test_model_forward_bart_encoder_loop_per_study(encoder_combination_type = 'addition')
-obj.test_model_forward_bart_encoder_straight(encoder_combination_type = 'addition')
+#obj.test_model_forward_bart_encoder_straight(encoder_combination_type = 'addition')
 obj.test_model_forward_bart_encoder_loop_per_study(encoder_combination_type = 'linearize')
-obj.test_model_forward_bart_encoder_straight(encoder_combination_type = 'linearize')
+#obj.test_model_forward_bart_encoder_straight(encoder_combination_type = 'linearize')
 #print(obj.encoder_col3.layers[0].final_layer_norm.weight.grad==obj.encoder_col4.layers[0].final_layer_norm.weight.grad)
 #print(obj.encoder_col3.layers[-1].final_layer_norm.weight.grad ==obj.encoder_col4.layers[-1].final_layer_norm.weight)

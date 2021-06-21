@@ -29,7 +29,7 @@ def shift_tokens_right(input_ids, pad_token_id):
     return prev_output_tokens
 
 #max_list_len = 0
-def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=1024, pad_to_max_length=True, return_tensors="pt"):
+def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=256, pad_to_max_length=True, return_tensors="pt"):
     ''' Function that tokenizes a sentence 
         Args: tokenizer - the BART tokenizer; source and target sentences are the source and target sentences
         Returns: Dictionary with keys: input_ids, attention_mask, target_ids
@@ -112,12 +112,13 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=1
 
 
 class SummaryDataModule(pl.LightningDataModule):
-    def __init__(self, tokenizer, data_files, batch_size, num_examples = 20000):
+    def __init__(self, tokenizer, data_files, batch_size, num_examples = 20000, max_len = 256):
         super().__init__()
         self.tokenizer = tokenizer
         self.data_files = data_files
         self.batch_size = batch_size
         self.num_examples = num_examples
+        self.max_len = max_len
 
     # Loads and splits the data into training, validation and test sets with a 60/20/20 split
     def prepare_data(self):
@@ -127,10 +128,10 @@ class SummaryDataModule(pl.LightningDataModule):
 
 
     def setup(self, stage):
-        self.train = encode_sentences(self.tokenizer, self.train['source'], self.train['target'])
+        self.train = encode_sentences(self.tokenizer, self.train['source'], self.train['target'], max_length=self.max_len)
         #sprint(self.train)
-        self.validate = encode_sentences(self.tokenizer, self.validate['source'], self.validate['target'])
-        self.test = encode_sentences(self.tokenizer, self.test['source'], self.test['target'])
+        self.validate = encode_sentences(self.tokenizer, self.validate['source'], self.validate['target'], max_length=self.max_len)
+        self.test = encode_sentences(self.tokenizer, self.test['source'], self.test['target'], max_length=self.max_len)
         #print(self.test)
 
     # Load the training, validation and test sets in Pytorch Dataset objects
@@ -183,8 +184,10 @@ if __name__ == '__main__':
     #print(tokenizer.decode(source[0][:1024]))
     for i in range(0, source.shape[1], 1024):
         chunk = source[:,i : i+ 1024]
-        if chunk[0][0] != -2:
+        if chunk[0][0] != -2 and chunk[0][0] != 1:
+            #print(chunk)
             print(tokenizer.decode(chunk[0]))
-        #print(source[:,i : i+ 1024].shape)
+    print('=' * 13)
+    #print(source[:,i : i+ 1024].shape)
     #print(batch[1])
     #print(batch[2])
