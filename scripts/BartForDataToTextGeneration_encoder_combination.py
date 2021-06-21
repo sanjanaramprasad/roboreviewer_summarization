@@ -299,6 +299,20 @@ class BartForDataToText(BartPretrainedModel):
                             return_dict = return_dict)
         return encoder_outputs, attention_masks
 
+
+    def __get_loop_encoder_outputs(self, input_id, encoder, encoder_outputs, attention_mask, output_attentions = None, output_hidden_states = None, head_mask = None, return_dict = None, inputs_embeds = None, enc_ind = None):
+        if input_ids is not None or encoder_outputs is not None:
+                if enc_ind:
+                    exec("fc0 = self.fc0_enc%s"%enc_ind)
+                    exec("fc1 = self.fc1_enc%s"%enc_ind)
+                    exec("final_layer = self.final_layer_enc%s"%enc_ind)
+                else:
+                    fc0 = None, fc1 = None, final_layer = None
+                encoder_outputs, attention_mask = self._loop_encoders( encoder, encoder_outputs, input_ids,\
+                     attention_mask, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds,  \
+                         fc0, fc1, final_layer, inc_count = inc_count)
+        return encoder_outputs, attention_mask
+
     def forward(
         self,
         input_ids_col0 = None,
@@ -428,32 +442,32 @@ class BartForDataToText(BartPretrainedModel):
         else:
             #print("HERE")
             if input_ids_col0 is not None or encoder_outputs_col0 is not None:
-                encoder_outputs_col0, attention_mask_col0 = self._loop_encoders( self.encoder, encoder_outputs_col0, input_ids_col0,\
+                encoder_outputs_col0, attention_mask_col0 = self.__get_loop_encoder_outputs( self.encoder, encoder_outputs_col0, input_ids_col0,\
                      attention_mask_col0, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds,  \
-                         self.fc0_enc0, self.fc1_enc0, self.final_layer_enc0, inc_count = inc_count)
+                          inc_count = inc_count, enc_ind = "0")
                 
 
             if input_ids_col1 is not None or encoder_outputs_col1 is not None:
-                encoder_outputs_col1, attention_mask_col1 = self._loop_encoders( self.encoder1, encoder_outputs_col1, input_ids_col1,\
+                encoder_outputs_col1, attention_mask_col1 = self.__get_loop_encoder_outputs( self.encoder1, encoder_outputs_col1, input_ids_col1,\
                      attention_mask_col1, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, \
-                         self.fc0_enc1, self.fc1_enc1, self.final_layer_enc1, inc_count = inc_count)
+                         inc_count = inc_count, enc_ind = "1")
                 
             if input_ids_col2 is not None or encoder_outputs_col2 is not None:
-                encoder_outputs_col2, attention_mask_col2 = self._loop_encoders( self.encoder2, encoder_outputs_col2, input_ids_col2,\
+                encoder_outputs_col2, attention_mask_col2 = self.__get_loop_encoder_outputs( self.encoder2, encoder_outputs_col2, input_ids_col2,\
                      attention_mask_col2, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, \
-                         self.fc0_enc2, self.fc1_enc2, self.final_layer_enc2, inc_count = inc_count)
+                        inc_count = inc_count, enc_ind = "2")
                 
 
             if input_ids_col3 is not None or encoder_outputs_col3 is not None:
-                encoder_outputs_col3, attention_mask_col3 = self._loop_encoders( self.encoder3, encoder_outputs_col3, input_ids_col3,\
+                encoder_outputs_col3, attention_mask_col3 = self.__get_loop_encoder_outputs( self.encoder3, encoder_outputs_col3, input_ids_col3,\
                      attention_mask_col3, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, \
-                         self.fc0_enc3, self.fc1_enc3, self.final_layer_enc3, inc_count = inc_count)
+                        inc_count = inc_count, enc_ind = "3")
                 
 
             if input_ids_col4 is not None or encoder_outputs_col4 is not None:
-                encoder_outputs_col4, attention_mask_col4 = self._loop_encoders( self.encoder4, encoder_outputs_col4, input_ids_col4,\
+                encoder_outputs_col4, attention_mask_col4 = self.__get_loop_encoder_outputs( self.encoder4, encoder_outputs_col4, input_ids_col4,\
                      attention_mask_col4, output_attentions, output_hidden_states, head_mask, return_dict,inputs_embeds, \
-                         self.fc0_enc4, self.fc1_enc4, self.final_layer_enc4, inc_count = inc_count)
+                        inc_count = inc_count, enc_ind = "4")
                 
         
        #print(encoder_outputs_list)

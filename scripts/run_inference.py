@@ -149,7 +149,8 @@ class Data2TextGenerator(GenerationMixin):
                 if model_kwargs["encoder_forward_stratergy"] == 'single':
                     model_kwargs["encoder_outputs_col0"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col0, encoder_outputs = encoder_outputs, input_ids = input_ids_col0, attention_mask = attention_mask_col0)
                 else:
-                    model_kwargs["encoder_outputs_col0"] , _ = self.model._loop_encoders(encoder_col0, encoder_outputs, input_ids_col0, attention_mask_col0, inc_count = 256)
+                    model_kwargs["encoder_outputs_col0"] , _ = self.model.self.__get_loop_encoder_outputs(encoder_col0, encoder_outputs, input_ids_col0, \
+                        attention_mask_col0, inc_count = 256, enc_ind = "0")
 
             if model_kwargs["encoder_forward_stratergy"] == 'single':
                  if not(input_ids_col1 is None):
