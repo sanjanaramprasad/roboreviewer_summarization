@@ -32,6 +32,9 @@ class BartForDataToText(BartPretrainedModel):
         self.dropout = config.dropout
         self.activation_fn = ACT2FN[config.activation_function]
         self.activation_dropout = config.activation_dropout
+
+        enc_concat_dim = 256 * 13
+
         self.encoder = BartEncoder(config, self.shared)
         
 
@@ -43,6 +46,26 @@ class BartForDataToText(BartPretrainedModel):
         self.fc0 = nn.Linear(config.d_model * 5, config.d_model * 10)
         self.fc1 = nn.Linear(config.d_model * 10, 3072)
         self.final_layer = nn.Linear(3072, config.d_model)
+
+        self.fc0_enc0 = nn.Linear(enc_concat_dim, config.d_model * 10)
+        self.fc1_enc0 = nn.Linear(config.d_model * 10, 3072)
+        self.final_layer_enc0 = nn.Linear(3072, config.d_model)
+
+        self.fc0_enc1  = nn.Linear(enc_concat_dim, config.d_model * 10)
+        self.fc1_enc1 = nn.Linear(config.d_model * 10, 3072)
+        self.final_layer_enc1 = nn.Linear(3072, config.d_model)
+
+        self.fc0_enc2 = nn.Linear(enc_concat_dim, config.d_model * 10)
+        self.fc1_enc2 = nn.Linear(config.d_model * 10, 3072)
+        self.final_layer_enc2 = nn.Linear(3072, config.d_model)
+
+        self.fc0_enc3 = nn.Linear(enc_concat_dim, config.d_model * 10)
+        self.fc1_enc3 = nn.Linear(config.d_model * 10, 3072)
+        self.final_layer_emc3 = nn.Linear(3072, config.d_model)
+
+        self.fc0_enc4 = nn.Linear(cenc_concat_dim, config.d_model * 10)
+        self.fc1_enc4 = nn.Linear(config.d_model * 10, 3072)
+        self.final_layer_enc4 = nn.Linear(3072, config.d_model)
         print("DIM", config.d_model)
         self.init_weights()
         
@@ -175,7 +198,7 @@ class BartForDataToText(BartPretrainedModel):
             added_enc_attns = torch.as_tensor(added_enc_attns , device = attention_mask_list[0].device)
             return added_enc_attns
     
-    def _forward_pass(self, encoder_outputs):
+    def _forward_pass(self, encoder_outputs, fc0 = self.fc0, fc1 = self.fc1, final_layer = self.final_layer):
         enc_outputs = []
         for i in range(0,3):
             if len(encoder_outputs) > i:
@@ -204,7 +227,9 @@ class BartForDataToText(BartPretrainedModel):
                 data_chunks.append(data_chunk)
         return data_chunks
 
-    def _loop_encoders(self, encoder, encoder_outputs, input_ids, attention_masks, output_attentions = None, output_hidden_states = None, head_mask = None, return_dict = None ,inputs_embeds = None, inc_count = 1024):
+    def _loop_encoders(self, encoder, encoder_outputs, input_ids, attention_masks, output_attentions = None, \
+        output_hidden_states = None, head_mask = None, return_dict = None ,inputs_embeds = None, \
+            fc0, fc1, final_layer, inc_count = 256):
         encoder_output_list = []
         
 
@@ -220,7 +245,7 @@ class BartForDataToText(BartPretrainedModel):
                 attention_mask_chunk = attention_masks_chunks[ind] if attention_masks_chunks else None
                 if attention_mask_chunk is not None:
                     attention_mask_chunk = attention_mask_chunk if attention_mask_chunk[0][0] != -2 else None
-                if inp_id[0][0] != -2:
+                if inp_id[0][0] != -2 and inp_id[0][0] != 1:
                     encoder_outputs_temp = self._get_encoder_outputs(
                             encoder = encoder, 
                             encoder_outputs = encoder_outputs, 
@@ -233,7 +258,11 @@ class BartForDataToText(BartPretrainedModel):
                             return_dict = return_dict)
                     encoder_output_list.append(encoder_outputs_temp)
             
-            encoder_outputs = self._get_sum_encoder_outputs(encoder_output_list)
+            #encoder_outputs = self._get_sum_encoder_outputs(encoder_output_list)
+            encoder_outputs_list = encoder_outputs_list[:13]
+            encoder_outputs = self._get_concat_encoder_outputs(encoder_outputs_list)
+            encoder_outputs = self._forward_pass(encoder_outputs, fc0, fc1, final_layer)
+            return encoder_outputs, None
         
         elif encoder_outputs is not None:
             encoder_outputs = self._get_encoder_outputs(
@@ -376,36 +405,33 @@ class BartForDataToText(BartPretrainedModel):
         else:
             #print("HERE")
             if input_ids_col0 is not None or encoder_outputs_col0 is not None:
-                #print(encoder_outputs_col0)
-                #print(encoder_outputs_col0, attention_mask_col0)
                 encoder_outputs_col0, attention_mask_col0 = self._loop_encoders( self.encoder, encoder_outputs_col0, input_ids_col0,\
-                     attention_mask_col0, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds,  inc_count = 256)
-                encoder_outputs_list.append(encoder_outputs_col0)
-                #attn_mask_list.append(attn_mask0)
+                     attention_mask_col0, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds,  \
+                         self.fc0_enc0, self.fc1_enc0, self.final_layer_enc0, inc_count = inc_count)
+                
 
             if input_ids_col1 is not None or encoder_outputs_col1 is not None:
                 encoder_outputs_col1, attention_mask_col1 = self._loop_encoders( self.encoder1, encoder_outputs_col1, input_ids_col1,\
-                     attention_mask_col1, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, inc_count = 256)
-                encoder_outputs_list.append(encoder_outputs_col1)
-                #attn_mask_list.append(attn_mask1)
-
+                     attention_mask_col1, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, \
+                         self.fc0_enc1, self.fc1_enc1, self.final_layer_enc1, inc_count = inc_count)
+                
             if input_ids_col2 is not None or encoder_outputs_col2 is not None:
                 encoder_outputs_col2, attention_mask_col2 = self._loop_encoders( self.encoder2, encoder_outputs_col2, input_ids_col2,\
-                     attention_mask_col2, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, inc_count = 256)
-                encoder_outputs_list.append(encoder_outputs_col2)
-                #attn_mask_list.append(attn_mask2)
+                     attention_mask_col2, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, \
+                         self.fc0_enc2, self.fc1_enc2, self.final_layer_enc2, inc_count = inc_count)
+                
 
             if input_ids_col3 is not None or encoder_outputs_col3 is not None:
                 encoder_outputs_col3, attention_mask_col3 = self._loop_encoders( self.encoder3, encoder_outputs_col3, input_ids_col3,\
-                     attention_mask_col3, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, inc_count = 256)
-                encoder_outputs_list.append(encoder_outputs_col3)
-                #attn_mask_list.append(attn_mask3)
+                     attention_mask_col3, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, \
+                         self.fc0_enc3, self.fc1_enc3, self.final_layer_enc3, inc_count = inc_count)
+                
 
             if input_ids_col4 is not None or encoder_outputs_col4 is not None:
                 encoder_outputs_col4, attention_mask_col4 = self._loop_encoders( self.encoder4, encoder_outputs_col4, input_ids_col4,\
-                     attention_mask_col4, output_attentions, output_hidden_states, head_mask, return_dict,inputs_embeds, inc_count = 256)
-                encoder_outputs_list.append(encoder_outputs_col4)
-                #attn_mask_list.append(attn_mask4)
+                     attention_mask_col4, output_attentions, output_hidden_states, head_mask, return_dict,inputs_embeds, \
+                         self.fc0_enc4, self.fc1_enc4, self.final_layer_enc4, inc_count = inc_count)
+                
         
        #print(encoder_outputs_list)
         encoder_outputs = [encoder_outputs_col0, encoder_outputs_col1, encoder_outputs_col2, encoder_outputs_col3, encoder_outputs_col4]

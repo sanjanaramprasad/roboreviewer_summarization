@@ -290,13 +290,9 @@ class Data2TextGenerator(GenerationMixin):
 
 
 
-            #print("INPUT IDS", input_ids)
-            #print("MODEL KWARGS", model_kwargs)
-        
-        #input_ids = torch.cat(input_list,1)
-            # determine generation mode
+            
         is_greedy_gen_mode = (num_beams == 1) and (num_beam_groups == 1) and do_sample is False
-        #is_greedy_gen_mode = True
+        
         is_sample_gen_mode = (num_beams == 1) and (num_beam_groups == 1) and do_sample is True
         is_beam_gen_mode = (num_beams > 1) and (num_beam_groups == 1) and do_sample is False
         is_beam_sample_gen_mode = (num_beams > 1) and (num_beam_groups == 1) and do_sample is True
@@ -333,7 +329,7 @@ class Data2TextGenerator(GenerationMixin):
         stopping_criteria = self._get_stopping_criteria(max_length=max_length, max_time=max_time)
 
         if is_greedy_gen_mode:
-            print("GREEDY SEARCHING")
+            #print("GREEDY SEARCHING")
             if num_return_sequences > 1:
                 raise ValueError(
                     f"num_return_sequences has to be 1, but is {num_return_sequences} when doing greedy search."
@@ -377,7 +373,7 @@ class Data2TextGenerator(GenerationMixin):
             input_ids, model_kwargs = self._expand_inputs_for_generation(
                 input_ids, expand_size=num_beams, is_encoder_decoder=self.config.is_encoder_decoder, **model_kwargs
             )
-            print("BEAM SEARCH KWARGS", model_kwargs)
+            #print("BEAM SEARCH KWARGS", model_kwargs)
             return self.model.beam_search(
                 input_ids,
                 beam_scorer,
@@ -393,7 +389,7 @@ class Data2TextGenerator(GenerationMixin):
 
 
         elif is_group_beam_gen_mode:
-            print("GROUP BEAM SEARCHING")
+            #print("GROUP BEAM SEARCHING")
             batch_size = input_ids.shape[0]
 
             length_penalty = length_penalty if length_penalty is not None else self.config.length_penalty
@@ -581,15 +577,14 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/s
     summary_data.prepare_data()
     return summary_data
 
-        
-if __name__ == '__main__':
+
+def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_type = 'addition'):
     additional_special_tokens = ["<sep>", "<study>", "</study>",
             "<outcomes>", "</outcomes>",
             "<punchline_text>", "</punchline_text>",
             "<population>", "</population>",
             "<interventions>", "</interventions>",
             "<punchline_effect>", "</punchline_effect>"]
-
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>",
                                                     eos_token="</s>",
                                                     pad_token = "<pad>")
@@ -600,79 +595,41 @@ if __name__ == '__main__':
     freeze_encoder = True
     freeze_embeds = True
     hparams.eval_beams = 4
-    model_path = '3e-5_loop_addition_mod/epoch=4-loss=0.57.ckpt'
-    learning_rate = 3e-5
-    ##encoder_forward_stratergy = 'single'
-    ##encoder_combination_type = 'addition'
-    layer_share = False
-    bart_model = BartForDataToText.from_pretrained('facebook/bart-base')
-    '''model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type, layer_share = layer_share, freeze_encoder = freeze_encoder, \
-                            freeze_embeds = freeze_embeds)'''
-    encoder_forward_stratergy = 'loop'
-    encoder_combination_type = 'addition'
+    model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, \
+                encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type, \
+                    layer_share = layer_share, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds).load_from_checkpoint(checkpoint_path="/home/sanjana/roboreviewer_summarization/scripts/checkpoint_files/%s"%(model_path), encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type,)
 
-    model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type, layer_share = layer_share, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds).load_from_checkpoint(checkpoint_path="/home/sanjana/roboreviewer_summarization/scripts/checkpoint_files/%s"%(model_path), encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type,)
 
     print("Loading data...")
-    '''summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_sep.csv',
-        '/home/sanjana/roboreviewer_summarization/data/robo_dev_sep.csv',
-        '/home/sanjana/roboreviewer_summarization/data/robo_test_sep.csv'], batch_size = 1)'''
-    from Data2TextProcessor_loop import SummaryDataModule
-    files = ['robo_train_linearized_per_study.csv', 'robo_dev_linearized_per_study.csv', 'robo_test_linearized_per_study.csv']
-    summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/sanjana', files = files) 
-    #summary_data.prepare_data()
+    if encoder_forward_stratergy == 'loop':
+        from Data2TextProcessor_loop import SummaryDataModule
+        files = ['robo_train_linearized_per_study.csv', 
+                            'robo_dev_linearized_per_study.csv', 'robo_test_linearized_per_study.csv']
+        
 
+    elif encoder_forward_stratergy == 'single':
+        from Data2TextProcessor import SummaryDataModule
+        files = ['robo_train_sep.csv', 
+                            'robo_dev_sep.csv', 'robo_test_sep.csv']
+
+    
+    summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/sanjana', files = files)
     summary_data.setup("stage")
     val_data = summary_data.val_dataloader(data_type = 'robo')
 
-    num_val = len(list(val_data))
     num_val = 50
     print("NUM EXAMPLES", num_val)
     it = iter(val_data)
     import random
     sample = random.sample(list(it), num_val)
-    
+
     num_beams, min_len, repetition_penalty, length_penalty = parameter_search(sample, model, tokenizer)
     references, targets, _, _ = sample_score(list(it), model, tokenizer, num_beams, min_len, repetition_penalty, length_penalty)
     df_write = pd.DataFrame(list(zip(references, model_out)), columns=["Reference Summary", "Generated Summary"])
     file_name = '_'.join(model_path.split('/'))
     df_write.to_csv("%s.csv"%file_name)
 
-    '''model_out = []
-    references = []
-    meteor_scores = []
-    bleu_scores =[]
 
-    while(ind < num_val):
-        #first_batch = next(it)
-        first_batch = sample[ind]
-        generator = Data2TextGenerator(model, tokenizer)
-        #print("Target", first_batch[-1])
-        outputs = generator.generate(first_batch, num_beams = 3, num_beam_groups =1,  max_length = 400, min_length = 70, no_repeat_ngram_size =3, early_stopping = True)        
-        #outputs = generator.generate(first_batch, num_beams = 5, num_beam_groups =1,  max_length = 400, length_penalty = 2.1) 
-        val_data = pd.read_csv('/home/sanjana/roboreviewer_summarization/data/robo_dev_sep.csv')
-        target = val_data['target'][ind]
-        ind += 1
-        rouge = Rouge()
-        model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
-        target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in first_batch[-1]])
-        avg_len = 0
-        if model_output.strip():
-            model_out.append(model_output)
-            references.append(target)
-            avg_len += first_batch[-1].shape[1]
-            met_score = round(meteor_score.meteor_score([target], model_output), 4)
-            meteor_scores.append(met_score)
-            BLEUscore = nltk.translate.bleu_score.sentence_bleu([target], model_output)
-            bleu_scores.append(BLEUscore)
-            #scores = rouge.get_scores(target, reference)
-            #print("TARGET : ", target)
-            #print("GENERATED :", model_output)
-    #print(avg_len/num_val)
-    print("ROGUE", rouge.get_scores(model_out, references, avg=True))
-    print("METEOR", sum(meteor_scores)/len(meteor_scores))
-    print("BLEU", sum(bleu_scores)/len(bleu_scores))
-#print(references)
-#print(model_out)
-#df_write = pd.DataFrame(list(zip(references, model_out)), columns=["Reference Summary", "Generated Summary"])
-#df_write.to_csv("model_epoch3e-05_adam_sum.csv")'''
+        
+if __name__ == '__main__':
+    run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_type = 'addition')

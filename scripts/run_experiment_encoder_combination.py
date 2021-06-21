@@ -292,5 +292,8 @@ def main(encoder_forward_stratergy = 'single', encoder_combination_type = 'addit
 
 if __name__ == '__main__': 
     main(encoder_forward_stratergy = 'single', encoder_combination_type = 'linearized')
+    main(encoder_forward_stratergy = 'single', encoder_combination_type = 'addition')
+    main(encoder_forward_stratergy = 'loop', encoder_combination_type = 'addition')
+    main(encoder_forward_stratergy = 'loop', encoder_combination_type = 'linearized')
            
 
