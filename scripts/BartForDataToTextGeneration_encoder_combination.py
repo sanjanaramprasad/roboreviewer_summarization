@@ -303,14 +303,11 @@ class BartForDataToText(BartPretrainedModel):
     def __get_loop_encoder_outputs(self, input_ids, encoder, encoder_outputs, attention_mask, \
         output_attentions = None, output_hidden_states = None, head_mask = None, return_dict = None, inputs_embeds = None, inc_count = 256, enc_ind = None):
         if input_ids is not None or encoder_outputs is not None:
-                if enc_ind:
-                    exec("fc0 = self.fc0_enc%s"%enc_ind)
-                    exec("fc1 = self.fc1_enc%s"%enc_ind)
-                    exec("final_layer = self.final_layer_enc%s"%enc_ind)
-                else:
-                    fc0 = None
-                    fc1 = None
-                    final_layer = None
+                
+                exec("fc0 = fc0_enc%s if enc_ind is not None else None"%enc_ind)
+                exec("fc1 = self.fc1_enc%s if enc_ind is not None else None"%enc_ind)
+                exec("final_layer = self.final_layer_enc%s if enc_ind is not None else None"%enc_ind)
+
                 encoder_outputs, attention_mask = self._loop_encoders( encoder, encoder_outputs, input_ids,\
                      attention_mask, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds,  \
                          fc0, fc1, final_layer, inc_count = inc_count)
