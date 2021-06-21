@@ -200,7 +200,7 @@ class Data2TextGenerator(GenerationMixin):
                     encoder_outputs = encoder_kwargs.get('encoder_outputs_col4', None)
 
                     if model_kwargs["encoder_forward_stratergy"] == 'single':
-                        model_kwargs["encoder_outputs_col4"]: ModelOutput = model_kwargs["encoder_outputs_col4"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col4, encoder_outputs = encoder_outputs, input_ids = input_ids_col4, attention_mask = attention_mask_col4)
+                        model_kwargs["encoder_outputs_col4"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col4, encoder_outputs = encoder_outputs, input_ids = input_ids_col4, attention_mask = attention_mask_col4)
                     else:
                         model_kwargs["encoder_outputs_col2"] , _ = self.model._loop_encoders(encoder_col4, encoder_outputs, input_ids_col4, \
                             attention_mask_col4, inc_count = 256, fc0 = self.model.fc0_enc4, fc1 = self.model.fc1_enc4, final_layer = self.model.final_layer_enc4)
