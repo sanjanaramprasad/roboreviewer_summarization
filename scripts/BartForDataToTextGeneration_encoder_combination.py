@@ -300,7 +300,7 @@ class BartForDataToText(BartPretrainedModel):
         return encoder_outputs, attention_masks
 
 
-    def __get_loop_encoder_outputs(self, input_id, encoder, encoder_outputs, attention_mask, \
+    def __get_loop_encoder_outputs(self, input_ids, encoder, encoder_outputs, attention_mask, \
         output_attentions = None, output_hidden_states = None, head_mask = None, return_dict = None, inputs_embeds = None, inc_count = 256, enc_ind = None):
         if input_ids is not None or encoder_outputs is not None:
                 if enc_ind:
