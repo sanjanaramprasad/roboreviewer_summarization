@@ -263,6 +263,9 @@ class BartForDataToText(BartPretrainedModel):
             if fc0 is not None:
                 encoder_output_list = encoder_output_list[:13]
                 encoder_outputs = self._get_concat_encoder_outputs(encoder_output_list)
+                print(encoder_outputs[0].shape)
+                encoder_outputs_0 = nn.ConstantPad1d((0, 13 * 256 - encoder_outputs[0].shape[1]),-2)(encoder_outputs[0])
+                print(encoder_outputs_0.shape)
                 encoder_outputs = self._forward_pass(encoder_outputs, fc0, fc1, final_layer)
                 attn_mask = None
             else:
