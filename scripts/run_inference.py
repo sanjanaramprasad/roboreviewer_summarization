@@ -126,6 +126,7 @@ class Data2TextGenerator(GenerationMixin):
         if not(attention_mask_col4 is None):
             model_kwargs["attention_mask_col4"] = attention_mask_col4
 
+        print(model_kwargs)
         return model_kwargs
 
     def _prepare_encoder_decoder_kwargs_for_generation(
