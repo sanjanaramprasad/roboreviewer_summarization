@@ -50,7 +50,7 @@ def freeze_params(model):
 
 class LitModel(pl.LightningModule):
     # Instantiate the model
-    def __init__(self, learning_rate, tokenizer, model, encoder_forward_stratergy, encoder_combination_type, layer_share ,freeze_encoder, freeze_embeds, max_len):
+    def __init__(self, learning_rate, tokenizer, model, encoder_forward_stratergy, encoder_combination_type, layer_share ,freeze_encoder, freeze_embeds, max_len, loop_strategy = 'addition'):
         super().__init__()
         self.tokenizer = tokenizer
         self.model = model
@@ -62,6 +62,7 @@ class LitModel(pl.LightningModule):
         self.encoder_forward_stratergy = encoder_forward_stratergy
         self.encoder_combination_type = encoder_combination_type
         self.max_len = max_len
+        self.loop_strategy = loop_strategy
 
         if self.freeze_encoder:
             freeze_params(self.model.encoder)
@@ -133,6 +134,7 @@ class LitModel(pl.LightningModule):
             encoder_combination_type = self.encoder_combination_type,
             decoder_input_ids = None,
             inc_count = self.max_len,
+            loop_strategy = self.loop_strategy,
             use_cache = False,
         )
         
@@ -191,6 +193,7 @@ class LitModel(pl.LightningModule):
             encoder_combination_type = self.encoder_combination_type,
             decoder_input_ids = None,
             inc_count = self.max_len,
+            loop_strategy = self.loop_strategy,
             use_cache = False,
         )
 
@@ -234,7 +237,7 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/s
 
 
 
-def main(encoder_forward_stratergy = 'single', encoder_combination_type = 'addition', layer_share = False, group_key = 'study'):
+def main(encoder_forward_stratergy = 'single', encoder_combination_type = 'addition', layer_share = False, loop_strategy = 'addition'):
     #additional_special_tokens=["<attribute>",  "</attribute>", "<sep>"]
     #
 
@@ -276,7 +279,7 @@ def main(encoder_forward_stratergy = 'single', encoder_combination_type = 'addit
     logger = TensorBoardLogger('tb_logs_final', name='my_model_%s_%s_linearize'%(encoder_forward_stratergy, encoder_combination_type))  
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, \
                         encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type, layer_share = layer_share, freeze_encoder = freeze_encoder, \
-                            freeze_embeds = freeze_embeds, max_len = max_len)
+                            freeze_embeds = freeze_embeds, max_len = max_len, loop_strategy = loop_strategy)
     checkpoint = ModelCheckpoint('checkpoint_files/3e-5_%s_%s_mod/'%(encoder_forward_stratergy, encoder_combination_type),
                                 filename = '{epoch}-{loss:.2f}',
                                 save_top_k=10,
