@@ -94,7 +94,7 @@ class BartDecoderLayerMulti(nn.Module):
         past_key_value: Optional[Tuple[torch.Tensor]] = None,
         output_attentions: Optional[bool] = False,
         use_cache: Optional[bool] = True,
-	    decoder_combination = 'addition'
+	decoder_combination = 'addition'
     ):
         """
         Args:
@@ -176,10 +176,10 @@ class BartDecoderLayerMulti(nn.Module):
         hidden_states_3, cross_attn_present_key_value_3 = cross_attn_block(self.encoder_attn_3, encoder_hidden_states3, encoder_attention_mask3, hidden_states, residual, cross_attn_past_key_value)
         
 
-        cross_attn_past_key_value = past_key_value[-2:] if past_key_value is not None else None
+        cross_attn_past_key_value = past_key_value[10:12] if past_key_value is not None else None
         hidden_states_4, cross_attn_present_key_value_4 = cross_attn_block(self.encoder_attn_4, encoder_hidden_states4, encoder_attention_mask4, hidden_states, residual, cross_attn_past_key_value)
         # add cross-attn to positions 3,4 of present_key_value tuple
-        if encoder_combination == 'addition':
+        if decoder_combination == 'addition':
                hidden_states_all = hidden_states_0 + hidden_states_1 + hidden_states_2 + hidden_states_3 + hidden_states_4
         
         else:
@@ -192,7 +192,7 @@ class BartDecoderLayerMulti(nn.Module):
                 hidden_states_concat = self.fc_concat3(hidden_states_concat)
                 hidden_states_concat = F.dropout(hidden_states_concat, p=self.dropout, training=self.training)
                 
-                concat_attn_past_key_value = past_key_value[10:12] if past_key_value is not None else None
+                concat_attn_past_key_value = past_key_value[-2:] if past_key_value is not None else None
                 hidden_states_all, concat_attn_weights, concat_attn_present_key_value = self.concat_attn(
                 hidden_states = hidden_states_concat,
                 past_key_value = concat_attn_past_key_value,
@@ -209,7 +209,7 @@ class BartDecoderLayerMulti(nn.Module):
         hidden_states = hidden_states_all + residual
         hidden_states = self.encoder_attn_layer_norm(hidden_states)
         present_key_value = present_key_value + cross_attn_present_key_value_0 + cross_attn_present_key_value_1 + cross_attn_present_key_value_2 + cross_attn_present_key_value_3 + cross_attn_present_key_value_4          
-        if encoder_combination != 'addition':
+        if decoder_combination != 'addition':
 	        present_key_value = present_key_value + concat_attn_present_key_value
 	
 
@@ -580,7 +580,7 @@ class BartForDataToTextDecoderMod(BartForDataToText):
         output_attentions=None,
         output_hidden_states=None,
         return_dict=None,
-        decoder_combination = 'addition'
+        decoder_combination = 'hierarch'
     ):
         
         
