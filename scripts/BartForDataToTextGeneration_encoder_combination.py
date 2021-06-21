@@ -154,15 +154,15 @@ class BartForDataToText(BartPretrainedModel):
             encoder_output_list):
         encoder_outputs = {0:[], 1:[], 2:[]}
         for i in range(0,3):
-            if len(encoder_output_list[0]) > i:
+            if len(encoder_output_list) > i:
                 added_enc_outputs_i = torch.stack([enc[i] for enc in encoder_output_list], dim = 0)
                 added_enc_outputs_i = torch.sum(added_enc_outputs_i, dim = 0)
                 encoder_outputs[i].append(added_enc_outputs_i)
 
         added_enc_outputs = BaseModelOutput(
                 last_hidden_state=torch.cat(encoder_outputs[0], dim =0 ),
-                hidden_states=torch.cat(encoder_outputs[1], dim =0 ) if len(encoder_outputs[1]) > 1 else None,
-                attentions=torch.cat(encoder_outputs[2], dim =0 ) if len(encoder_outputs[2]) > 1 else None,
+                hidden_states=torch.cat(encoder_outputs[1], dim =0 ) if len(encoder_outputs) > 1 else None,
+                attentions=torch.cat(encoder_outputs[2], dim =0 ) if len(encoder_outputs) > 2 else None,
             )
         #print(added_enc_outputs)
         return added_enc_outputs
@@ -173,14 +173,14 @@ class BartForDataToText(BartPretrainedModel):
 
         encoder_outputs = {0:[], 1:[], 2:[]}
         for i in range(0,3):
-            if len(encoder_outputs_list[0]) > i: 
+            if len(encoder_outputs_list) > i: 
                 added_enc_outputs_i = torch.cat([enc[i] for enc in encoder_outputs_list],2)
                 encoder_outputs[i].append(added_enc_outputs_i)
             
         added_enc_outputs = BaseModelOutput(
                 last_hidden_state=torch.cat(encoder_outputs[0], dim =0 ),
-                hidden_states=torch.cat(encoder_outputs[1], dim =0 ) if len(encoder_outputs[1]) > 1 else None,
-                attentions=torch.cat(encoder_outputs[2], dim =0 ) if len(encoder_outputs[2]) > 1 else None,
+                hidden_states=torch.cat(encoder_outputs[1], dim =0 ) if len(encoder_outputs) > 1 else None,
+                attentions=torch.cat(encoder_outputs[2], dim =0 ) if len(encoder_outputs) > 2 else None,
             )
         #print(added_enc_outputs)
         return added_enc_outputs
