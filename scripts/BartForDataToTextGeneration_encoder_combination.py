@@ -154,7 +154,7 @@ class BartForDataToText(BartPretrainedModel):
             encoder_output_list):
         encoder_outputs = {0:[], 1:[], 2:[]}
         for i in range(0,3):
-            if len(encoder_output_list) > i:
+            if len(encoder_output_list[0]) > i:
                 added_enc_outputs_i = torch.stack([enc[i] for enc in encoder_output_list], dim = 0)
                 added_enc_outputs_i = torch.sum(added_enc_outputs_i, dim = 0)
                 encoder_outputs[i].append(added_enc_outputs_i)
@@ -173,7 +173,7 @@ class BartForDataToText(BartPretrainedModel):
 
         encoder_outputs = {0:[], 1:[], 2:[]}
         for i in range(0,3):
-            if len(encoder_outputs_list) > i: 
+            if len(encoder_outputs_list[0]) > i: 
                 added_enc_outputs_i = torch.cat([enc[i] for enc in encoder_outputs_list],2)
                 encoder_outputs[i].append(added_enc_outputs_i)
             
