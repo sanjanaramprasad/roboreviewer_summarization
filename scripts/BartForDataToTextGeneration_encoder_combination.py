@@ -198,7 +198,7 @@ class BartForDataToText(BartPretrainedModel):
 
     def _loop_attr(self, data ,inc_count):
         data_chunks = []
-        if data:
+        if data is not None:
             for chunk_idx in range(0, data.shape[1], inc_count):
                 data_chunk = data[:,chunk_idx : chunk_idx+ inc_count]
                 data_chunks.append(data_chunk)
@@ -218,7 +218,8 @@ class BartForDataToText(BartPretrainedModel):
         if input_id_chunks:
             for ind, inp_id in enumerate(input_id_chunks):
                 attention_mask_chunk = attention_masks_chunks[ind] if attention_masks_chunks else None
-                attention_mask_chunk = attention_mask_chunk if attention_mask_chunk[0][0] != -2 else None
+                if attention_mask_chunk is not None:
+                    attention_mask_chunk = attention_mask_chunk if attention_mask_chunk[0][0] != -2 else None
                 if inp_id[0][0] != -2:
                     encoder_outputs_temp = self._get_encoder_outputs(
                             encoder = encoder, 
@@ -378,31 +379,31 @@ class BartForDataToText(BartPretrainedModel):
                 #print(encoder_outputs_col0)
                 #print(encoder_outputs_col0, attention_mask_col0)
                 encoder_outputs_col0, attention_mask_col0 = self._loop_encoders( self.encoder, encoder_outputs_col0, input_ids_col0,\
-                     attention_mask_col0, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds,  inc_count = 1024)
+                     attention_mask_col0, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds,  inc_count = 256)
                 encoder_outputs_list.append(encoder_outputs_col0)
                 #attn_mask_list.append(attn_mask0)
 
             if input_ids_col1 is not None or encoder_outputs_col1 is not None:
                 encoder_outputs_col1, attention_mask_col1 = self._loop_encoders( self.encoder1, encoder_outputs_col1, input_ids_col1,\
-                     attention_mask_col1, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, inc_count = 1024)
+                     attention_mask_col1, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, inc_count = 256)
                 encoder_outputs_list.append(encoder_outputs_col1)
                 #attn_mask_list.append(attn_mask1)
 
             if input_ids_col2 is not None or encoder_outputs_col2 is not None:
                 encoder_outputs_col2, attention_mask_col2 = self._loop_encoders( self.encoder2, encoder_outputs_col2, input_ids_col2,\
-                     attention_mask_col2, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, inc_count = 1024)
+                     attention_mask_col2, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, inc_count = 256)
                 encoder_outputs_list.append(encoder_outputs_col2)
                 #attn_mask_list.append(attn_mask2)
 
             if input_ids_col3 is not None or encoder_outputs_col3 is not None:
                 encoder_outputs_col3, attention_mask_col3 = self._loop_encoders( self.encoder3, encoder_outputs_col3, input_ids_col3,\
-                     attention_mask_col3, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, inc_count = 1024)
+                     attention_mask_col3, output_attentions, output_hidden_states, head_mask, return_dict, inputs_embeds, inc_count = 256)
                 encoder_outputs_list.append(encoder_outputs_col3)
                 #attn_mask_list.append(attn_mask3)
 
             if input_ids_col4 is not None or encoder_outputs_col4 is not None:
                 encoder_outputs_col4, attention_mask_col4 = self._loop_encoders( self.encoder4, encoder_outputs_col4, input_ids_col4,\
-                     attention_mask_col4, output_attentions, output_hidden_states, head_mask, return_dict,inputs_embeds, inc_count = 1024)
+                     attention_mask_col4, output_attentions, output_hidden_states, head_mask, return_dict,inputs_embeds, inc_count = 256)
                 encoder_outputs_list.append(encoder_outputs_col4)
                 #attn_mask_list.append(attn_mask4)
         
