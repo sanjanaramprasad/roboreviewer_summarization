@@ -268,7 +268,7 @@ class BartForDataToText(BartPretrainedModel):
                 print(encoder_outputs[0].shape)
                 
                 for i in range(0,3):
-                    if len(encoder_outputs_list[i]) > i: 
+                    if len(encoder_outputs) > i: 
                         encoder_outputs_i = nn.ConstantPad1d((0, (13 * 256) - encoder_outputs[i].shape[2]),1)(encoder_outputs[i])
                         encoder_outputs_padded.append(encoder_outputs_i)
                 
