@@ -127,7 +127,7 @@ class LitModel(pl.LightningModule):
         #loss = ce_loss_fct(lm_logits.view(-1, lm_logits.shape[-1]), tgt_ids.view(-1))
         loss = outputs[0]
         tensorboard_logs = {'loss': loss}
-        self.logger.experiment.add_scalar("train_loss", loss, self.current_epoch)
+        self.log("train_loss", loss)
         epoch_dictionary={
             'loss': loss,
             'log': tensorboard_logs}
@@ -154,7 +154,7 @@ class LitModel(pl.LightningModule):
         #loss = ce_loss_fct(lm_logits.view(-1, lm_logits.shape[-1]), tgt_ids.view(-1))
         loss = outputs[0]
         tensorboard_logs = {'loss': loss}
-        self.logger.experiment.add_scalar("val_loss_step", loss, self.current_epoch)
+        self.log("val_loss_step", loss)
 
         epoch_dictionary={
             'val_loss': loss,
@@ -164,7 +164,7 @@ class LitModel(pl.LightningModule):
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
         tensorboard_logs = {'val_loss': avg_loss}
-        self.logger.experiment.add_scalar("val_loss", avg_loss, self.current_epoch)
+        self.log("val_loss", avg_loss)
 
         return {'val_loss': avg_loss, 'log': tensorboard_logs}
 
