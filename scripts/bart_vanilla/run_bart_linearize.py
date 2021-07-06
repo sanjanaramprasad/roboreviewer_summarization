@@ -34,7 +34,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.callbacks import ModelCheckpoint
-from BartForDataToTextGeneration import BartForDataToText
+##from BartForDataToTextGeneration import BartForDataToText
 import math
 import random
 import re
@@ -172,9 +172,9 @@ class LitModel(pl.LightningModule):
 
 def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana'):
     if data_type == 'robo':
-        train_file = path + '/roboreviewer_summarization/data/bart_vanila/robo_train_linearized.csv'
-        dev_file = path + '/roboreviewer_summarization/data/bart_vanila/robo_dev_linearized.csv'
-        test_file = path + '/roboreviewer_summarization/data/bart_vanila/robo_test_linearized.csv'
+        train_file = path + '/roboreviewer_summarization/data/bart_vanilla/robo_train_linearized.csv'
+        dev_file = path + '/roboreviewer_summarization/data/bart_vanilla/robo_dev_linearized.csv'
+        test_file = path + '/roboreviewer_summarization/data/bart_vanilla/robo_test_linearized.csv'
     
     elif data_type =='webnlg':
         train_file = path + '/roboreviewer_summarization/data/web_nlg_train.csv'
@@ -284,6 +284,6 @@ def inference(checkpoint_file):
     print("METEOR", sum(meteor_scores)/len(meteor_scores))
     print("BLEU", sum(bleu_scores)/len(bleu_scores))
 if __name__ == '__main__': 
-    #main()
-    inference('/home/ramprasad.sa/roboreviewer_summarization/epoch=2-val_loss=2.79.ckpt')
+    main()
+    #inference('/home/ramprasad.sa/roboreviewer_summarization/epoch=2-val_loss=2.79.ckpt')
    
