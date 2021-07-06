@@ -117,7 +117,7 @@ class LitModel(pl.LightningModule):
         tgt_ids = batch[-1]
         # Shift the decoder tokens right (but NOT the tgt_ids)
         # Run the model and get the logits
-        print(self.encoder_forward_stratergy, self.encoder_combination_type)
+        #print(self.encoder_forward_stratergy, self.encoder_combination_type)
         outputs = self(
             input_ids_col0 = input_ids_col0,
             input_ids_col1 = input_ids_col1,
@@ -146,6 +146,7 @@ class LitModel(pl.LightningModule):
         tensorboard_logs = {'loss': loss}
         self.logger.experiment.add_scalar("Train Loss", loss, self.current_epoch)
         epoch_dictionary={
+
             'loss': loss,
             'log': tensorboard_logs,
             }
@@ -276,11 +277,11 @@ def main(encoder_forward_stratergy = 'single', encoder_combination_type = 'addit
     learning_rate = 3e-5 
     max_epochs = 10
     bart_model = BartForDataToText.from_pretrained('facebook/bart-base') 
-    logger = TensorBoardLogger('tb_logs_final', name='my_model_%s_%s_linearize'%(encoder_forward_stratergy, encoder_combination_type))  
+    logger = TensorBoardLogger('tb_logs_final', name='my_model_f%s_c%s_l%s'%(encoder_forward_stratergy, encoder_combination_type, loop_strategy))  
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, \
                         encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type, layer_share = layer_share, freeze_encoder = freeze_encoder, \
                             freeze_embeds = freeze_embeds, max_len = max_len, loop_strategy = loop_strategy)
-    checkpoint = ModelCheckpoint('checkpoint_files/3e-5_%s_%s_mod/'%(encoder_forward_stratergy, encoder_combination_type),
+    checkpoint = ModelCheckpoint('checkpoint_files/3e-5_%s_%s_%s/'%(encoder_forward_stratergy, encoder_combination_type, loop_strategy),
                                 filename = '{epoch}-{loss:.2f}',
                                 save_top_k=10,
                                 monitor = 'loss')
@@ -299,12 +300,12 @@ def main(encoder_forward_stratergy = 'single', encoder_combination_type = 'addit
 
 
 if __name__ == '__main__': 
-    #main(encoder_forward_stratergy = 'single', encoder_combination_type = 'linearized')
-    #main(encoder_forward_stratergy = 'single', encoder_combination_type = 'addition')
-    main(encoder_forward_stratergy = 'loop', encoder_combination_type = 'addition', loop_strategy = 'addition')
-    main(encoder_forward_stratergy = 'loop', encoder_combination_type = 'linearize', loop_strategy = 'addition')
+    main(encoder_forward_stratergy = 'single', encoder_combination_type = 'linearized')
+    main(encoder_forward_stratergy = 'single', encoder_combination_type = 'addition')
+    #main(encoder_forward_stratergy = 'loop', encoder_combination_type = 'addition', loop_strategy = 'addition')
+    #main(encoder_forward_stratergy = 'loop', encoder_combination_type = 'linearize', loop_strategy = 'addition')
 
-    main(encoder_forward_stratergy = 'loop', encoder_combination_type = 'addition', loop_strategy = 'linearize')
-    main(encoder_forward_stratergy = 'loop', encoder_combination_type = 'linearize', loop_strategy = 'linearize')
+    #main(encoder_forward_stratergy = 'loop', encoder_combination_type = 'addition', loop_strategy = 'linearize')
+    #main(encoder_forward_stratergy = 'loop', encoder_combination_type = 'linearize', loop_strategy = 'linearize')
            
 

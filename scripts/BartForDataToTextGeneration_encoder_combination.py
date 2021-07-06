@@ -66,7 +66,7 @@ class BartForDataToText(BartPretrainedModel):
         self.fc0_enc4 = nn.Linear(enc_concat_dim, config.d_model * 10)
         self.fc1_enc4 = nn.Linear(config.d_model * 10, 3072)
         self.final_layer_enc4 = nn.Linear(3072, config.d_model)
-        print("DIM", config.d_model)
+        #print("DIM", config.d_model)
         self.init_weights()
         
 
@@ -265,7 +265,7 @@ class BartForDataToText(BartPretrainedModel):
                 encoder_outputs = self._get_concat_encoder_outputs(encoder_output_list)
                 encoder_outputs_padded = []
 
-                print(encoder_outputs[0].shape)
+                #print(encoder_outputs[0].shape)
 
                 for i in range(0,3):
                     if len(encoder_outputs) > i: 
@@ -278,7 +278,7 @@ class BartForDataToText(BartPretrainedModel):
                 attentions=encoder_outputs_padded[2] if len(encoder_outputs_padded) > 2 else None,
                 )
 
-                print(encoder_outputs[0].shape)
+                #print(encoder_outputs[0].shape)
                 encoder_outputs = self._forward_pass(encoder_outputs, fc0, fc1, final_layer)
                 attn_mask = None
             else:
@@ -352,9 +352,9 @@ class BartForDataToText(BartPretrainedModel):
         
         attn_mask_list = []
         encoder_outputs_list =[]
-        print(encoder_forward_stratergy, encoder_combination_type)
-        print(encoder_outputs_col0)
-        print(attention_mask_col0)
+        #print(encoder_forward_stratergy, encoder_combination_type)
+        #print(encoder_outputs_col0)
+        #print(attention_mask_col0)
         if encoder_forward_stratergy == 'single':
             encoder_outputs_list = []
             

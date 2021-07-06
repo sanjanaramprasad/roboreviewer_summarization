@@ -22,7 +22,7 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/s
         test_file = path + '/roboreviewer_summarization/data/web_nlg_test.csv'
 
     data_files = [train_file, dev_file, test_file]
-    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1)
+    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1, max_len = 256)
     summary_data.prepare_data()
     return summary_data
 
@@ -197,6 +197,7 @@ class BartForDataToTextGenerationTester():
             labels = data[-1],
             encoder_forward_stratergy = 'loop',
             encoder_combination_type = 'addition',
+            loop_strategy = 'linearize',
             use_cache = True
         )
         tgt_ids = data[-1]

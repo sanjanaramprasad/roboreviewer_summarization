@@ -137,12 +137,13 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=1
 
 
 class SummaryDataModule(pl.LightningDataModule):
-    def __init__(self, tokenizer, data_files, batch_size, num_examples = 20000):
+    def __init__(self, tokenizer, data_files, batch_size, num_examples = 20000 , max_len = 1024):
         super().__init__()
         self.tokenizer = tokenizer
         self.data_files = data_files
         self.batch_size = batch_size
         self.num_examples = num_examples
+        self.max_len = max_len
 
     # Loads and splits the data into training, validation and test sets with a 60/20/20 split
     def prepare_data(self):
@@ -152,10 +153,10 @@ class SummaryDataModule(pl.LightningDataModule):
 
 
     def setup(self, stage):
-        self.train = encode_sentences(self.tokenizer, self.train['source'], self.train['target'])
+        self.train = encode_sentences(self.tokenizer, self.train['source'], self.train['target'], max_length = self.max_len)
         #sprint(self.train)
-        self.validate = encode_sentences(self.tokenizer, self.validate['source'], self.validate['target'])
-        self.test = encode_sentences(self.tokenizer, self.test['source'], self.test['target'])
+        self.validate = encode_sentences(self.tokenizer, self.validate['source'], self.validate['target'], max_length = self.max_len)
+        self.test = encode_sentences(self.tokenizer, self.test['source'], self.test['target'], max_length = self.max_len)
         #print(self.test)
 
     # Load the training, validation and test sets in Pytorch Dataset objects
