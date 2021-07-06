@@ -77,9 +77,9 @@ class BartForConditionalGenerationTester():
 
 def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana'):
     if data_type == 'robo':
-        train_file = path + '/roboreviewer_summarization/data/bart_vanila/robo_train_linearized.csv'
-        dev_file = path + '/roboreviewer_summarization/data/bart_vanila/robo_train_linearized.csv'
-        test_file = path + '/roboreviewer_summarization/data/bart_vanila/robo_train_linearized.csv'
+        train_file = path + '/roboreviewer_summarization/data/bart_vanilla/robo_train_linearized.csv'
+        dev_file = path + '/roboreviewer_summarization/data/bart_vanilla/robo_train_linearized.csv'
+        test_file = path + '/roboreviewer_summarization/data/bart_vanilla/robo_train_linearized.csv'
 
     elif data_type =='webnlg':
         train_file = path + '/roboreviewer_summarization/data/web_nlg_train.csv'
