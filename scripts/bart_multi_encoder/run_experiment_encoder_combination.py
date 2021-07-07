@@ -257,15 +257,15 @@ def main(encoder_forward_stratergy = 'single', encoder_combination_type = 'addit
     tokenizer.add_tokens(additional_special_tokens) 
     if encoder_forward_stratergy == 'loop' :
         from Data2TextProcessor_loop import SummaryDataModule
-        files = ['robo_train_linearized_per_study.csv', 
-                            'robo_dev_linearized_per_study.csv', 'robo_test_linearized_per_study.csv']
+        files = ['bart_loop_single/robo_train_linearized_per_study.csv', 
+                            'bart_loop_single/robo_dev_linearized_per_study.csv', 'bart_loop_single/robo_test_linearized_per_study.csv']
         max_len = 256
         
 
     elif encoder_forward_stratergy == 'single':
         from Data2TextProcessor import SummaryDataModule
-        files = ['robo_train_sep.csv', 
-                            'robo_dev_sep.csv', 'robo_test_sep.csv']
+        files = ['bart_multienc_per_key/robo_train_sep.csv', 
+                            'bart_multienc_per_key/robo_dev_sep.csv', 'bart_multienc_per_key/robo_test_sep.csv']
         max_len = 1024
 
     
