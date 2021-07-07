@@ -166,9 +166,9 @@ if __name__ == '__main__':
                                                                                 "<interventions>", "</interventions>",
                                                                                 "<outcomes>", "</outcomes>"])
     bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
-    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_linearized_per_study.csv', 
-                                           '/home/sanjana/roboreviewer_summarization/data/robo_dev_linearized_per_study.csv', 
-                                           '/home/sanjana/roboreviewer_summarization/data/robo_test_linearized_per_study.csv'], batch_size = 1)
+    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/bart_loop_single/robo_train_linearized_per_study.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/bart_loop_single/robo_dev_linearized_per_study.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/bart_loop_single/robo_test_linearized_per_study.csv'], batch_size = 1)
 
     summary_data.prepare_data()
     summary_data.setup("stage")

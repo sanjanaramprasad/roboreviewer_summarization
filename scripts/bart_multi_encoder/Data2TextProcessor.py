@@ -219,9 +219,9 @@ if __name__ == '__main__':
                                                     pad_token = "<pad>")
     tokenizer.add_tokens(additional_special_tokens)
     #bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
-    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/robo_train_sep.csv', 
-                                           '/home/sanjana/roboreviewer_summarization/data/robo_dev_sep.csv', 
-                                           '/home/sanjana/roboreviewer_summarization/data/robo_test_sep.csv'], batch_size = 1)
+    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/bart_multienc_per_key/robo_train_sep.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/bart_multienc_per_key/robo_dev_sep.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/bart_multienc_per_key/robo_test_sep.csv'], batch_size = 1)
 
     summary_data.prepare_data()
     summary_data.setup("stage")
