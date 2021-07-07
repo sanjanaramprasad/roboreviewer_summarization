@@ -205,8 +205,8 @@ def main():
     summary_data = make_data(tokenizer, path = '/home/sanjana')
 
     #hparams = argparse.Namespace()
-    freeze_encoder = True
-    freeze_embeds = True
+    freeze_encoder = False
+    freeze_embeds = False
     eval_beams = 4
 
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
@@ -227,20 +227,14 @@ def main():
 
 def inference(checkpoint_file):
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
-    #model = LitModel.load_from_checkpoint(checkpoint_path="webnlg_model_14_sgd.ckpt")
-    #bart_model = BartForDataToText.from_pretrained('facebook/bart-base')
-    #bart_model._make_duplicate_encoders()
     hparams = argparse.Namespace()
     rouge = Rouge()
     hparams.freeze_encoder = True
     hparams.freeze_embeds = True
     hparams.eval_beams = 4
     model = LitModel.load_from_checkpoint(checkpoint_path=checkpoint_file)
-    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/ramprasad.sa/roboreviewer_summarization/data/robo_train_linearized.csv',
-                                           '/home/ramprasad.sa/roboreviewer_summarization/data/robo_dev_linearized.csv',
-                                           '/home/ramprasad.sa/roboreviewer_summarization/data/robo_test_linearized.csv'], batch_size = 1)
-    summary_data.prepare_data()
 
+    summary_data = make_data(tokenizer, path = '/home/sanjana')
     summary_data.setup("stage")
     val_data = summary_data.val_dataloader(data_type = 'robo')
 
@@ -254,9 +248,7 @@ def inference(checkpoint_file):
     rouge = Rouge()
     meteor_scores = []
     bleu_scores =[]
-    '''while(ind < num_val):
-        ind += 1
-        text = next(it)'''
+    
     for text in it:
         generated_ids = model.model.generate(
                 text[0],
@@ -270,20 +262,18 @@ def inference(checkpoint_file):
         )
     
         model_output = " ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in generated_ids])
-        #print("="*13)
-        #reference = data[ind]
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in text[-1]])
+        print(target, model_output)
         references.append(target)
         model_out.append(model_output)
         met_score = round(meteor_score.meteor_score([target], model_output), 4)
         meteor_scores.append(met_score)
         BLEUscore = nltk.translate.bleu_score.sentence_bleu([target], model_output)
         bleu_scores.append(BLEUscore)
-    #print(rouge.get_scores(model_out, references, avg=True))
     print("ROGUE", rouge.get_scores(model_out, references, avg=True))
     print("METEOR", sum(meteor_scores)/len(meteor_scores))
     print("BLEU", sum(bleu_scores)/len(bleu_scores))
 if __name__ == '__main__': 
-    main()
-    #inference('/home/ramprasad.sa/roboreviewer_summarization/epoch=2-val_loss=2.79.ckpt')
+    #main()
+    inference('/home/sanjana/roboreviewer_summarization/scripts/bart_vanilla/checkpoint_files/checkpoint_best_model/epoch=4-val_loss=0.25.ckpt')
    
