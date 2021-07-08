@@ -213,7 +213,7 @@ class BartForDataToTextGenerationTester():
         print('=' *13)
 
 
-    def test_model_forward_bart_encoder_straight(self):
+    def test_model_forward_bart_encoder_straight(self, encoder_combination_type):
         from BartForDataToTextGeneration_encoder_combination import BartForDataToText
         from Data2TextProcessor import SummaryDataModule
         model = BartForDataToText.from_pretrained('facebook/bart-base')
@@ -236,7 +236,7 @@ class BartForDataToTextGenerationTester():
 
         #### check if adddition is proper #### 
 
-        encoder_output_0 = 
+        ##encoder_output_0 = 
         print("forward...") 
         outputs = model(
             input_ids_col0 = input_ids_col0,
@@ -250,9 +250,9 @@ class BartForDataToTextGenerationTester():
             attention_mask_col3 = attention_mask_col3,
             attention_mask_col4 = attention_mask_col4,
             labels = data[-1],
-            encoder_forward_startegy = 'straight',
+            encoder_forward_strategy = 'single',
             encoder_combination_type = 'addition',
-            use_cache = True
+            use_cache = True,
         )
         tgt_ids = data[-1]
         optimizer = optim.Adam(model.parameters())
