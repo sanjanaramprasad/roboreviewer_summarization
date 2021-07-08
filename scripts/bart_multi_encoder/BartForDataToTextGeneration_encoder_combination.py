@@ -334,7 +334,8 @@ class BartForDataToText(BartPretrainedModel):
         encoder_forward_stratergy = 'single',
         encoder_combination_type = 'addition',
         loop_strategy = 'addition',
-        inc_count = 256
+        inc_count = 256,
+        check_status = False
     ):
         
         
