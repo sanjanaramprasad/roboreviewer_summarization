@@ -331,7 +331,7 @@ class BartForDataToText(BartPretrainedModel):
         output_attentions=None,
         output_hidden_states=None,
         return_dict=None,
-        encoder_forward_stratergy = 'single',
+        encoder_forward_strategy = 'single',
         encoder_combination_type = 'addition',
         loop_strategy = 'addition',
         inc_count = 256,
@@ -353,10 +353,10 @@ class BartForDataToText(BartPretrainedModel):
         
         attn_mask_list = []
         encoder_outputs_list =[]
-        #print(encoder_forward_stratergy, encoder_combination_type)
+        #print(encoder_forward_strategy, encoder_combination_type)
         #print(encoder_outputs_col0)
         #print(attention_mask_col0)
-        if encoder_forward_stratergy == 'single':
+        if encoder_forward_strategy == 'single':
             encoder_outputs_list = []
             
             if not (input_ids_col0 is None):
@@ -596,7 +596,7 @@ class BartForDataToText(BartPretrainedModel):
         encoder_outputs_col2 = None,
         encoder_outputs_col3 = None,
         encoder_outputs_col4 = None,
-        encoder_forward_stratergy = 'single',
+        encoder_forward_strategy = 'single',
         encoder_combination_type = 'addition',
         **kwargs
     ):
@@ -622,7 +622,7 @@ class BartForDataToText(BartPretrainedModel):
             "attention_mask_col2": attention_mask_col2,
             "attention_mask_col3": attention_mask_col3,
             "attention_mask_col4": attention_mask_col4,
-            "encoder_forward_stratergy": encoder_forward_stratergy,
+            "encoder_forward_strategy": encoder_forward_strategy,
             "encoder_combination_type": encoder_combination_type,
             "head_mask": head_mask,
             "use_cache": use_cache,  # change this to avoid caching (presumably for debugging)
