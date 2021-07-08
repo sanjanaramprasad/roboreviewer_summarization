@@ -222,15 +222,24 @@ if __name__ == '__main__':
     summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/bart_multienc_per_key/robo_train_sep.csv', 
                                            '/home/sanjana/roboreviewer_summarization/data/bart_multienc_per_key/robo_dev_sep.csv', 
                                            '/home/sanjana/roboreviewer_summarization/data/bart_multienc_per_key/robo_test_sep.csv'], batch_size = 1)
-
     summary_data.prepare_data()
     summary_data.setup("stage")
     it = summary_data.train_dataloader()
     batches = iter(it)
     batch = next(batches)
-    #print(len(batch))
-    #print(batch[0])
-    #print(batch[0][0])
-    #print('=' * 13)
-    print(tokenizer.decode(batch[0][0]))
+
+    file_contents = pd.read_csv('/home/sanjana/roboreviewer_summarization/data/bart_multienc_per_key/robo_dev_sep.csv')
+    source_contents = file_contents[0]
+    source_contents = eval(source_contents['source']) 
+    index = 0
+    print(batch)
+    for key, values in source_contents.items():
+        print(key)
+        source_values = ["<study> "+ each + " </study>" for each in values]
+        source_values = " ".join(source_values)
+        print(source_values)
+        
+
+    
+    
     #print(next(batch))
