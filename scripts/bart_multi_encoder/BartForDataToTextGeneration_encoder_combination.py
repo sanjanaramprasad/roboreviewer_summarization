@@ -503,7 +503,7 @@ class BartForDataToText(BartPretrainedModel):
                 
                 if check_status:
                     encoder_sum_outputs_0 ==  encoder_outputs_col0[0] + encoder_outputs_col1[0] + encoder_outputs_col2[0] + \
-                        encoder_outputs_col3[0] + encoder_outputs_col4[0])
+                        encoder_outputs_col3[0] + encoder_outputs_col4[0]
                     assert(bool(encoder_sum_outputs_0.all()))
 
                 if attention_mask_col0 is None:
