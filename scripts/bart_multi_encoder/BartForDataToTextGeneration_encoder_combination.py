@@ -193,7 +193,7 @@ class BartForDataToText(BartPretrainedModel):
 
             all_attn_outputs = torch.stack(attention_mask_list, 0)
             added_enc_attns = torch.Tensor.float(all_attn_outputs).mean(0).tolist()
-            added_enc_attns = [[1 if each > 0.5 else 0 for each in each_list] for each_list in added_enc_attns]
+            added_enc_attns = [[1 if each > 0 else 0 for each in each_list] for each_list in added_enc_attns]
             #added_enc_attns = torch.as_tensor([added_enc_attns])
             added_enc_attns = torch.as_tensor(added_enc_attns , device = attention_mask_list[0].device)
             return added_enc_attns
@@ -502,7 +502,7 @@ class BartForDataToText(BartPretrainedModel):
                     )
                 
                 if check_status:
-                    encoder_sum_outputs_0 ==  encoder_outputs_col0[0] + encoder_outputs_col1[0] + encoder_outputs_col2[0] + \
+                    encoder_sum_outputs_0 =  encoder_outputs[0] == encoder_outputs_col0[0] + encoder_outputs_col1[0] + encoder_outputs_col2[0] + \
                         encoder_outputs_col3[0] + encoder_outputs_col4[0]
                     assert(bool(encoder_sum_outputs_0.all()))
 
