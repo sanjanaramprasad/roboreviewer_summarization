@@ -151,12 +151,16 @@ class BartForDataToText(BartPretrainedModel):
         
     
     def _get_sum_encoder_outputs(self,
-            encoder_output_list):
+            encoder_output_list, average_flag):
         encoder_outputs = {0:[], 1:[], 2:[]}
         for i in range(0,3):
             if len(encoder_output_list[0]) > i:
                 added_enc_outputs_i = torch.stack([enc[i] for enc in encoder_output_list], dim = 0)
-                added_enc_outputs_i = torch.mean(added_enc_outputs_i, dim = 0)
+                if average_flag:
+                    added_enc_outputs_i = torch.mean(added_enc_outputs_i, dim = 0)
+                else:
+                    added_enc_outputs_i = torch.sum(added_enc_outputs_i, dim = 0)
+
                 encoder_outputs[i].append(added_enc_outputs_i)
 
         added_enc_outputs = BaseModelOutput(
@@ -496,15 +500,20 @@ class BartForDataToText(BartPretrainedModel):
         else:
     
             if encoder_combination_type =='addition':
-        
+                average_flag = False
                 encoder_outputs = self._get_sum_encoder_outputs(
-                        encoder_outputs_list
+                        encoder_outputs_list,
+                        average_flag
                     )
                 
                 if check_status:
-                    encoder_sum_outputs_0 =  encoder_outputs[0] == encoder_outputs_col0[0] + encoder_outputs_col1[0] + encoder_outputs_col2[0] + \
-                        encoder_outputs_col3[0] + encoder_outputs_col4[0]
+                    encoder_sum_outputs_0 = encoder_outputs_col0[0] + encoder_outputs_col1[0] + encoder_outputs_col2[0] + \
+                            encoder_outputs_col3[0] + encoder_outputs_col4[0]
+                    if average_flag:
+                        encoder_sum_outputs_0 = encoder_sum_outputs_0 / 5 
+                    encoder_outputs[0] == encoder_sum_outputs_0
                     assert(bool(encoder_sum_outputs_0.all()))
+                    
 
                 if attention_mask_col0 is None:
                     attn_mask = attention_mask_col0
