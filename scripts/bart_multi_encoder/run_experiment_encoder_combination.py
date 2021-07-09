@@ -233,6 +233,7 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/s
     data_files = [train_file, dev_file, test_file]
     summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1, max_len = max_len)
     summary_data.prepare_data()
+    assert(len(summary_data.train) > 10)
     return summary_data
 
 
