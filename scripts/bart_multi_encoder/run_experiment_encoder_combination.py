@@ -50,7 +50,7 @@ def freeze_params(model):
 
 class LitModel(pl.LightningModule):
     # Instantiate the model
-    def __init__(self, learning_rate, tokenizer, model, encoder_forward_stratergy, encoder_combination_type, layer_share ,freeze_encoder, freeze_embeds, max_len, loop_strategy = 'addition'):
+    def __init__(self, learning_rate, tokenizer, model, encoder_forward_strategy, encoder_combination_type, layer_share ,freeze_encoder, freeze_embeds, max_len, loop_strategy = 'addition'):
         super().__init__()
         self.tokenizer = tokenizer
         self.model = model
@@ -59,7 +59,7 @@ class LitModel(pl.LightningModule):
         self.learning_rate = learning_rate
         self.freeze_encoder = freeze_encoder
         self.freeze_embeds_ = freeze_embeds
-        self.encoder_forward_stratergy = encoder_forward_stratergy
+        self.encoder_forward_strategy = encoder_forward_strategy
         self.encoder_combination_type = encoder_combination_type
         self.max_len = max_len
         self.loop_strategy = loop_strategy
@@ -117,7 +117,7 @@ class LitModel(pl.LightningModule):
         tgt_ids = batch[-1]
         # Shift the decoder tokens right (but NOT the tgt_ids)
         # Run the model and get the logits
-        #print(self.encoder_forward_stratergy, self.encoder_combination_type)
+        #print(self.encoder_forward_strategy, self.encoder_combination_type)
         outputs = self(
             input_ids_col0 = input_ids_col0,
             input_ids_col1 = input_ids_col1,
@@ -130,7 +130,7 @@ class LitModel(pl.LightningModule):
             attention_mask_col3 = attention_mask_col3,
             attention_mask_col4 = attention_mask_col4,
             labels = tgt_ids,
-            encoder_forward_stratergy = self.encoder_forward_stratergy,
+            encoder_forward_strategy = self.encoder_forward_strategy,
             encoder_combination_type = self.encoder_combination_type,
             decoder_input_ids = None,
             inc_count = self.max_len,
@@ -190,7 +190,7 @@ class LitModel(pl.LightningModule):
             attention_mask_col3 = attention_mask_col3,
             attention_mask_col4 = attention_mask_col4,
             labels = tgt_ids,
-            encoder_forward_stratergy = self.encoder_forward_stratergy,
+            encoder_forward_strategy = self.encoder_forward_strategy,
             encoder_combination_type = self.encoder_combination_type,
             decoder_input_ids = None,
             inc_count = self.max_len,
@@ -239,7 +239,7 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/s
 
 
 
-def main(encoder_forward_stratergy = 'single', encoder_combination_type = 'addition', layer_share = False, loop_strategy = 'addition'):
+def main(encoder_forward_strategy = 'single', encoder_combination_type = 'addition', layer_share = False, loop_strategy = 'addition'):
     #additional_special_tokens=["<attribute>",  "</attribute>", "<sep>"]
     #
 
@@ -256,14 +256,14 @@ def main(encoder_forward_stratergy = 'single', encoder_combination_type = 'addit
                                                     pad_token = "<pad>")
 
     tokenizer.add_tokens(additional_special_tokens) 
-    if encoder_forward_stratergy == 'loop' :
+    if encoder_forward_strategy == 'loop' :
         from Data2TextProcessor_loop import SummaryDataModule
         files = ['bart_loop_single/robo_train_linearized_per_study.csv', 
                             'bart_loop_single/robo_dev_linearized_per_study.csv', 'bart_loop_single/robo_test_linearized_per_study.csv']
         max_len = 256
         
 
-    elif encoder_forward_stratergy == 'single':
+    elif encoder_forward_strategy == 'single':
         from Data2TextProcessor import SummaryDataModule
         files = ['bart_multienc_per_key/robo_train_sep.csv', 
                             'bart_multienc_per_key/robo_dev_sep.csv', 'bart_multienc_per_key/robo_test_sep.csv']
@@ -278,11 +278,11 @@ def main(encoder_forward_stratergy = 'single', encoder_combination_type = 'addit
     learning_rate = 3e-5 
     max_epochs = 12
     bart_model = BartForDataToText.from_pretrained('facebook/bart-base') 
-    logger = TensorBoardLogger('tb_logs_final', name='my_model_f%s_c%s_l%s'%(encoder_forward_stratergy, encoder_combination_type, loop_strategy))  
+    logger = TensorBoardLogger('tb_logs_final', name='my_model_f%s_c%s_l%s'%(encoder_forward_strategy, encoder_combination_type, loop_strategy))  
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, \
-                        encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type, layer_share = layer_share, freeze_encoder = freeze_encoder, \
+                        encoder_forward_strategy = encoder_forward_strategy, encoder_combination_type = encoder_combination_type, layer_share = layer_share, freeze_encoder = freeze_encoder, \
                             freeze_embeds = freeze_embeds, max_len = max_len, loop_strategy = loop_strategy)
-    checkpoint = ModelCheckpoint('checkpoint_files/3e-5_%s_%s_%s/'%(encoder_forward_stratergy, encoder_combination_type, loop_strategy),
+    checkpoint = ModelCheckpoint('checkpoint_files/3e-5_%s_%s_%s/'%(encoder_forward_strategy, encoder_combination_type, loop_strategy),
                                 filename = '{epoch}-{loss:.2f}',
                                 save_top_k=10,
                                 monitor = 'loss')
@@ -301,13 +301,13 @@ def main(encoder_forward_stratergy = 'single', encoder_combination_type = 'addit
 
 
 if __name__ == '__main__': 
-    #main(encoder_forward_stratergy = 'single', encoder_combination_type = 'linearized')
-    main(encoder_forward_stratergy = 'single', encoder_combination_type = 'addition')
-    main(encoder_forward_stratergy = 'single', encoder_combination_type = 'linearized')
-    #main(encoder_forward_stratergy = 'loop', encoder_combination_type = 'addition', loop_strategy = 'addition')
-    #main(encoder_forward_stratergy = 'loop', encoder_combination_type = 'linearize', loop_strategy = 'addition')
+    #main(encoder_forward_strategy = 'single', encoder_combination_type = 'linearized')
+    main(encoder_forward_strategy = 'single', encoder_combination_type = 'addition')
+    #main(encoder_forward_strategy = 'single', encoder_combination_type = 'linearized')
+    #main(encoder_forward_strategy = 'loop', encoder_combination_type = 'addition', loop_strategy = 'addition')
+    #main(encoder_forward_strategy = 'loop', encoder_combination_type = 'linearize', loop_strategy = 'addition')
 
-    #main(encoder_forward_stratergy = 'loop', encoder_combination_type = 'addition', loop_strategy = 'linearize')
-    #main(encoder_forward_stratergy = 'loop', encoder_combination_type = 'linearize', loop_strategy = 'linearize')
+    #main(encoder_forward_strategy = 'loop', encoder_combination_type = 'addition', loop_strategy = 'linearize')
+    #main(encoder_forward_strategy = 'loop', encoder_combination_type = 'linearize', loop_strategy = 'linearize')
            
 
