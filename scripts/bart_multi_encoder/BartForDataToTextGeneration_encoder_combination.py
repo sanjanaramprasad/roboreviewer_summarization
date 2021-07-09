@@ -156,7 +156,7 @@ class BartForDataToText(BartPretrainedModel):
         for i in range(0,3):
             if len(encoder_output_list[0]) > i:
                 added_enc_outputs_i = torch.stack([enc[i] for enc in encoder_output_list], dim = 0)
-                added_enc_outputs_i = torch.sum(added_enc_outputs_i, dim = 0)
+                added_enc_outputs_i = torch.mean(added_enc_outputs_i, dim = 0)
                 encoder_outputs[i].append(added_enc_outputs_i)
 
         added_enc_outputs = BaseModelOutput(
