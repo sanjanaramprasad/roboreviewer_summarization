@@ -283,7 +283,7 @@ def main(encoder_forward_strategy = 'single', encoder_combination_type = 'additi
                         encoder_forward_strategy = encoder_forward_strategy, encoder_combination_type = encoder_combination_type, layer_share = layer_share, freeze_encoder = freeze_encoder, \
                             freeze_embeds = freeze_embeds, max_len = max_len, loop_strategy = loop_strategy)
     checkpoint = ModelCheckpoint('checkpoint_files/3e-5_%s_%s_%s/'%(encoder_forward_strategy, encoder_combination_type, loop_strategy),
-                                filename = '{epoch}-{loss:.2f}',
+                                filename = '{epoch}-{val_loss:.2f}',
                                 save_top_k=10,
                                 monitor = 'val_loss')
     trainer = pl.Trainer(gpus=2, accelerator='dp', 

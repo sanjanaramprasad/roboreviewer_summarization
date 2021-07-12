@@ -211,6 +211,25 @@ class SummaryDataModule(pl.LightningDataModule):
         return test_data
 
 
+
+def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
+    if data_type == 'robo':
+        train_file = path + '/roboreviewer_summarization/data/%s'%(files[0])
+        dev_file = path + '/roboreviewer_summarization/data/%s'%(files[1])
+        test_file = path + '/roboreviewer_summarization/data/%s'%(files[2])
+
+    elif data_type =='webnlg':
+        train_file = path + '/roboreviewer_summarization/data/web_nlg_train.csv'
+        dev_file = path + '/roboreviewer_summarization/data/web_nlg_dev.csv'
+        test_file = path + '/roboreviewer_summarization/data/web_nlg_test.csv'
+
+    data_files = [train_file, dev_file, test_file]
+    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1, max_len = max_len)
+    summary_data.prepare_data()
+    assert(len(summary_data.train) > 10)
+    return summary_data
+
+
 if __name__ == '__main__':
     additional_special_tokens = ["<attribute>", "</attribute>", "<sep>"]
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
@@ -218,16 +237,20 @@ if __name__ == '__main__':
                                                     pad_token = "<pad>")
     tokenizer.add_tokens(additional_special_tokens)
     #bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
-    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/bart_multienc_per_key/robo_train_sep.csv', 
-                                           '/home/sanjana/roboreviewer_summarization/data/bart_multienc_per_key/robo_dev_sep.csv', 
-                                           '/home/sanjana/roboreviewer_summarization/data/bart_multienc_per_key/robo_test_sep.csv'], batch_size = 1)
-    summary_data.prepare_data()
+    data_files = ['bart_multienc_per_key/robo_train_sep.csv', 
+                                           'bart_multienc_per_key/robo_dev_sep.csv', 
+                                           'bart_multienc_per_key/robo_test_sep.csv']
+
+    
+                                    
+    
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'webnlg', path = '/home/sanjana', files = data_files, max_len = 1024)
     summary_data.setup("stage")
     it = summary_data.train_dataloader()
     batches = iter(it)
     batch = next(batches)
 
-    file_contents = pd.read_csv('/home/sanjana/roboreviewer_summarization/data/bart_multienc_per_key/robo_dev_sep.csv')
+    '''file_contents = pd.read_csv('/home/sanjana/roboreviewer_summarization/data/bart_multienc_per_key/robo_dev_sep.csv')
     source_contents = file_contents[0]
     source_contents = eval(source_contents['source']) 
     index = 0
@@ -236,7 +259,7 @@ if __name__ == '__main__':
         print(key)
         source_values = ["<study> "+ each + " </study>" for each in values]
         source_values = " ".join(source_values)
-        print(source_values)
+        print(source_values)'''
         
 
     
