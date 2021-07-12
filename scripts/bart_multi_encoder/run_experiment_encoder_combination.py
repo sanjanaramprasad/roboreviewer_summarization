@@ -202,7 +202,7 @@ class LitModel(pl.LightningModule):
         val_loss = outputs[0]
 
         tensorboard_logs = {'val_loss': val_loss}
-        self.log('val_loss', val_loss)
+        self.log('val_loss_epoch', val_loss)
         epoch_dictionary={
             'val_loss': val_loss,
             'log': tensorboard_logs}
@@ -285,7 +285,7 @@ def main(encoder_forward_strategy = 'single', encoder_combination_type = 'additi
     checkpoint = ModelCheckpoint('checkpoint_files/3e-5_%s_%s_%s/'%(encoder_forward_strategy, encoder_combination_type, loop_strategy),
                                 filename = '{epoch}-{loss:.2f}',
                                 save_top_k=10,
-                                monitor = 'loss')
+                                monitor = 'val_loss')
     trainer = pl.Trainer(gpus=2, accelerator='dp', 
 			max_epochs = max_epochs,
                         min_epochs = 1,
