@@ -602,6 +602,7 @@ def parameter_search(sample, model, tokenizer):
                                 final_rpenalty = r_penalty
                                 final_lpenalty = l_penalty
                                 max_roul = roul
+                            print(rou1, roul)
         return final_num_beam, final_min_len, final_rpenalty, final_lpenalty
 
 def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv']):
@@ -621,7 +622,9 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/s
     return summary_data
 
 
-def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_type = 'addition'):
+def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_type = 'addition', 
+    checkpoint_file = '/bart_multi_encoder/checkpoint_files/3e-5_single_linearized_addition/final_checkpoint/epoch=4-loss=0.00.ckpt', 
+    main_path = 'home/ramprasad.sa/roboreviewer_summarization/scripts'):
     additional_special_tokens = ["<sep>", "<study>", "</study>",
             "<outcomes>", "</outcomes>",
             "<punchline_text>", "</punchline_text>",
@@ -638,8 +641,8 @@ def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_ty
     freeze_encoder = True
     freeze_embeds = True
     hparams.eval_beams = 4
-    model_path = 'checkpoint_files/3e-5_loop_addition_mod/epoch=3-loss=0.39.ckpt'
-    model = LitModel.load_from_checkpoint(checkpoint_path="/home/sanjana/roboreviewer_summarization/scripts/%s"%(model_path), encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type,)
+    model_path = main_path +  checkpoint_file
+    model = LitModel.load_from_checkpoint(checkpoint_path=checkpoint_file, encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type,)
 
 
     print("Loading data...")
@@ -651,11 +654,11 @@ def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_ty
 
     elif encoder_forward_stratergy == 'single':
         from Data2TextProcessor import SummaryDataModule
-        files = ['robo_train_sep.csv', 
-                            'robo_dev_sep.csv', 'robo_test_sep.csv']
+        files = ['bart_multienc_per_key/robo_train_sep.csv', 
+                            'bart_multienc_per_key/robo_dev_sep.csv', 'bart_multienc_per_key/robo_test_sep.csv']
 
     
-    summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/sanjana', files = files)
+    summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/ramprasad.sa', files = files)
     summary_data.setup("stage")
     val_data = summary_data.val_dataloader(data_type = 'robo')
 
@@ -674,4 +677,5 @@ def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_ty
 
         
 if __name__ == '__main__':
-    run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_type = 'addition')
+    checkpoint_file = "/bart_multi_encoder/checkpoint_files/3e-5_single_linearized_addition/final_checkpoint/epoch=4-loss=0.00.ckpt"
+    run_sample_scorer(encoder_forward_stratergy = 'single', encoder_combination_type = 'linearize', checkpoint_file=checkpoint_file)

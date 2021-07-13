@@ -533,11 +533,6 @@ class BartForDataToText(BartPretrainedModel):
                 decoder_input_ids = shift_tokens_right(
                     labels, self.config.pad_token_id, self.config.decoder_start_token_id
                 )
-                
-        if decoder_input_ids is None and decoder_inputs_embeds is None:
-            decoder_input_ids = shift_tokens_right(
-                all_input_ids, self.config.pad_token_id, self.config.decoder_start_token_id
-            )
 
         decoder_outputs = self.decoder(
             input_ids=decoder_input_ids,
