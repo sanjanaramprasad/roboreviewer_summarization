@@ -110,7 +110,8 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, flatten_stud
         else:
             sentence_vals = [val for key, val in sentence_dict.items()]
             all_studies = []
-            len_val = len(sentence_vals[0])
+            len_vals = len(sentence_vals[0])
+            sentence_dict_len = 1
             for i in range(0 , len_vals):
                 study = ["<%s> "%key + val[0] + "</%s>"%key for key, val in sentence_dict.items()]
                 study = " ".join(study)
@@ -127,6 +128,10 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, flatten_stud
             )
             keys_ids = 'ids_col%s'%(str(0))
             attention_masks_ids = 'attention_masks_col%s'%(str(0))
+            if keys_ids not in encoded_sentences:
+                encoded_sentences[keys_ids] = []
+            if attention_masks_ids not in encoded_sentences:
+                encoded_sentences[attention_masks_ids] = []
             encoded_sentences[keys_ids].append(sentence_encoding['input_ids'])
             encoded_sentences[attention_masks_ids].append(sentence_encoding['attention_mask'])
 
@@ -283,10 +288,11 @@ if __name__ == '__main__':
     
     summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'webnlg', path = '/home/sanjana', files = data_files, max_len = 1024)
     summary_data.setup("stage")
-    it = summary_data.train_dataloader()
+    it = summary_data.train_dataloader(data_type = 'webnlg')
     batches = iter(it)
     batch = next(batches)
 
+    print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in batch[0]]))
     '''file_contents = pd.read_csv('/home/sanjana/roboreviewer_summarization/data/bart_multienc_per_key/robo_dev_sep.csv')
     source_contents = file_contents[0]
     source_contents = eval(source_contents['source']) 
