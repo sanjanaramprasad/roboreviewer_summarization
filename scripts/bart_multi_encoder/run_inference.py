@@ -7,10 +7,10 @@ import torch
 import torch.distributed as dist
 from torch.nn import functional as F
 #from BartForDataToTextGeneration_layer_sharing import BartForDataToText
-from bart_multi_encoder.BartForDataToTextGeneration_encoder_combination import BartForDataToText
+from BartForDataToTextGeneration_encoder_combination import BartForDataToText
 from transformers.generation_utils import GenerationMixin
 ##from run_experiment_linearize import LitModel
-from bart_multi_encoder.run_experiment_encoder_combination import LitModel
+from run_experiment_encoder_combination import LitModel
 from transformers import BartTokenizer
 from Data2TextProcessor_loop import SummaryDataModule
 import argparse
@@ -126,7 +126,7 @@ class Data2TextGenerator(GenerationMixin):
         if not(attention_mask_col4 is None):
             model_kwargs["attention_mask_col4"] = attention_mask_col4
 
-        print(model_kwargs)
+        #print(model_kwargs)
         return model_kwargs
 
     def _prepare_encoder_decoder_kwargs_for_generation(
@@ -549,15 +549,16 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     #generator = Data2TextGenerator(model, tokenizer)
     meteor_scores = []
     bleu_scores =[]
+    print("Sample scoring")
     for each in sample:
-        outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length =min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, encoder_forward_stratergy = 'loop', encoder_combination_type = 'addition')
+        outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length =min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, encoder_forward_stratergy = 'single', encoder_combination_type = 'addition')
         print("Outputs", outputs)
         model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[-1]])
         if model_output.strip():
-            print(model_output)
-            print(target)
-            print('=' * 13)
+            #print(model_output)
+            #print(target)
+            #print('=' * 13)
             model_out.append(model_output)
             references.append(target)
             #avg_len += first_batch[-1].shape[1]
@@ -578,8 +579,8 @@ def parameter_search(sample, model, tokenizer):
 
         num_beams_list = [3,5]
         min_lengths = [70,50,30,90]
-        repetition_penalties = [1.0, 1.1, 1.2, 1.3]
-        length_penalties = [1.0, 2.0, 3.0, 5.0]
+        repetition_penalties = [1.0, 2.0]
+        length_penalties = [1.0, 2.0]
         #rouge = Rouge()
         final_refs = []
         final_tgts = []
@@ -623,8 +624,8 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/s
 
 
 def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_type = 'addition', 
-    checkpoint_file = '/bart_multi_encoder/checkpoint_files/3e-5_single_linearized_addition/final_checkpoint/epoch=4-loss=0.00.ckpt', 
-    main_path = 'home/ramprasad.sa/roboreviewer_summarization/scripts'):
+    checkpoint_file = 'checkpoint_files/3e-5_single_linearized_addition/final_checkpoint/epoch=4-loss=0.00.ckpt', 
+    main_path = '/home/ramprasad.sa/roboreviewer_summarization/scripts/'):
     additional_special_tokens = ["<sep>", "<study>", "</study>",
             "<outcomes>", "</outcomes>",
             "<punchline_text>", "</punchline_text>",
@@ -641,8 +642,9 @@ def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_ty
     freeze_encoder = True
     freeze_embeds = True
     hparams.eval_beams = 4
-    model_path = main_path +  checkpoint_file
-    model = LitModel.load_from_checkpoint(checkpoint_path=checkpoint_file, encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type,)
+    checkpoint_final_path =  main_path +  checkpoint_file
+    print("CKPTH", checkpoint_final_path)
+    model = LitModel.load_from_checkpoint(checkpoint_path=checkpoint_final_path, encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type,)
 
 
     print("Loading data...")
@@ -677,5 +679,5 @@ def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_ty
 
         
 if __name__ == '__main__':
-    checkpoint_file = "/bart_multi_encoder/checkpoint_files/3e-5_single_linearized_addition/final_checkpoint/epoch=4-loss=0.00.ckpt"
+    checkpoint_file = "bart_multi_encoder/checkpoint_files/3e-5_single_linearized_addition/final_checkpoint/epoch=4-loss=0.00.ckpt"
     run_sample_scorer(encoder_forward_stratergy = 'single', encoder_combination_type = 'linearize', checkpoint_file=checkpoint_file)
