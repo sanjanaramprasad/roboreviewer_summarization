@@ -573,14 +573,14 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     references = []
     model_out = []
     rouge = Rouge()
-    #generator = Data2TextGenerator(model, tokenizer)
+    generator = Data2TextGenerator(model, tokenizer)
     meteor_scores = []
     bleu_scores =[]
     print("Sample scoring")
     for each in sample:
         #device = torch.device("cuda")
         #each = each.to(device)
-        outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length =min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, encoder_forward_stratergy = 'single', encoder_combination_type = 'addition', device = device)
+        outputs = generator.generate(each, num_beams = 3,  max_length = 400, min_length = 70, repetition_penalty = 1.0, length_penalty = 1.0, encoder_forward_stratergy = 'single', encoder_combination_type = 'addition', device = device)
         ##print("Outputs", outputs)
         model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[-1]])
@@ -617,6 +617,7 @@ def parameter_search(sample, model, tokenizer, device):
         max_roul = 0
         final_num_beam = 0
         final_min_len = 0
+
         final_rpenalty = 0
         final_lpenalty =0 
 
@@ -654,7 +655,7 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/s
 
 def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_type = 'addition', 
     checkpoint_file = 'checkpoint_files/3e-5_single_linearized_addition/final_checkpoint/epoch=4-loss=0.00.ckpt', 
-    main_path = '/home/ramprasad.sa/roboreviewer_summarization/scripts/'):
+    main_path = '/home/sanjana/roboreviewer_summarization/scripts/'):
     additional_special_tokens = ["<sep>", "<study>", "</study>",
             "<outcomes>", "</outcomes>",
             "<punchline_text>", "</punchline_text>",
@@ -690,7 +691,7 @@ def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_ty
                             'bart_multienc_per_key/robo_dev_sep.csv', 'bart_multienc_per_key/robo_test_sep.csv']
 
     
-    summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/ramprasad.sa', files = files)
+    summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/sanjana', files = files)
     summary_data.setup("stage")
     val_data = summary_data.val_dataloader(data_type = 'robo')
 
@@ -700,8 +701,9 @@ def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_ty
     import random
     sample = random.sample(list(it), num_val)
 
-    num_beams, min_len, repetition_penalty, length_penalty = parameter_search(sample, model, tokenizer, device)
-    references, targets, _, _ = sample_score(list(it), model, tokenizer, num_beams, min_len, repetition_penalty, length_penalty)
+    #num_beams, min_len, repetition_penalty, length_penalty = parameter_search(sample, model, tokenizer, device)
+    generator = Data2TextGenerator(model, tokenizer)
+    references, targets, _, _ = sample_scorer(list(it), model, tokenizer, nbeams = 3, min_len = 70, r_penalty = 1.0, l_penalty = 1.0,generator = generator, device=device)
     df_write = pd.DataFrame(list(zip(references, model_out)), columns=["Reference Summary", "Generated Summary"])
     file_name = '_'.join(model_path.split('/'))
     df_write.to_csv("%s.csv"%file_name)
@@ -709,5 +711,5 @@ def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_ty
 
         
 if __name__ == '__main__':
-    checkpoint_file = "bart_multi_encoder/checkpoint_files/3e-5_single_linearized_addition/final_checkpoint/epoch=4-loss=0.00.ckpt"
+    checkpoint_file = "bart_multi_encoder/checkpoint_files/3e-5_single_addition_addition/final_checkpoint/epoch=3-loss=0.08.ckpt"
     run_sample_scorer(encoder_forward_stratergy = 'single', encoder_combination_type = 'linearize', checkpoint_file=checkpoint_file)
