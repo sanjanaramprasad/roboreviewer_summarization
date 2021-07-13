@@ -700,10 +700,11 @@ def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_ty
     it = iter(val_data)
     import random
     sample = random.sample(list(it), num_val)
-
-    #num_beams, min_len, repetition_penalty, length_penalty = parameter_search(sample, model, tokenizer, device)
     generator = Data2TextGenerator(model, tokenizer)
-    references, targets, _, _ = sample_scorer(list(it), model, tokenizer, nbeams = 3, min_len = 70, r_penalty = 1.0, l_penalty = 1.0,generator = generator, device=device)
+    references, targets, rou1, roul = sample_scorer(sample, model, tokenizer, nbeams = 3, min_len = 80, r_penalty = 1.0, l_penalty = 1.0, generator = generator, device = device) 
+    #num_beams, min_len, repetition_penalty, length_penalty = parameter_search(sample, model, tokenizer, device)
+    #generator = Data2TextGenerator(model, tokenizer)
+    #references, targets, _, _ = sample_scorer(list(it), model, tokenizer, nbeams = 3, min_len = 70, r_penalty = 1.0, l_penalty = 1.0,generator = generator, device=device)
     df_write = pd.DataFrame(list(zip(references, model_out)), columns=["Reference Summary", "Generated Summary"])
     file_name = '_'.join(model_path.split('/'))
     df_write.to_csv("%s.csv"%file_name)
