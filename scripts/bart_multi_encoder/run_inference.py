@@ -108,7 +108,7 @@ class Data2TextGenerator(GenerationMixin):
         return input_ids, model_kwargs
 
 
-    def _prepare_attention_mask_for_generation(self, batch, model_kwargs):
+    def _prepare_attention_mask_for_generation(self, batch, device, model_kwargs):
         attention_mask_col0 = batch[1] if len(batch) >1 else None
         attention_mask_col1 = batch[3] if len(batch) >3 else None
         attention_mask_col2 = batch[5] if len(batch) >5 else None
@@ -117,14 +117,23 @@ class Data2TextGenerator(GenerationMixin):
         
         if not(attention_mask_col0 is None):
             model_kwargs["attention_mask_col0"] = attention_mask_col0
+            model_kwargs["attention_mask_col0"] = model_kwargs["attention_mask_col0"].to(device)
+
         if not(attention_mask_col1 is None):
             model_kwargs["attention_mask_col1"] = attention_mask_col1
+            model_kwargs["attention_mask_col1"] = model_kwargs["attention_mask_col1"].to(device)
+
         if not(attention_mask_col2 is None):
             model_kwargs["attention_mask_col2"] = attention_mask_col2
+            model_kwargs["attention_mask_col2"] = model_kwargs["attention_mask_col2"].to(device)
+
         if not(attention_mask_col3 is None):
             model_kwargs["attention_mask_col3"] = attention_mask_col3
+            model_kwargs["attention_mask_col3"] = model_kwargs["attention_mask_col3"].to(device)
+
         if not(attention_mask_col4 is None):
             model_kwargs["attention_mask_col4"] = attention_mask_col4
+            model_kwargs["attention_mask_col4"] = model_kwargs["attention_mask_col4"].to(device)
 
         #print(model_kwargs)
         return model_kwargs
@@ -134,7 +143,9 @@ class Data2TextGenerator(GenerationMixin):
         input_ids_col1: torch.LongTensor,
         input_ids_col2: torch.LongTensor,
         input_ids_col3: torch.LongTensor,
-        input_ids_col4: torch.LongTensor, model_kwargs
+        input_ids_col4: torch.LongTensor, 
+        device,
+        model_kwargs
     ) -> Dict[str, Any]:
         if "encoder_outputs" not in model_kwargs:
             # retrieve encoder hidden states
@@ -147,7 +158,7 @@ class Data2TextGenerator(GenerationMixin):
                 encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
                 attention_mask_col0 = encoder_kwargs.get("attention_mask_col0", None)
                 encoder_outputs = encoder_kwargs.get('encoder_outputs_col0', None)
-
+                
                 if model_kwargs["encoder_forward_stratergy"] == 'single':
                     model_kwargs["encoder_outputs_col0"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col0, encoder_outputs = encoder_outputs, input_ids = input_ids_col0, attention_mask = attention_mask_col0)
                 else: 
@@ -156,6 +167,7 @@ class Data2TextGenerator(GenerationMixin):
                     final_layer = self.final_layer_enc0 if loop_strategy != 'addition' else None 
                     model_kwargs["encoder_outputs_col0"] , _ = self.model._loop_encoders(encoder_col0, encoder_outputs, input_ids_col0, \
                         attention_mask_col0, inc_count = 256, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
+                #model_kwargs["encoder_outputs_col0"] = model_kwargs["encoder_outputs_col0"].to(device) 
 
             if model_kwargs["encoder_forward_stratergy"] == 'single':
                  if not(input_ids_col1 is None):
@@ -171,6 +183,7 @@ class Data2TextGenerator(GenerationMixin):
                         final_layer = self.final_layer_enc1 if loop_strategy != 'addition' else None 
                         model_kwargs["encoder_outputs_col1"] , _ = self.model._loop_encoders(encoder_col1, encoder_outputs, input_ids_col1, \
                             attention_mask_col1, inc_count = 256, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
+                    #model_kwargs["encoder_outputs_col1"] = model_kwargs["encoder_outputs_col1"].to(device)
 
             if model_kwargs["encoder_forward_stratergy"] == 'single':
                  if not(input_ids_col2 is None):
@@ -186,7 +199,7 @@ class Data2TextGenerator(GenerationMixin):
                         final_layer = self.final_layer_enc2 if loop_strategy != 'addition' else None 
                         model_kwargs["encoder_outputs_col2"] , _ = self.model._loop_encoders(encoder_col2, encoder_outputs, input_ids_col2, \
                             attention_mask_col2, inc_count = 256, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
-
+                    #model_kwargs["encoder_outputs_col2"] = model_kwargs["encoder_outputs_col2"].to(device)
                      
 
             if model_kwargs["encoder_forward_stratergy"] == 'single':
@@ -204,7 +217,7 @@ class Data2TextGenerator(GenerationMixin):
                         model_kwargs["encoder_outputs_col3"] , _ = self.model._loop_encoders(encoder_col3, encoder_outputs, input_ids_col3, \
                             attention_mask_col3, inc_count = 256, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
 
-                     
+                    #model_kwargs["encoder_outputs_col3"] = model_kwargs["encoder_outputs_col3"].to(device)
 
             if model_kwargs["encoder_forward_stratergy"] == 'single':
                  if not(input_ids_col4 is None):
@@ -218,9 +231,10 @@ class Data2TextGenerator(GenerationMixin):
                         fc0 = self.fc0_enc4 if loop_strategy != 'addition' else None
                         fc1 = self.fc1_enc4 if loop_strategy != 'addition' else None
                         final_layer = self.final_layer_enc4 if loop_strategy != 'addition' else None 
-                        model_kwargs["encoder_outputs_col2"] , _ = self.model._loop_encoders(encoder_col4, encoder_outputs, input_ids_col4, \
+                        model_kwargs["encoder_outputs_col4"] , _ = self.model._loop_encoders(encoder_col4, encoder_outputs, input_ids_col4, \
                             attention_mask_col4, inc_count = 256, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
 
+                    #model_kwargs["encoder_outputs_col4"] = model_kwargs["encoder_outputs_col4"].to(device)
         return model_kwargs
         
     def generate(self,
@@ -257,6 +271,7 @@ class Data2TextGenerator(GenerationMixin):
         forced_eos_token_id: Optional[int] = None,
         remove_invalid_values: Optional[bool] = None,
         synced_gpus: Optional[bool] = None,
+        device = torch.device('cuda'),
         **model_kwargs, 
     ):
         #return_dict_in_generate = None
@@ -264,19 +279,29 @@ class Data2TextGenerator(GenerationMixin):
         #use_cache = False
         use_cache = True
         input_ids_col0 = batch[0] if len(batch) >1 else None
+        input_ids_col0 = input_ids_col0.to(device)
         attention_mask_col0 = batch[1] if len(batch) >1 else None
+        attention_mask_col0 = attention_mask_col0.to(device)
 
         input_ids_col1 = batch[2] if len(batch) >3 else None
+        input_ids_col1 = input_ids_col1.to(device)
         attention_mask_col1 = batch[3] if len(batch) >3 else None
+        attention_mask_col1 = attention_mask_col1.to(device)
 
         input_ids_col2 = batch[4] if len(batch) >5 else None
+        input_ids_col2 = input_ids_col2.to(device)
         attention_mask_col2 = batch[5] if len(batch) >5 else None
+        attention_mask_col2 = attention_mask_col2.to(device)
 
         input_ids_col3 = batch[6] if len(batch) >7 else None
+        input_ids_col3 = input_ids_col3.to(device)
         attention_mask_col3 = batch[7] if len(batch) >7 else None
+        attention_mask_col3 = attention_mask_col3.to(device)
 
         input_ids_col4 = batch[8] if len(batch) >9 else None
+        input_ids_col4 = input_ids_col4.to(device)
         attention_mask_col4 = batch[9] if len(batch) >9 else None
+        attention_mask_col4 = attention_mask_col4.to(device)
     
         max_length = max_length if max_length is not None else self.config.max_length
         num_beams = num_beams if num_beams is not None else self.config.num_beams
@@ -309,7 +334,7 @@ class Data2TextGenerator(GenerationMixin):
         if model_kwargs.get("attention_mask", None) is None:
             # init `attention_mask` depending on `pad_token_id`
             model_kwargs =  self._prepare_attention_mask_for_generation(
-                batch, model_kwargs)
+                batch, device, model_kwargs)
 
         encoder_input_ids = input_ids if self.config.is_encoder_decoder else None
         input_list = [each for each in [input_ids_col0, input_ids_col1, input_ids_col2, input_ids_col3, input_ids_col4,] \
@@ -322,7 +347,9 @@ class Data2TextGenerator(GenerationMixin):
                                                                                 input_ids_col2,
                                                                                 input_ids_col3,
                                                                                 input_ids_col4,
-                                                                                 model_kwargs)
+                                                                                device,
+                                                                                model_kwargs,
+                                                                                )
 
             if "decoder_input_ids" in model_kwargs:
                 input_ids = model_kwargs.pop("decoder_input_ids")
@@ -542,7 +569,7 @@ class Data2TextGenerator(GenerationMixin):
             )
 
 
-def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalty, generator):
+def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalty, generator, device):
     references = []
     model_out = []
     rouge = Rouge()
@@ -551,8 +578,10 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     bleu_scores =[]
     print("Sample scoring")
     for each in sample:
-        outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length =min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, encoder_forward_stratergy = 'single', encoder_combination_type = 'addition')
-        print("Outputs", outputs)
+        #device = torch.device("cuda")
+        #each = each.to(device)
+        outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length =min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, encoder_forward_stratergy = 'single', encoder_combination_type = 'addition', device = device)
+        ##print("Outputs", outputs)
         model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[-1]])
         if model_output.strip():
@@ -575,10 +604,10 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     print("BLEU", sum(bleu_scores)/len(bleu_scores))
     return references, model_out, rougeScores['rouge-1']['f'], rougeScores['rouge-l']['f']
 
-def parameter_search(sample, model, tokenizer):
+def parameter_search(sample, model, tokenizer, device):
 
         num_beams_list = [3,5]
-        min_lengths = [70,50,30,90]
+        min_lengths = [50,70,80,90]
         repetition_penalties = [1.0, 2.0]
         length_penalties = [1.0, 2.0]
         #rouge = Rouge()
@@ -596,7 +625,7 @@ def parameter_search(sample, model, tokenizer):
                 for min_len in min_lengths:
                     for r_penalty in repetition_penalties:
                         for l_penalty in length_penalties:
-                            references, targets, rou1, roul = sample_scorer(sample, model, tokenizer, nbeams = beam, min_len = min_len, r_penalty = r_penalty, l_penalty = l_penalty, generator = generator)
+                            references, targets, rou1, roul = sample_scorer(sample, model, tokenizer, nbeams = beam, min_len = min_len, r_penalty = r_penalty, l_penalty = l_penalty, generator = generator, device = device)
                             if roul > max_roul:
                                 final_num_beam = beam
                                 final_min_len = min_len
@@ -644,8 +673,9 @@ def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_ty
     hparams.eval_beams = 4
     checkpoint_final_path =  main_path +  checkpoint_file
     print("CKPTH", checkpoint_final_path)
+    device = torch.device("cuda")
     model = LitModel.load_from_checkpoint(checkpoint_path=checkpoint_final_path, encoder_forward_stratergy = encoder_forward_stratergy, encoder_combination_type = encoder_combination_type,)
-
+    model.to(device)
 
     print("Loading data...")
     if encoder_forward_stratergy == 'loop':
@@ -670,7 +700,7 @@ def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_ty
     import random
     sample = random.sample(list(it), num_val)
 
-    num_beams, min_len, repetition_penalty, length_penalty = parameter_search(sample, model, tokenizer)
+    num_beams, min_len, repetition_penalty, length_penalty = parameter_search(sample, model, tokenizer, device)
     references, targets, _, _ = sample_score(list(it), model, tokenizer, num_beams, min_len, repetition_penalty, length_penalty)
     df_write = pd.DataFrame(list(zip(references, model_out)), columns=["Reference Summary", "Generated Summary"])
     file_name = '_'.join(model_path.split('/'))
