@@ -577,17 +577,19 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     meteor_scores = []
     bleu_scores =[]
     print("Sample scoring")
-    for each in sample:
+    for each in list(sample)[:5]:
         #device = torch.device("cuda")
         #each = each.to(device)
+        #print(each)
         outputs = generator.generate(each, num_beams = 3,  max_length = 400, min_length = 70, repetition_penalty = 1.0, length_penalty = 1.0, encoder_forward_stratergy = 'single', encoder_combination_type = 'addition', device = device)
-        ##print("Outputs", outputs)
+        #print("Outputs", outputs)
         model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
+        #print(model_output)
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[-1]])
         if model_output.strip():
-            #print(model_output)
-            #print(target)
-            #print('=' * 13)
+            print(model_output)
+            print(target)
+            print('=' * 13)
             model_out.append(model_output)
             references.append(target)
             #avg_len += first_batch[-1].shape[1]
@@ -698,14 +700,16 @@ def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_ty
     num_val = 50
     print("NUM EXAMPLES", num_val)
     it = iter(val_data)
-    import random
-    sample = random.sample(list(it), num_val)
+    #for each in it:
+    #print(each)
+    #import random
+    #sample = random.sample(list(it), num_val)
     generator = Data2TextGenerator(model, tokenizer)
-    references, targets, rou1, roul = sample_scorer(sample, model, tokenizer, nbeams = 3, min_len = 80, r_penalty = 1.0, l_penalty = 1.0, generator = generator, device = device) 
+    references, targets, rou1, roul = sample_scorer(sample = it, model = model, tokenizer = tokenizer, nbeams = 3, min_len = 80, r_penalty = 1.0, l_penalty = 1.0, generator = generator, device = device) 
     #num_beams, min_len, repetition_penalty, length_penalty = parameter_search(sample, model, tokenizer, device)
     #generator = Data2TextGenerator(model, tokenizer)
     #references, targets, _, _ = sample_scorer(list(it), model, tokenizer, nbeams = 3, min_len = 70, r_penalty = 1.0, l_penalty = 1.0,generator = generator, device=device)
-    df_write = pd.DataFrame(list(zip(references, model_out)), columns=["Reference Summary", "Generated Summary"])
+    df_write = pd.DataFrame(list(zip(references, targets)), columns=["Reference Summary", "Generated Summary"])
     file_name = '_'.join(model_path.split('/'))
     df_write.to_csv("%s.csv"%file_name)
 
@@ -713,4 +717,4 @@ def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_ty
         
 if __name__ == '__main__':
     checkpoint_file = "bart_multi_encoder/checkpoint_files/3e-5_single_addition_addition/final_checkpoint/epoch=3-loss=0.08.ckpt"
-    run_sample_scorer(encoder_forward_stratergy = 'single', encoder_combination_type = 'linearize', checkpoint_file=checkpoint_file)
+    run_sample_scorer(encoder_forward_stratergy = 'single', encoder_combination_type = 'addition', checkpoint_file=checkpoint_file)

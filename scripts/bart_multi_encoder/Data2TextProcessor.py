@@ -26,7 +26,7 @@ def shift_tokens_right(input_ids, pad_token_id):
     prev_output_tokens[:, 1:] = input_ids[:, :-1]
     return prev_output_tokens
 
-def encode_sentences(tokenizer, source_sentences, target_sentences, flatten_studies = False , max_length=1024, pad_to_max_length=True, return_tensors="pt"):
+def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=1024, pad_to_max_length=True, return_tensors="pt"):
     ''' Function that tokenizes a sentence 
         Args: tokenizer - the BART tokenizer; source and target sentences are the source and target sentences
         Returns: Dictionary with keys: input_ids, attention_mask, target_ids
@@ -54,7 +54,7 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, flatten_stud
             for each in snippet:
                 enc = run_bart(each)
                 if len(enc['input_ids']) < 1000:
-                    ##key = "attribute"
+                    key = "study"
                     each = "<%s> "%key + each+" </%s>"%key
                     snippet_processed.append(each)
             snippet = " ".join(snippet_processed)
@@ -87,65 +87,37 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, flatten_stud
         sentence_dict = eval(sentence)
         #sentence_dict = json.loads(sentence.replace("\'", "\""))
         #print(sentence_dict)
-        if not flatten_studies: 
-            sentence_dict = {sentence_keys_map[key] : val for key, val in sentence_dict.items()}
-            #print(sentence_dict)
-            sentence_dict_len = len(list(sentence_dict.keys()))
-            keys = list(sentence_dict.keys())
-            if len(sentence_dict['col0']) <= 200:
-                for i in range(0, sentence_dict_len):
-                    keys_ids = 'ids_col%s'%(str(i))
-                    attention_masks_ids = 'attention_masks_col%s'%(str(i))
+        sentence_dict = {sentence_keys_map[key] : val for key, val in sentence_dict.items()}
+        #print(sentence_dict)
+        sentence_dict_len = len(list(sentence_dict.keys()))
+        keys = list(sentence_dict.keys())
+        if len(sentence_dict['col0']) <= 200:
+            for i in range(0, sentence_dict_len):
+                keys_ids = 'ids_col%s'%(str(i))
+                attention_masks_ids = 'attention_masks_col%s'%(str(i))
 
-                    if keys_ids not in encoded_sentences:
-                        encoded_sentences[keys_ids] = []
-                    if attention_masks_ids not in encoded_sentences:
-                        encoded_sentences[attention_masks_ids] = []
+                if keys_ids not in encoded_sentences:
+                    encoded_sentences[keys_ids] = []
+                if attention_masks_ids not in encoded_sentences:
+                    encoded_sentences[attention_masks_ids] = []
 
-                    #print(sentence_dict['col%s'%(str(i))])
+                #print(sentence_dict['col%s'%(str(i))])
 
-                    sentence_encoding = get_encoding(sentence_dict['col%s'%(str(i))], reverse_map['col%s'%(str(i))] )
-                    encoded_sentences[keys_ids].append(sentence_encoding['input_ids'])
-                    encoded_sentences[attention_masks_ids].append(sentence_encoding['attention_mask'])
-        else:
-            sentence_vals = [val for key, val in sentence_dict.items()]
-            all_studies = []
-            len_vals = len(sentence_vals[0])
-            sentence_dict_len = 1
-            for i in range(0 , len_vals):
-                study = ["<%s> "%key + val[0] + "</%s>"%key for key, val in sentence_dict.items()]
-                study = " ".join(study)
-                study = "<study> " + study + " </study>"
-                all_studies.append(study)
-            linearized_studies = " ".join(all_studies)
-            sentence_encoding = tokenizer(
-              linearized_studies,
-              max_length=max_length,
-              padding="max_length" if pad_to_max_length else None,
-              truncation=True,
-              return_tensors=return_tensors,
-              add_prefix_space = True
-            )
-            keys_ids = 'ids_col%s'%(str(0))
-            attention_masks_ids = 'attention_masks_col%s'%(str(0))
-            if keys_ids not in encoded_sentences:
-                encoded_sentences[keys_ids] = []
-            if attention_masks_ids not in encoded_sentences:
-                encoded_sentences[attention_masks_ids] = []
-            encoded_sentences[keys_ids].append(sentence_encoding['input_ids'])
-            encoded_sentences[attention_masks_ids].append(sentence_encoding['attention_mask'])
+                sentence_encoding = get_encoding(sentence_dict['col%s'%(str(i))], reverse_map['col%s'%(str(i))] )
+                encoded_sentences[keys_ids].append(sentence_encoding['input_ids'])
+                encoded_sentences[attention_masks_ids].append(sentence_encoding['attention_mask'])
 
-        encoded_dict = tokenizer(
+            encoded_dict = tokenizer(
               tgt_sentence,
               max_length=max_length,
               padding="max_length" if pad_to_max_length else None,
               truncation=True,
               return_tensors=return_tensors,
               add_prefix_space = True
-        )
-        # Shift the target ids to the right
-        #shifted_target_ids = shift_tokens_right(encoded_dict['input_ids'], tokenizer.pad_token_id)
-        target_ids.append(encoded_dict['input_ids'])
+            )
+            # Shift the target ids to the right
+            #shifted_target_ids = shift_tokens_right(encoded_dict['input_ids'], tokenizer.pad_token_id)
+            target_ids.append(encoded_dict['input_ids'])
 
     for i in range(0, sentence_dict_len):
         keys_ids = 'ids_col%s'%(str(i))
@@ -165,14 +137,13 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, flatten_stud
 
 
 class SummaryDataModule(pl.LightningDataModule):
-    def __init__(self, tokenizer, data_files, batch_size, num_examples = 20000 , max_len = 1024, flatten_studies = False):
+    def __init__(self, tokenizer, data_files, batch_size, num_examples = 20000 , max_len = 1024):
         super().__init__()
         self.tokenizer = tokenizer
         self.data_files = data_files
         self.batch_size = batch_size
         self.num_examples = num_examples
         self.max_len = max_len
-        self.flatten_studies = flatten_studies
 
     # Loads and splits the data into training, validation and test sets with a 60/20/20 split
     def prepare_data(self):
@@ -181,42 +152,33 @@ class SummaryDataModule(pl.LightningDataModule):
         self.test = pd.read_csv(self.data_files[2])
 
     def setup(self, stage):
-        self.train = encode_sentences(self.tokenizer, self.train['source'], self.train['target'], flatten_studies = self.flatten_studies ,max_length = self.max_len)
+        self.train = encode_sentences(self.tokenizer, self.train['source'], self.train['target'], max_length = self.max_len)
         #sprint(self.train)
-        self.validate = encode_sentences(self.tokenizer, self.validate['source'], self.validate['target'], flatten_studies = self.flatten_studies ,max_length = self.max_len)
-        self.test = encode_sentences(self.tokenizer, self.test['source'], self.test['target'], flatten_studies = self.flatten_studies ,max_length = self.max_len)
+        self.validate = encode_sentences(self.tokenizer, self.validate['source'], self.validate['target'], max_length = self.max_len)
+        self.test = encode_sentences(self.tokenizer, self.test['source'], self.test['target'], max_length = self.max_len)
         #print(self.test)
 
     # Load the training, validation and test sets in Pytorch Dataset objects
     def train_dataloader(self, data_type = 'robo'):
         #dataset = TensorDataset
-        if self.flatten_studies: 
-            dataset = TensorDataset(self.train['ids_col0'], self.train['attention_masks_col0'],
-                                    self.train['labels'])
-        elif data_type == 'robo':
+        if data_type == 'robo':
             dataset = TensorDataset(self.train['ids_col0'], self.train['attention_masks_col0'],
                                     self.train['ids_col1'], self.train['attention_masks_col1'],
                                     self.train['ids_col2'], self.train['attention_masks_col2'],
                                     self.train['ids_col3'], self.train['attention_masks_col3'],
                                     self.train['ids_col4'], self.train['attention_masks_col4'],
                                     self.train['labels'])
-                    
         elif data_type == 'webnlg':
             dataset = TensorDataset(self.train['ids_col0'], self.train['attention_masks_col0'],
                                     self.train['ids_col1'], self.train['attention_masks_col1'],
                                     self.train['ids_col2'], self.train['attention_masks_col2'],
                                     self.train['labels'])
-                    
         #dataset = TensorDataset(self.train['input_ids'], self.train['attention_mask'], self.train['labels'])                          
         train_data = DataLoader(dataset, sampler = RandomSampler(dataset), batch_size = self.batch_size)
         return train_data
 
     def val_dataloader(self, data_type = 'robo'):
-        if self.flatten_studies: 
-            dataset = TensorDataset(self.train['ids_col0'], self.train['attention_masks_col0'],
-                                    self.train['labels'])
-
-        elif data_type == 'robo':
+        if data_type == 'robo':
             dataset = TensorDataset(self.validate['ids_col0'], self.validate['attention_masks_col0'],
                                     self.validate['ids_col1'], self.validate['attention_masks_col1'],
                                     self.validate['ids_col2'], self.validate['attention_masks_col2'],
@@ -233,11 +195,7 @@ class SummaryDataModule(pl.LightningDataModule):
 
     def test_dataloader(self, data_type = 'robo'):
         #print(self.test['punchline_text_ids'])
-        if self.flatten_studies: 
-            dataset = TensorDataset(self.train['ids_col0'], self.train['attention_masks_col0'],
-                                    self.train['labels'])
-
-        elif data_type == 'robo':
+        if data_type == 'robo':
             dataset = TensorDataset(self.test['ids_col0'], self.test['attention_masks_col0'],
                                     self.test['ids_col1'], self.test['attention_masks_col1'],
                                     self.test['ids_col2'], self.test['attention_masks_col2'],
@@ -253,25 +211,6 @@ class SummaryDataModule(pl.LightningDataModule):
         return test_data
 
 
-
-def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
-    if data_type == 'robo':
-        train_file = path + '/roboreviewer_summarization/data/%s'%(files[0])
-        dev_file = path + '/roboreviewer_summarization/data/%s'%(files[1])
-        test_file = path + '/roboreviewer_summarization/data/%s'%(files[2])
-
-    elif data_type =='webnlg':
-        train_file = path + '/roboreviewer_summarization/data/web_nlg_train.csv'
-        dev_file = path + '/roboreviewer_summarization/data/web_nlg_dev.csv'
-        test_file = path + '/roboreviewer_summarization/data/web_nlg_test.csv'
-
-    data_files = [train_file, dev_file, test_file]
-    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1, max_len = max_len, flatten_studies = True)
-    summary_data.prepare_data()
-    assert(len(summary_data.train) > 10)
-    return summary_data
-
-
 if __name__ == '__main__':
     additional_special_tokens = ["<attribute>", "</attribute>", "<sep>"]
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
@@ -279,20 +218,19 @@ if __name__ == '__main__':
                                                     pad_token = "<pad>")
     tokenizer.add_tokens(additional_special_tokens)
     #bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
-    data_files = ['bart_multienc_per_key/robo_train_sep.csv', 
-                                           'bart_multienc_per_key/robo_dev_sep.csv', 
-                                           'bart_multienc_per_key/robo_test_sep.csv']
-
-    
-                                    
-    
-    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'webnlg', path = '/home/sanjana', files = data_files, max_len = 1024)
+    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/ramprasad.sa/roboreviewer_summarization/data/bart_multienc_per_key/robo_train_sep.csv', 
+                                           '/home/ramprasad.sa/roboreviewer_summarization/data/bart_multienc_per_key/robo_dev_sep.csv', 
+                                           '/home/ramprasad.sa/roboreviewer_summarization/data/bart_multienc_per_key/robo_test_sep.csv'], batch_size = 1)
+    summary_data.prepare_data()
     summary_data.setup("stage")
-    it = summary_data.train_dataloader(data_type = 'webnlg')
+    it = summary_data.train_dataloader()
     batches = iter(it)
     batch = next(batches)
 
-    print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in batch[0]]))
+
+    generated_ids = batch[0]
+    output = " ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in generated_ids])
+    print(output)
     '''file_contents = pd.read_csv('/home/sanjana/roboreviewer_summarization/data/bart_multienc_per_key/robo_dev_sep.csv')
     source_contents = file_contents[0]
     source_contents = eval(source_contents['source']) 
@@ -302,9 +240,9 @@ if __name__ == '__main__':
         print(key)
         source_values = ["<study> "+ each + " </study>" for each in values]
         source_values = " ".join(source_values)
-        print(source_values)'''
+        print(source_values)
         
 
     
     
-    #print(next(batch))
+    #print(next(batch))'''
