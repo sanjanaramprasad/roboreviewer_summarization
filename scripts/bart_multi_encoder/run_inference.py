@@ -277,7 +277,7 @@ class Data2TextGenerator(GenerationMixin):
         #return_dict_in_generate = None
         #print("USE CACHE", use_cache)
         #use_cache = False
-        use_cache = True
+        #use_cache = True
         input_ids_col0 = batch[0] if len(batch) >1 else None
         input_ids_col0 = input_ids_col0.to(device)
         attention_mask_col0 = batch[1] if len(batch) >1 else None
@@ -577,7 +577,7 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     meteor_scores = []
     bleu_scores =[]
     print("Sample scoring")
-    for each in list(sample)[:5]:
+    for each in list(sample):
         #device = torch.device("cuda")
         #each = each.to(device)
         #print(each)
@@ -587,9 +587,9 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
         #print(model_output)
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[-1]])
         if model_output.strip():
-            print(model_output)
-            print(target)
-            print('=' * 13)
+            #print(model_output)
+            #print(target)
+            #print('=' * 13)
             model_out.append(model_output)
             references.append(target)
             #avg_len += first_batch[-1].shape[1]
@@ -710,7 +710,7 @@ def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_ty
     #generator = Data2TextGenerator(model, tokenizer)
     #references, targets, _, _ = sample_scorer(list(it), model, tokenizer, nbeams = 3, min_len = 70, r_penalty = 1.0, l_penalty = 1.0,generator = generator, device=device)
     df_write = pd.DataFrame(list(zip(references, targets)), columns=["Reference Summary", "Generated Summary"])
-    file_name = '_'.join(model_path.split('/'))
+    file_name = "3e-5_single_addition_addition"
     df_write.to_csv("%s.csv"%file_name)
 
 
