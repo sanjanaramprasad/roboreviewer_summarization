@@ -54,42 +54,6 @@ val_count = 0
 import os
 import pytorch_lightning as pl
 
-class CheckpointEveryNSteps(pl.Callback):
-    """
-    Save a checkpoint every N steps, instead of Lightning's default that checkpoints
-    based on validation loss.
-    """
-
-    def __init__(
-        self,
-        save_step_frequency,
-        prefix="N-Step-Checkpoint",
-        use_modelcheckpoint_filename=False,
-    ):
-        """
-        Args:
-            save_step_frequency: how often to save in steps
-            prefix: add a prefix to the name, only used if
-                use_modelcheckpoint_filename=False
-            use_modelcheckpoint_filename: just use the ModelCheckpoint callback's
-                default filename, don't use ours.
-        """
-        self.save_step_frequency = save_step_frequency
-        self.prefix = prefix
-        self.use_modelcheckpoint_filename = use_modelcheckpoint_filename
-
-    def on_batch_end(self, trainer: pl.Trainer, _):
-        """ Check if we should save a checkpoint after every train batch """
-        epoch = trainer.current_epoch
-        global_step = trainer.global_step
-        if global_step % self.save_step_frequency == 0:
-            if self.use_modelcheckpoint_filename:
-                filename = trainer.checkpoint_callback.filename
-            else:
-                filename = f"{self.prefix}_{epoch}_{global_step}.ckpt"
-            ckpt_path = os.path.join(trainer.checkpoint_callback.dirpath, filename)
-            trainer.save_checkpoint(ckpt_path)
-
     
 def freeze_params(model):
     ''' Function that takes a model as input (or part of a model) and freezes the layers for faster training
@@ -164,6 +128,7 @@ class LitModel(pl.LightningModule):
         tgt_ids = batch[-1]
         # Shift the decoder tokens right (but NOT the tgt_ids)
         # Run the model and get the logits
+        #print(self.encoder_forward_strategy, self.encoder_combination_type)
         outputs = self(
             input_ids_col0 = input_ids_col0,
             input_ids_col1 = input_ids_col1,
@@ -176,21 +141,23 @@ class LitModel(pl.LightningModule):
             attention_mask_col3 = attention_mask_col3,
             attention_mask_col4 = attention_mask_col4,
             labels = tgt_ids,
+            decoder_combination = 'addition',
             decoder_input_ids = None,
             use_cache = False,
-            encoder_combination_type = 'linearize'
-            )
+        )
         
-        lm_logits = outputs[1]
+        loss = outputs[0]
         # Create the loss function
-        ce_loss_fct = torch.nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
+        #ce_loss_fct = torch.nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
         # Calculate the loss on the un-shifted tokens
-        loss = ce_loss_fct(lm_logits.view(-1, lm_logits.shape[-1]), tgt_ids.view(-1))
+        #loss = ce_loss_fct(lm_logits.view(-1, lm_logits.shape[-1]), tgt_ids.view(-1))
         tensorboard_logs = {'loss': loss}
-        self.logger.experiment.add_scalar("Train Loss", loss, self.current_epoch)
+        self.log('train_loss', loss)
         epoch_dictionary={
+
             'loss': loss,
-            'log': tensorboard_logs}
+            'log': tensorboard_logs,
+            }
         return epoch_dictionary
 
     def validation_step(self, batch, batch_idx):
@@ -231,32 +198,32 @@ class LitModel(pl.LightningModule):
             attention_mask_col3 = attention_mask_col3,
             attention_mask_col4 = attention_mask_col4,
             labels = tgt_ids,
+            decoder_combination = 'addition',
             decoder_input_ids = None,
             use_cache = False,
-            encoder_combination_type = 'linearize'
-            )
+        )
 
 
-        lm_logits = outputs[1]
-        #print("LM LOGITS", lm_logits)
-        #print("TGT IDS", tgt_ids)
-
-        ce_loss_fct = torch.nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
-        val_loss = ce_loss_fct(lm_logits.view(-1, lm_logits.shape[-1]), tgt_ids.view(-1))
+        val_loss = outputs[0]
 
         tensorboard_logs = {'val_loss': val_loss}
-        self.logger.experiment.add_scalar("Val Loss", val_loss, self.current_epoch)
+        self.log('val_loss_epoch', val_loss)
         epoch_dictionary={
-            'loss': val_loss,
+            'val_loss': val_loss,
             'log': tensorboard_logs}
-        #print(epoch_dictionary)
         return epoch_dictionary
+
+    def validation_epoch_end(self, outputs):
+        avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
+        tensorboard_logs = {'val_loss': avg_loss}
+        self.log('val_loss', avg_loss)
+        return {'val_loss': avg_loss, 'log': tensorboard_logs}
 
 def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana'):
     if data_type == 'robo':
-        train_file = path + '/roboreviewer_summarization/data/robo_train_field_sep.csv'
-        dev_file = path + '/roboreviewer_summarization/data/robo_dev_field_sep.csv'
-        test_file = path + '/roboreviewer_summarization/data/robo_test_field_sep.csv'
+        train_file = path + '/roboreviewer_summarization/data/bart_multienc_per_key/robo_train_sep.csv'
+        dev_file = path + '/roboreviewer_summarization/data/bart_multienc_per_key/robo_dev_sep.csv'
+        test_file = path + '/roboreviewer_summarization/data/bart_multienc_per_key/robo_test_sep.csv'
     
     elif data_type =='webnlg':
         train_file = path + '/roboreviewer_summarization/data/web_nlg_train.csv'
@@ -270,21 +237,32 @@ def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana'):
 
 
 def main():
-    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
+    additional_special_tokens = ["<sep>", "<study>", "</study>",
+            "<outcomes>", "</outcomes>",
+            "<punchline_text>", "</punchline_text>",
+            "<population>", "</population>",
+            "<interventions>", "</interventions>",
+            "<punchline_effect>", "</punchline_effect>"]
+
+    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
+                                                    eos_token="</s>", 
+                                                    pad_token = "<pad>")
+
+    tokenizer.add_tokens(additional_special_tokens)
     bart_model = BartForDataToText.from_pretrained('facebook/bart-base')    
     summary_data = make_data(tokenizer, path = '/home/sanjana')
 
     #hparams = argparse.Namespace()
-    freeze_encoder = True
-    freeze_embeds = True
+    freeze_encoder = False
+    freeze_embeds = False
     eval_beams = 4
 
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
-    checkpoint = ModelCheckpoint('checkpoint_files/3e-5_linearize_mod/',
-                                filename = '{epoch}-{loss:.2f}',
+    checkpoint = ModelCheckpoint('checkpoint_files/decoder_addition/',
+                                filename = '{epoch}-{val_loss:.2f}',
                                 save_top_k=10,
                                 monitor = 'loss')
-    trainer = pl.Trainer(gpus=2, accelerator='dp', 
+    trainer = pl.Trainer(gpus=1, accelerator='dp', 
 			max_epochs = max_epochs,
                         min_epochs = 1,
                         auto_lr_find = False,
@@ -293,7 +271,7 @@ def main():
                         callbacks=[checkpoint])
 
     trainer.fit(model, summary_data)
-    trainer.save_checkpoint("robo_model_epoch%s_adam_%s_linearize_mod.ckpt"%(str(learning_rate), str(max_epochs)))
+    #trainer.save_checkpoint("robo_model_epoch%s_adam_%s_linearize_mod.ckpt"%(str(learning_rate), str(max_epochs)))
 
 
 if __name__ == '__main__': 
