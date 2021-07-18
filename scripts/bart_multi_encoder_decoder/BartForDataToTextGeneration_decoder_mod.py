@@ -113,12 +113,12 @@ class BartDecoderLayerMulti(nn.Module):
         else:
                 hidden_states_concat = torch.cat([hidden_states_0, hidden_states_1, hidden_states_2, hidden_states_3, hidden_states_4], dim =2)
                 ## concatenate hidden states 
-                hidden_states_concat = self.activation_fn(self.fc_concat1(hidden_states_concat))
+                '''hidden_states_concat = self.activation_fn(self.fc_concat1(hidden_states_concat))
                 hidden_states_concat = F.dropout(hidden_states_concat, p=self.activation_dropout, training=self.training)
                 hidden_states_concat = self.activation_fn(self.fc_concat2(hidden_states_concat))
                 hidden_states_concat = F.dropout(hidden_states_concat, p=self.activation_dropout, training=self.training)
                 hidden_states_concat = self.fc_concat3(hidden_states_concat)
-                hidden_states_all = F.dropout(hidden_states_concat, p=self.dropout, training=self.training)
+                hidden_states_all = F.dropout(hidden_states_concat, p=self.dropout, training=self.training)'''
         
         return hidden_states_all
                 
