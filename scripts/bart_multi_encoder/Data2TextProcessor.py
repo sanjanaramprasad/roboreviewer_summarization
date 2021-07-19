@@ -51,11 +51,13 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=1
         #print(snippet)
         if isinstance(snippet, list):
             snippet_processed = []
-            for each in snippet:
+            for ind, each in enumerate(snippet):
                 enc = run_bart(each)
                 if len(enc['input_ids']) < 1000:
-                    key = "study"
-                    each = "<%s> "%key + each+" </%s>"%key
+                    #key = "study"
+                    #each = "<%s> "%key + each+" </%s>"%key
+                    study_key = "study%s"%(str(ind))
+                    each = "<%s> "%study_key+ "<%s> "%key + each+" </%s> "%key+ "</%s>"%study_key
                     snippet_processed.append(each)
             snippet = " ".join(snippet_processed)
         #print(snippet)

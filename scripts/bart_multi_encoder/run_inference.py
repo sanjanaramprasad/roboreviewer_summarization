@@ -22,6 +22,9 @@ from transformers.file_utils import ModelOutput
 import pandas as pd
 import nltk
 from nltk.translate import meteor_score
+import numpy as np
+import subprocess 
+
 
 class Data2TextGenerator(GenerationMixin):
 
@@ -167,7 +170,7 @@ class Data2TextGenerator(GenerationMixin):
                     final_layer = self.final_layer_enc0 if loop_strategy != 'addition' else None 
                     model_kwargs["encoder_outputs_col0"] , _ = self.model._loop_encoders(encoder_col0, encoder_outputs, input_ids_col0, \
                         attention_mask_col0, inc_count = 256, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
-                #model_kwargs["encoder_outputs_col0"] = model_kwargs["encoder_outputs_col0"].to(device) 
+                ##model_kwargs["encoder_outputs_col0"] = model_kwargs["encoder_outputs_col0"].to(device) 
 
             if model_kwargs["encoder_forward_stratergy"] == 'single':
                  if not(input_ids_col1 is None):
@@ -569,7 +572,26 @@ class Data2TextGenerator(GenerationMixin):
             )
 
 
-def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalty, generator, device):
+def show_gpu(msg):
+    """
+    ref: https://discuss.pytorch.org/t/access-gpu-memory-usage-in-pytorch/3192/4
+    """
+    def query(field):
+        return(subprocess.check_output(
+            ['nvidia-smi', f'--query-gpu={field}',
+                '--format=csv,nounits,noheader'], 
+            encoding='utf-8'))
+    def to_int(result):
+        return int(result.strip().split('\n')[0])
+    
+    used = to_int(query('memory.used'))
+    total = to_int(query('memory.total'))
+    pct = used/total
+    print('\n' + msg, f'{100*pct:2.1f}% ({used} out of {total})') 
+
+
+
+def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalty,  device):
     references = []
     model_out = []
     rouge = Rouge()
@@ -577,11 +599,13 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     meteor_scores = []
     bleu_scores =[]
     print("Sample scoring")
-    for each in list(sample):
+    show_gpu('Initial GPU memory usage:')
+    #val_set = [each for each in list(sample) if len(each[0]) < 13]
+    for each in sample:
         #device = torch.device("cuda")
         #each = each.to(device)
-        #print(each)
-        outputs = generator.generate(each, num_beams = 3,  max_length = 400, min_length = 70, repetition_penalty = 1.0, length_penalty = 1.0, encoder_forward_stratergy = 'single', encoder_combination_type = 'addition', device = device)
+        ##print(each)
+        outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length = min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, encoder_forward_stratergy = 'single', encoder_combination_type = 'addition', device = device)
         #print("Outputs", outputs)
         model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
         #print(model_output)
@@ -600,6 +624,10 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     print('='*13)
     print("Values: num_beam:%s || min_len:%s || r_penalty:%s || l_penalty:%s"%( nbeams, min_len, r_penalty, l_penalty))
     #print(avg_len/num_val)
+    show_gpu('GPU memory usage after sample:')
+    torch.cuda.empty_cache()
+    torch.cuda.synchronize()
+    show_gpu('GPU memory usage after clearing cache:')
     rougeScores = rouge.get_scores(model_out, references, avg=True)
     print("ROGUE", rougeScores)
     print("METEOR", sum(meteor_scores)/len(meteor_scores))
@@ -654,10 +682,13 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/s
     summary_data.prepare_data()
     return summary_data
 
+def chunks(l, n):
+    n = max(1, n)
+    return (l[i:i+n] for i in range(0, len(l), n))
 
 def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_type = 'addition', 
     checkpoint_file = 'checkpoint_files/3e-5_single_linearized_addition/final_checkpoint/epoch=4-loss=0.00.ckpt', 
-    main_path = '/home/sanjana/roboreviewer_summarization/scripts/'):
+    main_path = '/home/ramprasad.sa/roboreviewer_summarization/'):
     additional_special_tokens = ["<sep>", "<study>", "</study>",
             "<outcomes>", "</outcomes>",
             "<punchline_text>", "</punchline_text>",
@@ -693,7 +724,7 @@ def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_ty
                             'bart_multienc_per_key/robo_dev_sep.csv', 'bart_multienc_per_key/robo_test_sep.csv']
 
     
-    summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/sanjana', files = files)
+    summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/ramprasad.sa', files = files)
     summary_data.setup("stage")
     val_data = summary_data.val_dataloader(data_type = 'robo')
 
@@ -702,19 +733,30 @@ def run_sample_scorer(encoder_forward_stratergy = 'loop', encoder_combination_ty
     it = iter(val_data)
     #for each in it:
     #print(each)
-    #import random
-    #sample = random.sample(list(it), num_val)
-    generator = Data2TextGenerator(model, tokenizer)
-    references, targets, rou1, roul = sample_scorer(sample = it, model = model, tokenizer = tokenizer, nbeams = 3, min_len = 80, r_penalty = 1.0, l_penalty = 1.0, generator = generator, device = device) 
-    #num_beams, min_len, repetition_penalty, length_penalty = parameter_search(sample, model, tokenizer, device)
+    import random
+    ##sample = random.sample(list(it), num_val)
+    #generator = Data2TextGenerator(model, tokenizer)
+    references = []
+    targets = []
+    chunks_it = chunks(list(it), 50)
+    print("# of chunks", chunks_it)
+    for chunk in chunks_it:
+      chunk = list(chunk)
+      references_sample, targets_sample, rou1, roul = sample_scorer(sample = chunk, model = model, tokenizer = tokenizer, nbeams = 3, min_len = 80, r_penalty = 1.0, l_penalty = 1.0, device = device) 
+      references += references_sample
+      targets += targets_sample
+    ##references_sample, targets_sample, rou1, roul = sample_scorer(sample = list(it)[50:100], model = model, tokenizer = tokenizer, nbeams = 3, min_len = 80, r_penalty = 1.0, l_penalty = 1.0, generator = generator, device = device)
+    ##num_beams, min_len, repetition_penalty, length_penalty = parameter_search(sample, model, tokenizer, device)
     #generator = Data2TextGenerator(model, tokenizer)
     #references, targets, _, _ = sample_scorer(list(it), model, tokenizer, nbeams = 3, min_len = 70, r_penalty = 1.0, l_penalty = 1.0,generator = generator, device=device)
     df_write = pd.DataFrame(list(zip(references, targets)), columns=["Reference Summary", "Generated Summary"])
-    file_name = "3e-5_single_addition_addition"
+    file_name = "encoders_multi_addition_group_study_key"
     df_write.to_csv("%s.csv"%file_name)
 
 
         
 if __name__ == '__main__':
-    checkpoint_file = "bart_multi_encoder/checkpoint_files/3e-5_single_addition_addition/final_checkpoint/epoch=3-loss=0.08.ckpt"
-    run_sample_scorer(encoder_forward_stratergy = 'single', encoder_combination_type = 'addition', checkpoint_file=checkpoint_file)
+    checkpoint_file = "checkpoint_files_final/encoders_multi_addition/group_study_key/epoch=3-val_loss=0.26.ckpt"
+    #checkpoint_file = "checkpoint_files_final/encoders_multi_average/epoch=3-val_loss=0.25.ckpt"
+    with torch.no_grad():
+       run_sample_scorer(encoder_forward_stratergy = 'single', encoder_combination_type = 'addition', checkpoint_file=checkpoint_file)

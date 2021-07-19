@@ -500,7 +500,7 @@ class BartForDataToText(BartPretrainedModel):
         else:
     
             if encoder_combination_type =='addition':
-                average_flag = True
+                average_flag = False
                 encoder_outputs = self._get_sum_encoder_outputs(
                         encoder_outputs_list,
                         average_flag
