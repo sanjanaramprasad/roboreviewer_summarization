@@ -53,11 +53,11 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=1
             snippet_processed = []
             for ind, each in enumerate(snippet):
                 enc = run_bart(each)
-                if len(enc['input_ids']) < 1000:
-                    #key = "study"
+                if True:
+                    key = "study"
                     #each = "<%s> "%key + each+" </%s>"%key
-                    study_key = "study%s"%(str(ind))
-                    each = "<%s> "%study_key+ "<%s> "%key + each+" </%s> "%key+ "</%s>"%study_key
+                    #study_key = "study%s"%(str(ind))
+                    each = "<%s> "%key + each + " </%s> "%key
                     snippet_processed.append(each)
             snippet = " ".join(snippet_processed)
         #print(snippet)
@@ -93,7 +93,7 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=1
         #print(sentence_dict)
         sentence_dict_len = len(list(sentence_dict.keys()))
         keys = list(sentence_dict.keys())
-        if len(sentence_dict['col0']) <= 200:
+        if True:
             for i in range(0, sentence_dict_len):
                 keys_ids = 'ids_col%s'%(str(i))
                 attention_masks_ids = 'attention_masks_col%s'%(str(i))
@@ -220,9 +220,9 @@ if __name__ == '__main__':
                                                     pad_token = "<pad>")
     tokenizer.add_tokens(additional_special_tokens)
     #bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
-    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/ramprasad.sa/roboreviewer_summarization/data/bart_multienc_per_key/robo_train_sep.csv', 
-                                           '/home/ramprasad.sa/roboreviewer_summarization/data/bart_multienc_per_key/robo_dev_sep.csv', 
-                                           '/home/ramprasad.sa/roboreviewer_summarization/data/bart_multienc_per_key/robo_test_sep.csv'], batch_size = 1)
+    summary_data = SummaryDataModule(tokenizer, data_files = ['/home/sanjana/roboreviewer_summarization/data/bart_multienc_per_key/robo_train_sep.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/bart_multienc_per_key/robo_dev_sep.csv', 
+                                           '/home/sanjana/roboreviewer_summarization/data/bart_multienc_per_key/robo_test_sep.csv'], batch_size = 1)
     summary_data.prepare_data()
     summary_data.setup("stage")
     it = summary_data.train_dataloader()
