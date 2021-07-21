@@ -33,7 +33,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.callbacks import ModelCheckpoint
-from BartForDataToTextGeneration_encoder_combination import BartForDataToText
+from scripts.bart_multi_encoder.BartForDataToTextGeneration_encoder_combination import BartForDataToText
 import math
 import random
 import re
