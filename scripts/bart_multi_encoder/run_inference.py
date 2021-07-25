@@ -6,9 +6,9 @@ from transformers.models.bart.configuration_bart import BartConfig
 import torch
 import torch.distributed as dist
 from torch.nn import functional as F
-from scripts.bart_multi_encoder.BartForDataToTextGeneration_encoder_combination import BartForDataToText
+from BartForDataToTextGeneration_encoder_combination import BartForDataToText
 from transformers.generation_utils import GenerationMixin
-from scripts.bart_multi_encoder.run_experiment_encoder_combination import LitModel
+from run_experiment_encoder_combination import LitModel
 from transformers import BartTokenizer
 import argparse
 from rouge import Rouge
@@ -18,23 +18,43 @@ from transformers.file_utils import ModelOutput
 import pandas as pd
 import nltk
 from nltk.translate import meteor_score
+from Data2TextGenerator import Data2TextGenerator
 import numpy as np
 import subprocess, os, sys 
-import scripts.bart_multi_encoder.config_single_addition as config_single_addition
+#import config_single_addition as config_single_addition
+import config_single_decoder_addition 
+
 
 parent_dir_name = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
 
+def show_gpu(msg):
+    """
+    ref: https://discuss.pytorch.org/t/access-gpu-memory-usage-in-pytorch/3192/4
+    """
+    def query(field):
+        return(subprocess.check_output(
+            ['nvidia-smi', f'--query-gpu={field}',
+                '--format=csv,nounits,noheader'], 
+            encoding='utf-8'))
+    def to_int(result):
+        return int(result.strip().split('\n')[0])
+    
+    used = to_int(query('memory.used'))
+    total = to_int(query('memory.total'))
+    pct = used/total
+    print('\n' + msg, f'{100*pct:2.1f}% ({used} out of {total})') 
+
 def run_meteor(model_outputs, targets):
     scores = []
-    for model_out, tgt in list(zip(model_outputs, targets))
+    for model_out, tgt in list(zip(model_outputs, targets)):
         met_score = round(meteor_score.meteor_score([tgt], model_out), 4)
         scores.append(met_score)
     return sum(scores)/len(scores)
 
 def run_bleu(model_outputs, targets):
     scores = []
-    for model_out, tgt in list(zip(model_outputs, targets))
+    for model_out, tgt in list(zip(model_outputs, targets)):
         bleu_score = nltk.translate.bleu_score.sentence_bleu([tgt], model_out)
         scores.append(bleu_score)
     return sum(scores)/len(scores)
@@ -44,7 +64,7 @@ def run_rouge(model_outputs, targets):
     rougeScores = rouge.get_scores(model_outputs, targets, avg=True)
     return rougeScores
 
-def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalty,  device):
+def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalty, generator, device):
     targets = []
     model_outputs = []
     rouge = Rouge()
@@ -66,11 +86,14 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     rougeScores = rouge.get_scores(model_outputs, targets, avg=True)
     meteorScores = run_meteor(model_outputs, targets)
     bleuScores = run_bleu(model_outputs, targets)
+    print("Rouge : ", rougeScores)
+    print("Bleu : ", bleuScores)
+    print("Meteor : ", meteorScores)
+    print('=' * 13)
     return model_outputs, targets,  rougeScores, meteorScores, bleuScores
 
 
-
-def parameter_search(sample, model, tokenizer, device):
+def parameter_searca(sample,  model, tokenizer, device):
 
         num_beams_list = [3,5]
         min_lengths = [50,70,80,90]
@@ -104,9 +127,12 @@ def parameter_search(sample, model, tokenizer, device):
 
 
 
-def run_inference(encoder_forward_strategy, encoder_combination_strategy, checkpoint_file, parameter_search = True, write_results = True):
-    if encoder_forward_strategy == 'single' and encoder_combination_strategy == 'addition':
-        config = config_single_addition
+def run_inference(encoder_forward_strategy, encoder_combination_strategy, checkpoint_file, parameter_look = True, write_results = True):
+    if encoder_forward_strategy == 'single':
+        if encoder_combination_strategy == 'addition':
+            config = config_single_addition
+        elif encoder_combination_strategy == 'decoder_addition':
+            config = config_single_decoder_addition
 
     tokenizer = config.tokenizer
     special_tokens = config.additional_special_tokens
@@ -126,9 +152,12 @@ def run_inference(encoder_forward_strategy, encoder_combination_strategy, checkp
     num_val = 50
     print("NUM EXAMPLES", num_val)
     it = iter(val_data)
+    import random
+    sample_data = random.sample(list(it), num_val)
 
-    if parameter_search:
-        num_beams, min_len, repetition_penalty, length_penalty = parameter_search(sample, model, tokenizer, device)
+
+    if parameter_look:
+        num_beams, min_len, repetition_penalty, length_penalty = parameter_searca(sample_data, model, tokenizer, device)
     
     else:
         num_beams = config.num_beams
@@ -146,7 +175,7 @@ def run_inference(encoder_forward_strategy, encoder_combination_strategy, checkp
 if __name__ =='__main__':
     checkpoint_file = ''
     encoder_forward_strategy = 'single'
-    encoder_combination_strategy = 'addition'
+    encoder_combination_strategy = 'decoder_addition'
     output_file = ''
 
     if not output_file:
