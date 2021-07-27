@@ -71,7 +71,7 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     
     print("Sample scoring")
     for each in sample:
-        outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length = min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, encoder_forward_stratergy = 'single', encoder_combination_type = 'addition', device = device)
+        outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length = min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, decoder_combination = 'addition', device = device)
         model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[-1]])
         if model_output.strip():
@@ -127,7 +127,7 @@ def parameter_searca(sample,  model, tokenizer, device):
 
 
 
-def run_inference(encoder_forward_strategy, encoder_combination_strategy, checkpoint_file, parameter_look = True, write_results = True):
+def run_inference(encoder_forward_strategy, encoder_combination_strategy, checkpoint_file, parameter_look = False, write_results = True):
     if encoder_forward_strategy == 'single':
         if encoder_combination_strategy == 'addition':
             config = config_single_addition
@@ -152,8 +152,8 @@ def run_inference(encoder_forward_strategy, encoder_combination_strategy, checkp
     num_val = 50
     print("NUM EXAMPLES", num_val)
     it = iter(val_data)
-    import random
-    sample_data = random.sample(list(it), num_val)
+    #import random
+    #sample_data = random.sample(list(it), num_val)
 
 
     if parameter_look:
@@ -164,8 +164,9 @@ def run_inference(encoder_forward_strategy, encoder_combination_strategy, checkp
         min_len = config.min_len
         repetition_penalty = config.repetition_penalty
         length_penalty = config.length_penalty
+    generator = Data2TextGenerator(model, tokenizer)
 
-    model_outputs, targets,  rougeScores, meteorScores, bleuScores = sample_scorer(sample = list(it), model = model, tokenizer = tokenizer, nbeams = num_beams, min_len = min_len, r_penalty = repetition_penalty, l_penalty = length_penalty, device = device) 
+    model_outputs, targets,  rougeScores, meteorScores, bleuScores = sample_scorer(sample = list(it), model = model, tokenizer = tokenizer, nbeams = num_beams, min_len = min_len, r_penalty = repetition_penalty, l_penalty = length_penalty, generator = generator, device = device) 
     return model_outputs, targets,  rougeScores, meteorScores, bleuScores
 
 

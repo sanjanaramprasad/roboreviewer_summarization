@@ -154,7 +154,7 @@ class Data2TextGenerator(GenerationMixin):
                 attention_mask_col0 = encoder_kwargs.get("attention_mask_col0", None)
                 encoder_outputs = encoder_kwargs.get('encoder_outputs_col0', None)
                 
-                if model_kwargs["encoder_forward_stratergy"] == 'single':
+                if 'decoder_combination' in model_kwargs or model_kwargs["encoder_forward_stratergy"] == 'single':
                     model_kwargs["encoder_outputs_col0"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col0, encoder_outputs = encoder_outputs, input_ids = input_ids_col0, attention_mask = attention_mask_col0)
                 else: 
                     fc0 = self.fc0_enc0 if loop_strategy != 'addition' else None
@@ -164,13 +164,13 @@ class Data2TextGenerator(GenerationMixin):
                         attention_mask_col0, inc_count = 256, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
                 ##model_kwargs["encoder_outputs_col0"] = model_kwargs["encoder_outputs_col0"].to(device) 
 
-            if model_kwargs["encoder_forward_stratergy"] == 'single':
+            if 'decoder_combination' in model_kwargs or model_kwargs["encoder_forward_stratergy"] == 'single':
                  if not(input_ids_col1 is None):
                     encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
                     attention_mask_col1 = encoder_kwargs.get("attention_mask_col1", None)
                     encoder_outputs = encoder_kwargs.get('encoder_outputs_col1', None)
 
-                    if model_kwargs["encoder_forward_stratergy"] == 'single':
+                    if 'decoder_combination' in model_kwargs or model_kwargs["encoder_forward_stratergy"] == 'single':
                         model_kwargs["encoder_outputs_col1"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col1, encoder_outputs = encoder_outputs, input_ids = input_ids_col1, attention_mask = attention_mask_col1)
                     else:
                         fc0 = self.fc0_enc1 if loop_strategy != 'addition' else None
@@ -180,13 +180,13 @@ class Data2TextGenerator(GenerationMixin):
                             attention_mask_col1, inc_count = 256, fc0 = fc0, fc1 = fc1, final_layer = final_layer)
                     #model_kwargs["encoder_outputs_col1"] = model_kwargs["encoder_outputs_col1"].to(device)
 
-            if model_kwargs["encoder_forward_stratergy"] == 'single':
+            if 'decoder_combination' in model_kwargs or model_kwargs["encoder_forward_stratergy"] == 'single':
                  if not(input_ids_col2 is None):
                     encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
                     attention_mask_col2 = encoder_kwargs.get("attention_mask_col2", None)
                     encoder_outputs = encoder_kwargs.get('encoder_outputs_col2', None)
 
-                    if model_kwargs["encoder_forward_stratergy"] == 'single':
+                    if 'decoder_combination' in model_kwargs or model_kwargs["encoder_forward_stratergy"] == 'single':
                         model_kwargs["encoder_outputs_col2"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col2, encoder_outputs = encoder_outputs, input_ids = input_ids_col2, attention_mask = attention_mask_col2)
                     else:
                         fc0 = self.fc0_enc2 if loop_strategy != 'addition' else None
@@ -197,13 +197,13 @@ class Data2TextGenerator(GenerationMixin):
                     #model_kwargs["encoder_outputs_col2"] = model_kwargs["encoder_outputs_col2"].to(device)
                      
 
-            if model_kwargs["encoder_forward_stratergy"] == 'single':
+            if 'decoder_combination' in model_kwargs or model_kwargs["encoder_forward_stratergy"] == 'single':
                  if not(input_ids_col3 is None):
                     encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
                     attention_mask_col3 = encoder_kwargs.get("attention_mask_col3", None)
                     encoder_outputs = encoder_kwargs.get('encoder_outputs_col3', None)
                     
-                    if model_kwargs["encoder_forward_stratergy"] == 'single':
+                    if 'decoder_combination' in model_kwargs or model_kwargs["encoder_forward_stratergy"] == 'single':
                         model_kwargs["encoder_outputs_col3"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col3, encoder_outputs = encoder_outputs, input_ids = input_ids_col3, attention_mask = attention_mask_col3)
                     else:
                         fc0 = self.fc0_enc3 if loop_strategy != 'addition' else None
@@ -214,13 +214,13 @@ class Data2TextGenerator(GenerationMixin):
 
                     #model_kwargs["encoder_outputs_col3"] = model_kwargs["encoder_outputs_col3"].to(device)
 
-            if model_kwargs["encoder_forward_stratergy"] == 'single':
+            if 'decoder_combination' in model_kwargs or model_kwargs["encoder_forward_stratergy"] == 'single':
                  if not(input_ids_col4 is None):
                     encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
                     attention_mask_col4 = encoder_kwargs.get("attention_mask_col4", None)
                     encoder_outputs = encoder_kwargs.get('encoder_outputs_col4', None)
 
-                    if model_kwargs["encoder_forward_stratergy"] == 'single':
+                    if 'decoder_combination' in model_kwargs or model_kwargs["encoder_forward_stratergy"] == 'single':
                         model_kwargs["encoder_outputs_col4"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col4, encoder_outputs = encoder_outputs, input_ids = input_ids_col4, attention_mask = attention_mask_col4)
                     else:
                         fc0 = self.fc0_enc4 if loop_strategy != 'addition' else None
@@ -438,7 +438,7 @@ class Data2TextGenerator(GenerationMixin):
             input_ids, model_kwargs = self._expand_inputs_for_generation(
                 input_ids, expand_size=num_beams, is_encoder_decoder=self.config.is_encoder_decoder, **model_kwargs
             )
-            #print("BEAM SEARCH KWARGS", model_kwargs)
+            ##print("BEAM SEARCH KWARGS", model_kwargs)
             return self.model.beam_search(
                 input_ids,
                 beam_scorer,
