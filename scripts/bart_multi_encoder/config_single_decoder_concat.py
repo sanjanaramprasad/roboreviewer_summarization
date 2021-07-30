@@ -41,7 +41,7 @@ tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>",
 
 summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo')
 
-checkpoint_file = 'checkpoint_files_final/encoders_multi_decoder_addition/epoch=4-val_loss=0.25.ckpt'
+checkpoint_file = 'scripts/bart_multi_encoder/checkpoint_files_final/3e-5_decomod_concatenate/epoch=4-val_loss=0.21.ckpt'
 print(parent_dir_name + checkpoint_file)
 model = LitModel.load_from_checkpoint(checkpoint_path=parent_dir_name + checkpoint_file)
 

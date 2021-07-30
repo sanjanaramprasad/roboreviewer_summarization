@@ -23,7 +23,7 @@ import numpy as np
 import subprocess, os, sys 
 #import config_single_addition as config_single_addition
 import config_single_decoder_addition 
-
+import config_single_decoder_concat
 
 parent_dir_name = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
@@ -71,7 +71,7 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     
     print("Sample scoring")
     for each in sample:
-        outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length = min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, decoder_combination = 'addition', device = device)
+        outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length = min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, decoder_combination = 'concatenate', device = device)
         model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[-1]])
         if model_output.strip():
@@ -96,7 +96,7 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
 def parameter_searca(sample,  model, tokenizer, device):
 
         num_beams_list = [3,5]
-        min_lengths = [50,70,80,90]
+        min_lengths = [80,90]
         repetition_penalties = [1.0, 2.0]
         length_penalties = [1.0, 2.0]
         final_refs = []
@@ -127,12 +127,15 @@ def parameter_searca(sample,  model, tokenizer, device):
 
 
 
-def run_inference(encoder_forward_strategy, encoder_combination_strategy, checkpoint_file, parameter_look = False, write_results = True):
+def run_inference(encoder_forward_strategy, encoder_combination_strategy, checkpoint_file, parameter_look = True, write_results = True):
     if encoder_forward_strategy == 'single':
+        print(encoder_combination_strategy)
         if encoder_combination_strategy == 'addition':
             config = config_single_addition
         elif encoder_combination_strategy == 'decoder_addition':
             config = config_single_decoder_addition
+        elif encoder_combination_strategy == 'decoder_concatenation':
+            config = config_single_decoder_concat 
 
     tokenizer = config.tokenizer
     special_tokens = config.additional_special_tokens
@@ -152,8 +155,8 @@ def run_inference(encoder_forward_strategy, encoder_combination_strategy, checkp
     num_val = 50
     print("NUM EXAMPLES", num_val)
     it = iter(val_data)
-    #import random
-    #sample_data = random.sample(list(it), num_val)
+    import random
+    sample_data = random.sample(list(it), num_val)
 
 
     if parameter_look:
@@ -176,7 +179,7 @@ def run_inference(encoder_forward_strategy, encoder_combination_strategy, checkp
 if __name__ =='__main__':
     checkpoint_file = ''
     encoder_forward_strategy = 'single'
-    encoder_combination_strategy = 'decoder_addition'
+    encoder_combination_strategy = 'decoder_concatenation'
     output_file = ''
 
     if not output_file:
