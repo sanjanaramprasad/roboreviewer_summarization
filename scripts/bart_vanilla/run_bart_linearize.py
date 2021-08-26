@@ -1,5 +1,5 @@
 import pandas as pd 
-from Data2TextProcessor_linearize import SummaryDataModule 
+from DataToTextProcessor_vanilla import SummaryDataModule 
 import transformers
 import torch
 from torch.utils.data import DataLoader, TensorDataset, random_split, RandomSampler, Dataset
@@ -170,20 +170,17 @@ class LitModel(pl.LightningModule):
 
         
 
-def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana'):
+def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
     if data_type == 'robo':
-        train_file = path + '/roboreviewer_summarization/data/bart_vanilla/robo_train_linearized.csv'
-        dev_file = path + '/roboreviewer_summarization/data/bart_vanilla/robo_dev_linearized.csv'
-        test_file = path + '/roboreviewer_summarization/data/bart_vanilla/robo_test_linearized.csv'
-    
-    elif data_type =='webnlg':
-        train_file = path + '/roboreviewer_summarization/data/web_nlg_train.csv'
-        dev_file = path + '/roboreviewer_summarization/data/web_nlg_dev.csv'
-        test_file = path + '/roboreviewer_summarization/data/web_nlg_test.csv'
+        train_file = path + '/summarization/datasets/%s'%(files[0])
+        dev_file = path + '/summarization/datasets/%s'%(files[1])
+        test_file = path + '/summarization/datasets/%s'%(files[2])
 
+    print(train_file)
     data_files = [train_file, dev_file, test_file]
-    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1)
+    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1, max_len = max_len, flatten_studies = True)
     summary_data.prepare_data()
+    assert(len(summary_data.train) > 10)
     return summary_data
 
 
@@ -201,8 +198,11 @@ def main():
     tokenizer.add_tokens(additional_special_tokens)
     bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
     bart_model.resize_token_embeddings(len(tokenizer))
+
+    data_files = ['train_rr_data.csv', 'dev_rr_data.csv' , 'test_rr_data.csv']
     
-    summary_data = make_data(tokenizer, path = '/home/sanjana')
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)
+    print(summary_data.train)
 
     #hparams = argparse.Namespace()
     freeze_encoder = False
@@ -274,6 +274,6 @@ def inference(checkpoint_file):
     print("METEOR", sum(meteor_scores)/len(meteor_scores))
     print("BLEU", sum(bleu_scores)/len(bleu_scores))
 if __name__ == '__main__': 
-    #main()
-    inference('/home/sanjana/roboreviewer_summarization/scripts/bart_vanilla/checkpoint_files/checkpoint_best_model/epoch=4-val_loss=0.25.ckpt')
+    main()
+    #inference('/home/sanjana/roboreviewer_summarization/scripts/bart_vanilla/checkpoint_files/checkpoint_best_model/epoch=4-val_loss=0.25.ckpt')
    
