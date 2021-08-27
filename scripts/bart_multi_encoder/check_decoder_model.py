@@ -10,20 +10,18 @@ import torch
 
 
 
-def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv']):
+def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
     if data_type == 'robo':
-        train_file = path + '/roboreviewer_summarization/data/bart_multienc_per_key/%s'%(files[0])
-        dev_file = path + '/roboreviewer_summarization/data/bart_multienc_per_key/%s'%(files[1])
-        test_file = path + '/roboreviewer_summarization/data/bart_multienc_per_key/%s'%(files[2])
+        train_file = path + '/summarization/datasets/%s'%(files[0])
+        dev_file = path + '/summarization/datasets/%s'%(files[1])
+        test_file = path + '/summarization/datasets/%s'%(files[2])
 
-    elif data_type =='webnlg':
-        train_file = path + '/roboreviewer_summarization/data/web_nlg_train.csv'
-        dev_file = path + '/roboreviewer_summarization/data/web_nlg_dev.csv'
-        test_file = path + '/roboreviewer_summarization/data/web_nlg_test.csv'
-
+    print(train_file)
     data_files = [train_file, dev_file, test_file]
-    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1)
+    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1, max_len = max_len, flatten_studies = True)
     summary_data.prepare_data()
+    
+    assert(len(summary_data.train) > 10)
     return summary_data
 
 
