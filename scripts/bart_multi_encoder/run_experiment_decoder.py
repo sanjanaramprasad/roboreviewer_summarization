@@ -185,10 +185,6 @@ class LitModel(pl.LightningModule):
         )
         
         loss = outputs[0]
-        # Create the loss function
-        #ce_loss_fct = torch.nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
-        # Calculate the loss on the un-shifted tokens
-        #loss = ce_loss_fct(lm_logits.view(-1, lm_logits.shape[-1]), tgt_ids.view(-1))
         tensorboard_logs = {'loss': loss}
         self.logger.experiment.add_scalar("Train Loss", loss, self.current_epoch)
         epoch_dictionary={
@@ -242,11 +238,6 @@ class LitModel(pl.LightningModule):
 
 
         val_loss = outputs[0]
-        #print("LM LOGITS", lm_logits)
-        #print("TGT IDS", tgt_ids)
-
-        #ce_loss_fct = torch.nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
-        #val_loss = ce_loss_fct(lm_logits.view(-1, lm_logits.shape[-1]), tgt_ids.view(-1))
 
         tensorboard_logs = {'val_loss': val_loss}
         self.logger.experiment.add_scalar("Val Loss", val_loss, self.current_epoch)
@@ -262,21 +253,20 @@ class LitModel(pl.LightningModule):
         self.log('val_loss', avg_loss)
         return {'val_loss': avg_loss, 'log': tensorboard_logs}
 
-def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana'):
+def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
     if data_type == 'robo':
-        train_file = path + '/roboreviewer_summarization/data/bart_multienc_per_key/robo_train_sep.csv'
-        dev_file = path + '/roboreviewer_summarization/data/bart_multienc_per_key/robo_dev_sep.csv'
-        test_file = path + '/roboreviewer_summarization/data/bart_multienc_per_key/robo_test_sep.csv'
-    
-    elif data_type =='webnlg':
-        train_file = path + '/roboreviewer_summarization/data/web_nlg_train.csv'
-        dev_file = path + '/roboreviewer_summarization/data/web_nlg_dev.csv'
-        test_file = path + '/roboreviewer_summarization/data/web_nlg_test.csv'
+        train_file = path + '/summarization/datasets/%s'%(files[0])
+        dev_file = path + '/summarization/datasets/%s'%(files[1])
+        test_file = path + '/summarization/datasets/%s'%(files[2])
 
+    print(train_file)
     data_files = [train_file, dev_file, test_file]
-    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1)
+    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1, max_len = max_len, flatten_studies = True)
     summary_data.prepare_data()
+    
+    assert(len(summary_data.train) > 10)
     return summary_data
+
 
 
 def main():
@@ -299,7 +289,7 @@ def main():
     
                                     
     
-    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/ramprasad.sa', files = data_files, max_len = 1024)
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)
     
     bart_model = BartForDataToTextDecoderMod.from_pretrained('facebook/bart-base') 
 
@@ -313,7 +303,7 @@ def main():
                                 filename = '{epoch}-{val_loss:.2f}',
                                 save_top_k=10,
                                 monitor = 'val_loss')
-    trainer = pl.Trainer(gpus=1,  
+    trainer = pl.Trainer(gpus=2,  
 			max_epochs = max_epochs,
                         min_epochs = 1,
                         auto_lr_find = False,
