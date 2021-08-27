@@ -91,8 +91,9 @@ class BartForDataToTextGenerationTester():
         model._make_duplicate_decoder_layer_attns()
         model.resize_token_embeddings(len(tokenizer))
         print("Loading Data ...")
-        summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/ramprasad.sa', files = ['robo_train_sep.csv', 
-                            'robo_dev_sep.csv', 'robo_test_sep.csv'])
+        data_files = ['train_rr_data.csv', 'dev_rr_data.csv' , 'test_rr_data.csv']
+        summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/ramprasad.sa', files = data_files, max_len = 1024)
+    
         summary_data.setup("stage")
         test_data = summary_data.test_dataloader(data_type = 'robo')
         print("Done.")

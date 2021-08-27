@@ -282,21 +282,26 @@ def make_data(tokenizer, data_type = 'robo', path = '/home/sanjana'):
 def main():
     #additional_special_tokens=["<attribute>",  "</attribute>", "<sep>"]
     
-    additional_special_tokens = ["<sep>",
+    additional_special_tokens = ["<sep>", "<study>", "</study>",
             "<outcomes>", "</outcomes>",
             "<punchline_text>", "</punchline_text>",
             "<population>", "</population>",
             "<interventions>", "</interventions>",
-            "<punchline_effect>", "</punchline_effect>",
-            "<study>", "</study>"]
-
+            "<punchline_effect>", "</punchline_effect>"]
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
                                                     eos_token="</s>", 
                                                     pad_token = "<pad>")
 
     tokenizer.add_tokens(additional_special_tokens)
-    bart_model = BartForDataToTextDecoderMod.from_pretrained('facebook/bart-base')    
-    summary_data = make_data(tokenizer, path = '/home/ramprasad.sa')
+    #bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
+    data_files = ['train_rr_data.csv', 'dev_rr_data.csv' , 'test_rr_data.csv']
+
+    
+                                    
+    
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/ramprasad.sa', files = data_files, max_len = 1024)
+    
+    bart_model = BartForDataToTextDecoderMod.from_pretrained('facebook/bart-base') 
 
     #hparams = argparse.Namespace()
     freeze_encoder = False
