@@ -219,58 +219,45 @@ class LitModel(pl.LightningModule):
 
 
 
-def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
+def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
     if data_type == 'robo':
-        train_file = path + '/roboreviewer_summarization/data/%s'%(files[0])
-        dev_file = path + '/roboreviewer_summarization/data/%s'%(files[1])
-        test_file = path + '/roboreviewer_summarization/data/%s'%(files[2])
+        train_file = path + '/summarization/datasets/%s'%(files[0])
+        dev_file = path + '/summarization/datasets/%s'%(files[1])
+        test_file = path + '/summarization/datasets/%s'%(files[2])
 
-    elif data_type =='webnlg':
-        train_file = path + '/roboreviewer_summarization/data/web_nlg_train.csv'
-        dev_file = path + '/roboreviewer_summarization/data/web_nlg_dev.csv'
-        test_file = path + '/roboreviewer_summarization/data/web_nlg_test.csv'
-
+    print(train_file)
     data_files = [train_file, dev_file, test_file]
-    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1, max_len = max_len)
+    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1, max_len = max_len, flatten_studies = True)
     summary_data.prepare_data()
+    
     assert(len(summary_data.train) > 10)
     return summary_data
 
 
 
 
-def main(encoder_forward_strategy = 'single', encoder_combination_type = 'addition', layer_share = False, loop_strategy = 'addition'):
+def main(encoder_forward_strategy = 'single', encoder_combination_type = 'addition', layer_share = False, loop_strategy = None):
     #additional_special_tokens=["<attribute>",  "</attribute>", "<sep>"]
     #
 
     ############################# Data loader and data prep ####################
     additional_special_tokens = ["<sep>", "<study>", "</study>",
-            "<outcomes>", "</outcomes>",
+            "<outcomes_mesh>", "</outcomes_mesh>",
             "<punchline_text>", "</punchline_text>",
-            "<population>", "</population>",
-            "<interventions>", "</interventions>",
+            "<population_mesh>", "</population_mesh>",
+            "<interventions_mesh>", "</interventions_mesh>",
             "<punchline_effect>", "</punchline_effect>"]
-
+            
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
                                                     eos_token="</s>", 
                                                     pad_token = "<pad>")
 
     tokenizer.add_tokens(additional_special_tokens) 
-    if encoder_forward_strategy == 'loop' :
-        from Data2TextProcessor_loop import SummaryDataModule
-        files = ['bart_loop_single/robo_train_linearized_per_study.csv', 
-                            'bart_loop_single/robo_dev_linearized_per_study.csv', 'bart_loop_single/robo_test_linearized_per_study.csv']
-        max_len = 256
-        
+    from Data2TextProcessor import SummaryDataModule
+    data_files = ['train_rr_data.csv', 'dev_rr_data.csv' , 'test_rr_data.csv']
 
-    elif encoder_forward_strategy == 'single':
-        from Data2TextProcessor import SummaryDataModule
-        files = ['bart_multienc_per_key/robo_train_sep.csv', 
-                            'bart_multienc_per_key/robo_dev_sep.csv', 'bart_multienc_per_key/robo_test_sep.csv']
-        max_len = 1024
-
-    
-    summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/sanjana', files = files, max_len = max_len)
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)
+    print(summary_data.train)
 
     ####################### Model loading and training ##########################
     freeze_encoder = False
@@ -281,7 +268,7 @@ def main(encoder_forward_strategy = 'single', encoder_combination_type = 'additi
     logger = TensorBoardLogger('tb_logs_final', name='my_model_f%s_c%s_l%s'%(encoder_forward_strategy, encoder_combination_type, loop_strategy))  
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, \
                         encoder_forward_strategy = encoder_forward_strategy, encoder_combination_type = encoder_combination_type, layer_share = layer_share, freeze_encoder = freeze_encoder, \
-                            freeze_embeds = freeze_embeds, max_len = max_len, loop_strategy = loop_strategy)
+                            freeze_embeds = freeze_embeds, max_len = 1024, loop_strategy = loop_strategy)
     checkpoint = ModelCheckpoint('checkpoint_files/3e-5_%s_%s_%s/'%(encoder_forward_strategy, encoder_combination_type, loop_strategy),
                                 filename = '{epoch}-{val_loss:.2f}',
                                 save_top_k=10,

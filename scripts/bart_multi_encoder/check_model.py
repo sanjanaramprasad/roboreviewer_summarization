@@ -10,20 +10,18 @@ import torch
 
 
 
-def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv']):
+def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
     if data_type == 'robo':
-        train_file = path + '/roboreviewer_summarization/data/%s'%(files[0])
-        dev_file = path + '/roboreviewer_summarization/data/%s'%(files[1])
-        test_file = path + '/roboreviewer_summarization/data/%s'%(files[2])
+        train_file = path + '/summarization/datasets/%s'%(files[0])
+        dev_file = path + '/summarization/datasets/%s'%(files[1])
+        test_file = path + '/summarization/datasets/%s'%(files[2])
 
-    elif data_type =='webnlg':
-        train_file = path + '/roboreviewer_summarization/data/web_nlg_train.csv'
-        dev_file = path + '/roboreviewer_summarization/data/web_nlg_dev.csv'
-        test_file = path + '/roboreviewer_summarization/data/web_nlg_test.csv'
-
+    print(train_file)
     data_files = [train_file, dev_file, test_file]
-    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1, max_len = 256)
+    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1, max_len = max_len, flatten_studies = True)
     summary_data.prepare_data()
+    
+    assert(len(summary_data.train) > 10)
     return summary_data
 
 
@@ -49,11 +47,12 @@ def get_data(data):
             input_ids_col3, attention_mask_col3, \
             input_ids_col4, attention_mask_col4
 
-additional_special_tokens = ["<sep>",
-            "<outcomes>", "</outcomes>",
+additional_special_tokens = ["<sep>", "<study>", "</study>",
+            "<outcomes_mesh>", "</outcomes_mesh>",
             "<punchline_text>", "</punchline_text>",
-            "<population>", "</population>",
-            "<interventions>", "</interventions>"]
+            "<population_mesh>", "</population_mesh>",
+            "<interventions_mesh>", "</interventions_mesh>",
+            "<punchline_effect>", "</punchline_effect>"]
 tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>",
                                                     eos_token="</s>",
                                                     pad_token = "<pad>")
@@ -220,8 +219,11 @@ class BartForDataToTextGenerationTester():
         model._make_duplicate_encoders(layer_share = False)
         model.resize_token_embeddings(len(tokenizer))
         print("Loading Data ...")
-        summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/sanjana', files = ['bart_multienc_per_key/robo_train_sep.csv', 
-                            'bart_multienc_per_key/robo_dev_sep.csv', 'bart_multienc_per_key/robo_test_sep.csv'])
+        data_files = ['train_rr_data.csv', 'dev_rr_data.csv' , 'test_rr_data.csv']
+
+        summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)
+        print(summary_data.train)
+
         summary_data.setup("stage")
         test_data = summary_data.test_dataloader(data_type = 'robo')
         print("Done.")
