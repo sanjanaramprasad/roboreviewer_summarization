@@ -107,30 +107,30 @@ class SummaryDataModule(pl.LightningDataModule):
         self.validate = preprocess_df(self.validate, preprocess_keys)
         self.test = preprocess_df(self.test, preprocess_keys)
 
-    def setup(self, stage):
+    def setup(self):
         self.train = encode_sentences(self.tokenizer, 
                                       self.train,
-                                        ['population', 
-                                        'interventions',
-                                        'outcomes',
+                                        ['population_mesh', 
+                                        'interventions_mesh',
+                                        'outcomes_mesh',
                                         'punchline_text',
                                         'punchline_effect'], 
                                         self.train['SummaryConclusions'],
                                         max_length = self.max_len)
         self.validate = encode_sentences(self.tokenizer, 
                                         self.validate,
-                                        ['population', 
-                                        'interventions',
-                                        'outcomes',
+                                        ['population_mesh', 
+                                        'interventions_mesh',
+                                        'outcomes_mesh',
                                         'punchline_text',
                                         'punchline_effect'], 
                                         self.validate['SummaryConclusions'],
                                         max_length = self.max_len)
         self.test = encode_sentences(self.tokenizer, 
                                     self.test,
-                                        ['population', 
-                                        'interventions',
-                                        'outcomes',
+                                        ['population_mesh', 
+                                        'interventions_mesh',
+                                        'outcomes_mesh',
                                         'punchline_text',
                                         'punchline_effect'], 
                                         self.test['SummaryConclusions'],
@@ -138,9 +138,9 @@ class SummaryDataModule(pl.LightningDataModule):
 
     def train_dataloader(self, data_type = 'robo'):
         #dataset = TensorDataset
-        dataset = TensorDataset(self.train['population_ids'], self.train['population_attention_masks'],
-                                self.train['interventions_ids'], self.train['interventions_attention_masks'],
-                                self.train['outcomes_ids'], self.train['outcomes_attention_masks'],
+        dataset = TensorDataset(self.train['population_mesh_ids'], self.train['population_mesh_attention_masks'],
+                                self.train['interventions_mesh_ids'], self.train['interventions_mesh_attention_masks'],
+                                self.train['outcomes_mesh_ids'], self.train['outcomes_mesh_attention_masks'],
                                 self.train['punchline_text_ids'], self.train['punchline_text_attention_masks'],
                                 self.train['punchline_effect_ids'], self.train['punchline_effect_attention_masks'],
                                     self.train['labels'])
@@ -149,9 +149,9 @@ class SummaryDataModule(pl.LightningDataModule):
         return train_data
 
     def val_dataloader(self, data_type = 'robo'):
-        dataset = TensorDataset(self.validate['population_ids'], self.validate['population_attention_masks'],
-                                self.validate['interventions_ids'], self.validate['interventions_attention_masks'],
-                                self.validate['outcomes_ids'], self.validate['outcomes_attention_masks'],
+        dataset = TensorDataset(self.validate['population_mesh_ids'], self.validate['population_mesh_attention_masks'],
+                                self.validate['interventions_mesh_ids'], self.validate['interventions_mesh_attention_masks'],
+                                self.validate['outcomes_mesh_ids'], self.validate['outcomes_mesh_attention_masks'],
                                 self.validate['punchline_text_ids'], self.validate['punchline_text_attention_masks'],
                                 self.validate['punchline_effect_ids'], self.validate['punchline_effect_attention_masks'],
                                     self.validate['labels'])
@@ -160,9 +160,9 @@ class SummaryDataModule(pl.LightningDataModule):
 
     def test_dataloader(self, data_type = 'robo'):
         #print(self.test['punchline_text_ids'])
-        dataset = TensorDataset(self.test['population_ids'], self.test['population_attention_masks'],
-                                self.test['interventions_ids'], self.test['interventions_attention_masks'],
-                                self.test['outcomes_ids'], self.test['outcomes_attention_masks'],
+        dataset = TensorDataset(self.test['population_mesh_ids'], self.test['population_mesh_attention_masks'],
+                                self.test['interventions_mesh_ids'], self.test['interventions_mesh_attention_masks'],
+                                self.test['outcomes_mesh_ids'], self.test['outcomes_mesh_attention_masks'],
                                 self.test['punchline_text_ids'], self.test['punchline_text_attention_masks'],
                                 self.test['punchline_effect_ids'], self.test['punchline_effect_attention_masks'],
                                     self.test['labels'])
@@ -187,10 +187,10 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/
 
 if __name__ == '__main__':
     additional_special_tokens = ["<sep>", "<study>", "</study>",
-            "<outcomes>", "</outcomes>",
+            "<outcomes_mesh>", "</outcomes_mesh>",
             "<punchline_text>", "</punchline_text>",
-            "<population>", "</population>",
-            "<interventions>", "</interventions>",
+            "<population_mesh>", "</population_mesh>",
+            "<interventions_mesh>", "</interventions_mesh>",
             "<punchline_effect>", "</punchline_effect>"]
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
                                                     eos_token="</s>", 
