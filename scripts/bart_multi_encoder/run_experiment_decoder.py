@@ -273,10 +273,10 @@ def main():
     #additional_special_tokens=["<attribute>",  "</attribute>", "<sep>"]
     
     additional_special_tokens = ["<sep>", "<study>", "</study>",
-            "<outcomes>", "</outcomes>",
+            "<outcomes_mesh>", "</outcomes_mesh>",
             "<punchline_text>", "</punchline_text>",
-            "<population>", "</population>",
-            "<interventions>", "</interventions>",
+            "<population_mesh>", "</population_mesh>",
+            "<interventions_mesh>", "</interventions_mesh>",
             "<punchline_effect>", "</punchline_effect>"]
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
                                                     eos_token="</s>", 
