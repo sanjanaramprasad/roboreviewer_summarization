@@ -168,8 +168,11 @@ class BartForDataToTextGenerationTester():
         model._make_duplicate_encoders(layer_share = False)
         model.resize_token_embeddings(len(tokenizer))
         print("Loading Data ...")
-        summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/sanjana', files = ['robo_train_linearized_per_study.csv', 
-                            'robo_dev_linearized_per_study.csv', 'robo_test_linearized_per_study.csv'])
+        data_files = ['train_rr_data.csv', 'dev_rr_data.csv' , 'test_rr_data.csv']
+
+        summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)
+        print(summary_data.train)
+        
         summary_data.setup("stage")
         test_data = summary_data.test_dataloader(data_type = 'robo')
         print("Done.")
@@ -198,7 +201,7 @@ class BartForDataToTextGenerationTester():
             labels = data[-1],
             encoder_forward_stratergy = 'loop',
             encoder_combination_type = 'addition',
-            loop_strategy = 'linearize',
+            loop_strategy = 'addition',
             use_cache = True
         )
         tgt_ids = data[-1]
@@ -271,5 +274,5 @@ class BartForDataToTextGenerationTester():
  
         
 obj = BartForDataToTextGenerationTester()
-obj.test_model_forward_bart_encoder_straight(encoder_combination_type = 'addition')
-#obj.test_model_forward_bart_encoder_loop_per_study(encoder_combination_type = 'linearize')
+#obj.test_model_forward_bart_encoder_straight(encoder_combination_type = 'addition')
+obj.test_model_forward_bart_encoder_loop_per_study(encoder_combination_type = 'addition')
