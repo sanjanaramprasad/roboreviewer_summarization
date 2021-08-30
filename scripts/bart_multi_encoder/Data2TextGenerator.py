@@ -157,7 +157,7 @@ class Data2TextGenerator(GenerationMixin):
                 if 'decoder_combination' in model_kwargs or model_kwargs["encoder_forward_stratergy"] == 'single':
                     model_kwargs["encoder_outputs_col0"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col0, encoder_outputs = encoder_outputs, input_ids = input_ids_col0, attention_mask = attention_mask_col0)
                 else: 
-                    model_kwargs["encoder_outputs_col0"] , _ = self.model._loop_encoders(encoder_col0, encoder_outputs, input_ids_col0, \
+                    model_kwargs["encoder_outputs_col0"] , attention_mask_col0 = self.model._loop_encoders(encoder_col0, encoder_outputs, input_ids_col0, \
                         attention_mask_col0, inc_count = 1024)
                 ##model_kwargs["encoder_outputs_col0"] = model_kwargs["encoder_outputs_col0"].to(device) 
 
@@ -170,7 +170,7 @@ class Data2TextGenerator(GenerationMixin):
                     if 'decoder_combination' in model_kwargs or model_kwargs["encoder_forward_stratergy"] == 'single':
                         model_kwargs["encoder_outputs_col1"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col1, encoder_outputs = encoder_outputs, input_ids = input_ids_col1, attention_mask = attention_mask_col1)
                     else:
-                        model_kwargs["encoder_outputs_col1"] , _ = self.model._loop_encoders(encoder_col1, encoder_outputs, input_ids_col1, \
+                        model_kwargs["encoder_outputs_col1"] , attention_mask_col1 = self.model._loop_encoders(encoder_col1, encoder_outputs, input_ids_col1, \
                             attention_mask_col1, inc_count = 1024)
                     #model_kwargs["encoder_outputs_col1"] = model_kwargs["encoder_outputs_col1"].to(device)
 
@@ -183,7 +183,7 @@ class Data2TextGenerator(GenerationMixin):
                     if 'decoder_combination' in model_kwargs or model_kwargs["encoder_forward_stratergy"] == 'single':
                         model_kwargs["encoder_outputs_col2"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col2, encoder_outputs = encoder_outputs, input_ids = input_ids_col2, attention_mask = attention_mask_col2)
                     else:
-                        model_kwargs["encoder_outputs_col2"] , _ = self.model._loop_encoders(encoder_col2, encoder_outputs, input_ids_col2, \
+                        model_kwargs["encoder_outputs_col2"] , attention_mask_col2 = self.model._loop_encoders(encoder_col2, encoder_outputs, input_ids_col2, \
                             attention_mask_col2, inc_count = 1024)
                     #model_kwargs["encoder_outputs_col2"] = model_kwargs["encoder_outputs_col2"].to(device)
                      
@@ -197,7 +197,7 @@ class Data2TextGenerator(GenerationMixin):
                     if 'decoder_combination' in model_kwargs or model_kwargs["encoder_forward_stratergy"] == 'single':
                         model_kwargs["encoder_outputs_col3"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col3, encoder_outputs = encoder_outputs, input_ids = input_ids_col3, attention_mask = attention_mask_col3)
                     else:
-                        model_kwargs["encoder_outputs_col3"] , _ = self.model._loop_encoders(encoder_col3, encoder_outputs, input_ids_col3, \
+                        model_kwargs["encoder_outputs_col3"] , attention_mask_col3 = self.model._loop_encoders(encoder_col3, encoder_outputs, input_ids_col3, \
                             attention_mask_col3, inc_count = 1024)
 
                     #model_kwargs["encoder_outputs_col3"] = model_kwargs["encoder_outputs_col3"].to(device)
@@ -211,10 +211,16 @@ class Data2TextGenerator(GenerationMixin):
                     if 'decoder_combination' in model_kwargs or model_kwargs["encoder_forward_stratergy"] == 'single':
                         model_kwargs["encoder_outputs_col4"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col4, encoder_outputs = encoder_outputs, input_ids = input_ids_col4, attention_mask = attention_mask_col4)
                     else:
-                        model_kwargs["encoder_outputs_col4"] , _ = self.model._loop_encoders(encoder_col4, encoder_outputs, input_ids_col4, \
+                        model_kwargs["encoder_outputs_col4"] , attention_mask_col4 = self.model._loop_encoders(encoder_col4, encoder_outputs, input_ids_col4, \
                             attention_mask_col4, inc_count = 1024)
 
-                    #model_kwargs["encoder_outputs_col4"] = model_kwargs["encoder_outputs_col4"].to(device)
+            if model_kwargs["encoder_forward_stratergy"] == 'loop':
+                model_kwargs["attention_mask_col0"] = attention_mask_col0
+                model_kwargs["attention_mask_col1"] = attention_mask_col1
+                model_kwargs["attention_mask_col2"] = attention_mask_col2
+                model_kwargs["attention_mask_col3"] = attention_mask_col3
+                model_kwargs["attention_mask_col4"] = attention_mask_col4
+
         return model_kwargs
         
     def generate(self,
