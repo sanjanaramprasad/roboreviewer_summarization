@@ -454,7 +454,7 @@ class BartEncoderShared():
 
 
 
-class BartForDataToTextDecoderMod(BartForDataToText):
+class BartForDataToTextDecoderMod():
     base_model_prefix = "model" 
     _keys_to_ignore_on_load_missing = [r"final_logits_bias", r"lm_head\.weight"]
     
@@ -489,6 +489,72 @@ class BartForDataToTextDecoderMod(BartForDataToText):
         if layer_share:
             BartEncoderShared(self.encoder1, self.encoder.layers[:3])
             BartEncoderShared(self.encoder2, self.encoder.layers[:3])
+
+
+    def get_input_embeddings(self):
+        return self.shared 
+    
+    def set_input_embeddings(self, value):
+        self.shared = value
+        self.encoder.embed_tokens = value
+        self.encoder1.embed_tokens = value
+        self.encoder2.embed_tokens = value
+        self.decoder.embed_tokens = value
+        
+    def get_encoders(self):
+        return self.encoder, self.encoder1, \
+            self.encoder2
+    
+    def get_decoder(self):
+        self.decoder
+        
+    def get_output_embeddings(self):
+        return self.lm_head
+    
+    def set_output_embeddings(self, new_embeddings):
+        self.lm_head = new_embeddings
+        
+    def _resize_final_logits_bias(self, new_num_tokens: int) -> None:
+        old_num_tokens = self.final_logits_bias.shape[-1]
+        if new_num_tokens <= old_num_tokens:
+            new_bias = self.final_logits_bias[:, :new_num_tokens]
+        else:
+            extra_bias = torch.zeros((1, new_num_tokens - old_num_tokens), device=self.final_logits_bias.device)
+            new_bias = torch.cat([self.final_logits_bias, extra_bias], dim=1)
+        self.register_buffer("final_logits_bias", new_bias)
+        
+    def resize_token_embeddings(self, new_num_tokens: int) -> nn.Embedding:
+        new_embeddings = super().resize_token_embeddings(new_num_tokens)
+        self._resize_final_logits_bias(new_num_tokens)
+        return new_embeddings
+
+    def _get_encoder_outputs(self, 
+            encoder , 
+            encoder_outputs, 
+            input_ids,
+            attention_mask,
+            head_mask = None,
+            inputs_embeds = None,
+            output_attentions = None,
+            output_hidden_states = None,
+            return_dict= None):
+        
+        if encoder_outputs is None:
+            encoder_outputs = encoder(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                head_mask=head_mask,
+                inputs_embeds=inputs_embeds,
+                output_attentions=output_attentions,
+                output_hidden_states=output_hidden_states,
+                return_dict=return_dict,)
+        elif return_dict and not isinstance(encoder_outputs, BaseModelOutput):
+            encoder_outputs = BaseModelOutput(
+                last_hidden_state=encoder_outputs[0],
+                hidden_states=encoder_outputs[1] if len(encoder_outputs) > 1 else None,
+                attentions=encoder_outputs[2] if len(encoder_outputs) > 2 else None,
+            )
+        return encoder_outputs
         
     
     def forward(
