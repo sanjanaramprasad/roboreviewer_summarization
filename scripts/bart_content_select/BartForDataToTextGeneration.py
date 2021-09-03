@@ -217,11 +217,15 @@ class BartDecoderMulti(BartPretrainedModel):
 
         self.init_weights()
 
+    def set_input_embeddings(self, value):
+        self.shared = value
+        self.encoder.embed_tokens = value
+        self.encoder1.embed_tokens = value
+        self.encoder2.embed_tokens = value
+
     def get_input_embeddings(self):
         return self.embed_tokens
 
-    def set_input_embeddings(self, value):
-        self.embed_tokens = value
 
     def _prepare_decoder_attention_mask(self, attention_mask, input_shape, inputs_embeds, past_key_values_length):
         # create causal mask
