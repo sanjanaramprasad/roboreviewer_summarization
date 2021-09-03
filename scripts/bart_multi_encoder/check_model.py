@@ -199,9 +199,10 @@ class BartForDataToTextGenerationTester():
             attention_mask_col3 = attention_mask_col3,
             attention_mask_col4 = attention_mask_col4,
             labels = data[-1],
-            encoder_forward_stratergy = 'loop',
+            encoder_forward_strategy = 'loop',
             encoder_combination_type = 'addition',
             loop_strategy = 'addition',
+            inc_count = 1024,
             use_cache = True
         )
         tgt_ids = data[-1]

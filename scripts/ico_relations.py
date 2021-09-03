@@ -55,13 +55,13 @@ def get_file_relations(filename):
 #return_val = ret.json()
 #print(return_val)
 
-model_output_file = "/home/ramprasad.sa/roboreviewer_summarization/outputs/decoder_addition/bart_decoder_addition_outputs.txt"
-reference_file = '/home/ramprasad.sa/roboreviewer_summarization/outputs/decoder_addition/bart_decoder_addition_ref.txt'
+model_output_file = "/home/sanjana/roboreviewer_summarization/scripts/bart_loop_outputs.txt"
+reference_file = '/home/sanjana/roboreviewer_summarization/scripts/bart_loop_ref.txt'
 
 
-data_relations = get_file_relations('/home/ramprasad.sa/roboreviewer_summarization/outputs/decoder_addition/bart_decoder_addition_outputs.txt')
+data_relations = get_file_relations(model_output_file)
 ##print(data_relations)
-data_relations_targets = get_file_relations('/home/ramprasad.sa/roboreviewer_summarization/outputs/decoder_addition/bart_decoder_addition_ref.txt')
+data_relations_targets = get_file_relations(reference_file)
 
 model_outputs = read_file(model_output_file)
 targets = read_file(reference_file)
@@ -70,4 +70,4 @@ dataf = {'model_outputs' : model_outputs, 'targets': targets, 'model_output_rela
 
 df = pd.DataFrame(dataf)
 print(df)
-df.to_csv('bart_average_relations.csv')
+df.to_csv('bart_loop_relations.csv')

@@ -248,7 +248,7 @@ class SummaryDataModule(pl.LightningDataModule):
         self.test = preprocess_df(self.test, preprocess_keys)
 
 
-    def setup(self):
+    def setup(self, stage):
         self.train = encode_sentences(self.tokenizer, 
                                       self.train,
                                         ['population_mesh', 
@@ -311,7 +311,7 @@ class SummaryDataModule(pl.LightningDataModule):
         return test_data
 
 
-def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
+def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
     if data_type == 'robo':
         train_file = path + '/summarization/datasets/%s'%(files[0])
         dev_file = path + '/summarization/datasets/%s'%(files[1])
@@ -343,7 +343,7 @@ if __name__ == '__main__':
     
                                     
     
-    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/Users/sanjana', files = data_files, max_len = 1024)
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)
     
 
     summary_data.prepare_data()
