@@ -150,7 +150,7 @@ class Data2TextGenerator(GenerationMixin):
             }
             loop_strategy = model_kwargs.get("loop_strategy", "addition")
             if not(input_ids_col0 is None):
-                encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
+                encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if  "col" in argument}
                 attention_mask_col0 = encoder_kwargs.get("attention_mask_col0", None)
                 encoder_outputs = encoder_kwargs.get('encoder_outputs_col0', None)
                 
@@ -162,19 +162,20 @@ class Data2TextGenerator(GenerationMixin):
                 ##model_kwargs["encoder_outputs_col0"] = model_kwargs["encoder_outputs_col0"].to(device) 
 
             if not(input_ids_col1 is None):
-                    encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
+                    encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if  "col" in argument}
                     attention_mask_col1 = encoder_kwargs.get("attention_mask_col1", None)
                     encoder_outputs = encoder_kwargs.get('encoder_outputs_col1', None)
 
                     if 'decoder_combination' in model_kwargs or model_kwargs["encoder_forward_strategy"] == 'single':
                         model_kwargs["encoder_outputs_col1"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col1, encoder_outputs = encoder_outputs, input_ids = input_ids_col1, attention_mask = attention_mask_col1)
                     else:
+                        print("looping")
                         model_kwargs["encoder_outputs_col1"] , attention_mask_col1 = self.model._loop_encoders(encoder_col1, encoder_outputs, input_ids_col1, \
                             attention_mask_col1, inc_count = 1024)
                     #model_kwargs["encoder_outputs_col1"] = model_kwargs["encoder_outputs_col1"].to(device)
 
             if not(input_ids_col2 is None):
-                    encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
+                    encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if "col" in argument}
                     attention_mask_col2 = encoder_kwargs.get("attention_mask_col2", None)
                     encoder_outputs = encoder_kwargs.get('encoder_outputs_col2', None)
 
@@ -187,7 +188,7 @@ class Data2TextGenerator(GenerationMixin):
                      
 
             if not(input_ids_col3 is None):
-                    encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
+                    encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if "col" in argument}
                     attention_mask_col3 = encoder_kwargs.get("attention_mask_col3", None)
                     encoder_outputs = encoder_kwargs.get('encoder_outputs_col3', None)
                     
@@ -200,7 +201,7 @@ class Data2TextGenerator(GenerationMixin):
                     #model_kwargs["encoder_outputs_col3"] = model_kwargs["encoder_outputs_col3"].to(device)
 
             if not(input_ids_col4 is None):
-                    encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if not "col" in argument}
+                    encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if "col" in argument}
                     attention_mask_col4 = encoder_kwargs.get("attention_mask_col4", None)
                     encoder_outputs = encoder_kwargs.get('encoder_outputs_col4', None)
 
@@ -342,7 +343,7 @@ class Data2TextGenerator(GenerationMixin):
 
 
 
-            
+        #print(model_kwargs)    
         is_greedy_gen_mode = (num_beams == 1) and (num_beam_groups == 1) and do_sample is False
         
         is_sample_gen_mode = (num_beams == 1) and (num_beam_groups == 1) and do_sample is True

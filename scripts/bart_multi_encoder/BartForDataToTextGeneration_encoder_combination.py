@@ -43,9 +43,10 @@ class BartForDataToText(BartPretrainedModel):
         
         self.register_buffer("final_logits_bias", torch.zeros((1, self.shared.num_embeddings)))
         self.lm_head = nn.Linear(config.d_model, self.shared.num_embeddings, bias=False)
-        self.fc0 = nn.Linear(config.d_model * 5, config.d_model * 10)
-        self.fc1 = nn.Linear(config.d_model * 10, 3072)
+        self.fc0 = nn.Linear(config.d_model * 5, config.d_model * 2)
+        self.fc1 = nn.Linear(config.d_model * 2, config.d_model)
         self.final_layer = nn.Linear(3072, config.d_model)
+        self.final_layer_norm = nn.LayerNorm(config.d_model)
 
         #print("DIM", config.d_model)
         self.init_weights()
@@ -184,31 +185,29 @@ class BartForDataToText(BartPretrainedModel):
             return added_enc_attns
     
     def _forward_pass(self, encoder_outputs, fc0 , fc1, final_layer):
-        enc_outputs = []
-        for i in range(0,3):
-            if len(encoder_outputs) > i:
-                #fcn(encoder_outputs[i]))
-                layer_1 = self.activation_fn(fc0(encoder_outputs[i]))
-                layer_1 = F.dropout(layer_1, p=self.activation_dropout, training=self.training)
-                layer_2 = self.activation_fn(fc1(layer_1))
-                layer_2 = F.dropout(layer_2, p=self.activation_dropout, training=self.training)
-                final_layer = final_layer(layer_2)
-                final_layer = F.dropout(final_layer,  p=self.dropout, training=self.training)
-                enc_outputs.append(final_layer)
-
+        hidden_states = self.activation_fn(fc0(encoder_outputs[0]))
+        hidden_states = F.dropout(hidden_states, p=self.activation_dropout, training=self.training)
+        hidden_states = fc1(hidden_states)
+        hidden_states = F.dropout(hidden_states, p=self.activation_dropout, training=self.training)
+        #final_layer = final_layer(layer_2)
+        #final_layer = F.dropout(final_layer,  p=self.dropout, training=self.training)
+        #enc_outputs.append(final_layer)
+        hidden_states = self.final_layer_norm(hidden_states)
 
         encoder_outputs = BaseModelOutput(
-                last_hidden_state=enc_outputs[0],
-                hidden_states=enc_outputs[1] if len(enc_outputs) > 1 else None,
-                attentions=enc_outputs[2] if len(enc_outputs) > 2 else None,
+                last_hidden_state=hidden_states,
+                hidden_states=None,
+                attentions= None,
             )
         return encoder_outputs
 
     def _loop_attr(self, data ,inc_count):
         data_chunks = []
         if data is not None:
-            for chunk_idx in range(0, data.shape[0], inc_count):
-                data_chunk = data[chunk_idx : chunk_idx+ inc_count]
+            #print(data.shape)
+            for chunk_idx in range(0, data.shape[1], inc_count):
+                data_chunk = data[:,chunk_idx : chunk_idx+ 1024]
+                #print(data_chunk)
                 data_chunks.append(data_chunk)
         return data_chunks
 
@@ -230,6 +229,7 @@ class BartForDataToText(BartPretrainedModel):
                 if attention_mask_chunk is not None:
                     attention_mask_chunk = attention_mask_chunk if attention_mask_chunk[0][0] != -2 else None
                 if inp_id[0][0] != -2 and inp_id[0][0] != 1:
+                    #print("INP ID", inp_id)
                     encoder_outputs_temp = self._get_encoder_outputs(
                             encoder = encoder, 
                             encoder_outputs = encoder_outputs, 
@@ -394,7 +394,7 @@ class BartForDataToText(BartPretrainedModel):
 
         else:
             if loop_strategy:
-                #print("HERE")
+                print("HERE")
                 if input_ids_col0 is not None or encoder_outputs_col0 is not None:
                     
                     encoder_outputs_col0, attention_mask_col0 = self._loop_encoders( self.encoder, encoder_outputs_col0, input_ids_col0,\
@@ -477,6 +477,7 @@ class BartForDataToText(BartPretrainedModel):
                     labels, self.config.pad_token_id, self.config.decoder_start_token_id
                 )
 
+        #print(attn_mask.shape)
         decoder_outputs = self.decoder(
             input_ids=decoder_input_ids,
             attention_mask=decoder_attention_mask,

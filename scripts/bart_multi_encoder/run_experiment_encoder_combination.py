@@ -54,7 +54,7 @@ class LitModel(pl.LightningModule):
         super().__init__()
         self.tokenizer = tokenizer
         self.model = model
-        self.model._make_duplicate_encoders(layer_share = layer_share)
+        self.model._make_duplicate_encoders(layer_share = False)
         self.model.resize_token_embeddings(len(self.tokenizer))
         self.learning_rate = learning_rate
         self.freeze_encoder = freeze_encoder
@@ -130,11 +130,11 @@ class LitModel(pl.LightningModule):
             attention_mask_col3 = attention_mask_col3,
             attention_mask_col4 = attention_mask_col4,
             labels = tgt_ids,
-            encoder_forward_strategy = self.encoder_forward_strategy,
-            encoder_combination_type = self.encoder_combination_type,
+            encoder_forward_strategy = "loop",
+            encoder_combination_type = "addition",
             decoder_input_ids = None,
             inc_count = self.max_len,
-            loop_strategy = self.loop_strategy,
+            loop_strategy = "addition",
             use_cache = False,
         )
         
@@ -190,11 +190,11 @@ class LitModel(pl.LightningModule):
             attention_mask_col3 = attention_mask_col3,
             attention_mask_col4 = attention_mask_col4,
             labels = tgt_ids,
-            encoder_forward_strategy = self.encoder_forward_strategy,
-            encoder_combination_type = self.encoder_combination_type,
+            encoder_forward_strategy = "loop",
+            encoder_combination_type = "addition",
             decoder_input_ids = None,
             inc_count = self.max_len,
-            loop_strategy = self.loop_strategy,
+            loop_strategy = "addition",
             use_cache = False,
         )
 
@@ -219,7 +219,7 @@ class LitModel(pl.LightningModule):
 
 
 
-def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
+def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
     if data_type == 'robo':
         train_file = path + '/summarization/datasets/%s'%(files[0])
         dev_file = path + '/summarization/datasets/%s'%(files[1])
@@ -289,9 +289,9 @@ def main(encoder_forward_strategy = 'single', encoder_combination_type = 'additi
 
 if __name__ == '__main__': 
     #main(encoder_forward_strategy = 'single', encoder_combination_type = 'linearized')
-    main(encoder_forward_strategy = 'single', encoder_combination_type = 'addition')
+    #main(encoder_forward_strategy = 'single', encoder_combination_type = 'addition')
     #main(encoder_forward_strategy = 'single', encoder_combination_type = 'linearized')
-    #main(encoder_forward_strategy = 'loop', encoder_combination_type = 'addition', loop_strategy = 'addition')
+    main(encoder_forward_strategy = 'loop', encoder_combination_type = 'addition', loop_strategy = 'addition')
     #main(encoder_forward_strategy = 'loop', encoder_combination_type = 'linearize', loop_strategy = 'addition')
 
     #main(encoder_forward_strategy = 'loop', encoder_combination_type = 'addition', loop_strategy = 'linearize')
