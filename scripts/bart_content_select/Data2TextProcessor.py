@@ -43,15 +43,16 @@ def encode_sentences(tokenizer, df, surface_keys, content_keys, targets, max_len
         for idx in range(0, num_items):
             idx_vals_content = ["<%s> "%k+ eval(row[k])[idx] + " </%s>"%k for k in content_keys]
             content_sent = " ".join(idx_vals_content)
-            content_val.append( "<content> "+ content_sent + " </content>")
+            content_sent = "<study> " + content_sent + " </study>" 
+            content_val.append(  content_sent )
 
         for surface_k in surface_keys:
             row_surface_k = eval(row[surface_k])
-            row_surface_k = " ".join(["<surface> <%s> "%surface_k+ each + " </%s> </surface>"%surface_k for each in row_surface_k])
-            row_contents[surface_k] =  row_surface_k
+            row_surface_k = " ".join(["<study> <%s> "%surface_k+ each + " </%s> </study>"%surface_k for each in row_surface_k])
+            row_contents[surface_k] =  row_surface_k.strip()
 
         row_content_sent = " ".join(content_val)
-        row_contents['content'] = row_content_sent
+        row_contents['content'] = row_content_sent.strip()
         
         
         
@@ -118,7 +119,7 @@ class SummaryDataModule(pl.LightningDataModule):
         self.validate = preprocess_df(self.validate, preprocess_keys)
         self.test = preprocess_df(self.test, preprocess_keys)
 
-    def setup(self):
+    def setup(self, stage):
         self.train = encode_sentences(self.tokenizer, 
                                       self.train,
                                         ['population', 'punchline_text'],
@@ -199,9 +200,9 @@ if __name__ == '__main__':
     
                                     
     
-    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/Users/sanjana', files = data_files, max_len = 1024)
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)
     print(summary_data.train)
-    summary_data.setup()
+    summary_data.setup("stage")
     it = summary_data.val_dataloader()
     batches = iter(it)
     batch = next(batches)

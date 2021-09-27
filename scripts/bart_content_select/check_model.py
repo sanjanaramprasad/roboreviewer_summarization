@@ -18,7 +18,7 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/
 
     print(train_file)
     data_files = [train_file, dev_file, test_file]
-    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1, max_len = max_len, flatten_studies = True)
+    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1, max_len = max_len, flatten_studies = False)
     summary_data.prepare_data()
     
     assert(len(summary_data.train) > 10)
@@ -66,12 +66,19 @@ class BartForDataToTextGenerationTester():
         model.resize_token_embeddings(len(tokenizer))
         print("Loading Data ...")
         data_files = ['train_rr_data.csv', 'dev_rr_data.csv' , 'test_rr_data.csv']
-        summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)
+        #summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)
     
+        #summary_data.setup("stage")
+        #test_data = summary_data.test_dataloader(data_type = 'robo')
+        
+        summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)
+        print(summary_data.train)
         summary_data.setup("stage")
-        test_data = summary_data.test_dataloader(data_type = 'robo')
+        it = summary_data.val_dataloader()
+        #batches = iter(it)
+        #batch = next(batches)
         print("Done.")
-        it = iter(test_data)
+        it = iter(it)
         
         data = next(it)
         input_ids_col0, attention_mask_col0, input_ids_col1, attention_mask_col1, \
@@ -106,5 +113,5 @@ class BartForDataToTextGenerationTester():
  
         
 obj = BartForDataToTextGenerationTester()
-#obj.test_model_forward_bart_decoder_addition(encoder_combination_type = 'addition')
-obj.test_model_forward_bart_encoder_loop_per_study()
+obj.test_model_forward_bart_decoder_addition()
+#obj.test_model_forward_bart_encoder_loop_per_study()

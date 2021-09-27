@@ -34,7 +34,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.callbacks import ModelCheckpoint
-from BartForDataToTextGeneration_decoder_mod import BartForDataToTextDecoderMod
+from BartForDataToTextGeneration import BartForDataToTextDecoderMod
 import math
 import random
 import re
@@ -212,8 +212,7 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/
 def main():
     #additional_special_tokens=["<attribute>",  "</attribute>", "<sep>"]
     
-    additional_special_tokens = ["<sep>", "<content>", "</content>",
-            "<surface>", "</surface>",
+    additional_special_tokens = ["<sep>", "<study>", "</study>",
             "<outcomes_mesh>", "</outcomes_mesh>",
             "<punchline_text>", "</punchline_text>",
             "<population>", "</population>",
@@ -237,16 +236,17 @@ def main():
 
     #hparams = argparse.Namespace()
     freeze_encoder = False
-    freeze_embeds = True
+    freeze_embeds = False
     eval_beams = 4
 
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
-    checkpoint = ModelCheckpoint('checkpoint_files_final/3e-5_content_surface/',
+    checkpoint = ModelCheckpoint(dirpath = 'checkpoint_files_final/token_mixture',
                                 filename = '{epoch}-{val_loss:.2f}',
                                 save_top_k=10,
                                 monitor = 'val_loss')
     trainer = pl.Trainer(gpus=2,  
-			max_epochs = max_epochs,
+			accelerator='dp',
+                        max_epochs = max_epochs,
                         min_epochs = 1,
                         auto_lr_find = False,
                         progress_bar_refresh_rate = 100,

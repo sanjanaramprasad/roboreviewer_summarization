@@ -6,9 +6,9 @@ from transformers.models.bart.configuration_bart import BartConfig
 import torch
 import torch.distributed as dist
 from torch.nn import functional as F
-from BartForDataToTextGeneration_encoder_combination import BartForDataToText
+from BartForDataToTextGeneration import BartForDataToTextDecoderMod
 from transformers.generation_utils import GenerationMixin
-from run_experiment_encoder_combination import LitModel
+from run_experiment import LitModel
 from transformers import BartTokenizer
 import argparse
 from rouge import Rouge
@@ -178,7 +178,7 @@ if __name__ =='__main__':
         with torch.no_grad():
             model_outputs, targets,  rougeScore, meteorScore, bleuScore = run_inference(checkpoint_file)
         df_write = pd.DataFrame(list(zip(targets, model_outputs)), columns=["Reference Summary", "Generated Summary"])
-        file_name = "run_inference_output"
+        file_name = "run_inference_output_token_level"
         df_write.to_csv("%s.csv"%file_name)
 
 

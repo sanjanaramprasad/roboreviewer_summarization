@@ -123,44 +123,27 @@ class Data2TextGenerator(GenerationMixin):
                 attention_mask_col0 = encoder_kwargs.get("attention_mask_col0", None)
                 encoder_outputs = encoder_kwargs.get('encoder_outputs_col0', None)
                 
-                if 'decoder_combination' in model_kwargs or model_kwargs["encoder_forward_strategy"] == 'single':
-                    model_kwargs["encoder_outputs_col0"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col0, encoder_outputs = encoder_outputs, input_ids = input_ids_col0, attention_mask = attention_mask_col0)
-                else: 
-                    model_kwargs["encoder_outputs_col0"] , attention_mask_col0 = self.model._loop_encoders(encoder_col0, encoder_outputs, input_ids_col0, \
-                        attention_mask_col0, inc_count = 1024)
-                ##model_kwargs["encoder_outputs_col0"] = model_kwargs["encoder_outputs_col0"].to(device) 
+                model_kwargs["encoder_outputs_col0"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col0, encoder_outputs = encoder_outputs, input_ids = input_ids_col0, attention_mask = attention_mask_col0)
 
             if not(input_ids_col1 is None):
                     encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if  "col" in argument}
                     attention_mask_col1 = encoder_kwargs.get("attention_mask_col1", None)
                     encoder_outputs = encoder_kwargs.get('encoder_outputs_col1', None)
 
-                    if 'decoder_combination' in model_kwargs or model_kwargs["encoder_forward_strategy"] == 'single':
-                        model_kwargs["encoder_outputs_col1"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col1, encoder_outputs = encoder_outputs, input_ids = input_ids_col1, attention_mask = attention_mask_col1)
-                    else:
-                        print("looping")
-                        model_kwargs["encoder_outputs_col1"] , attention_mask_col1 = self.model._loop_encoders(encoder_col1, encoder_outputs, input_ids_col1, \
-                            attention_mask_col1, inc_count = 1024)
-                    #model_kwargs["encoder_outputs_col1"] = model_kwargs["encoder_outputs_col1"].to(device)
+                    model_kwargs["encoder_outputs_col1"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col1, encoder_outputs = encoder_outputs, input_ids = input_ids_col1, attention_mask = attention_mask_col1)
 
             if not(input_ids_col2 is None):
                     encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if "col" in argument}
                     attention_mask_col2 = encoder_kwargs.get("attention_mask_col2", None)
                     encoder_outputs = encoder_kwargs.get('encoder_outputs_col2', None)
 
-                    if 'decoder_combination' in model_kwargs or model_kwargs["encoder_forward_strategy"] == 'single':
-                        model_kwargs["encoder_outputs_col2"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col2, encoder_outputs = encoder_outputs, input_ids = input_ids_col2, attention_mask = attention_mask_col2)
-                    else:
-                        model_kwargs["encoder_outputs_col2"] , attention_mask_col2 = self.model._loop_encoders(encoder_col2, encoder_outputs, input_ids_col2, \
-                            attention_mask_col2, inc_count = 1024)
-                    #model_kwargs["encoder_outputs_col2"] = model_kwargs["encoder_outputs_col2"].to(device)
+                    model_kwargs["encoder_outputs_col2"]: ModelOutput = self.model._get_encoder_outputs(encoder = encoder_col2, encoder_outputs = encoder_outputs, input_ids = input_ids_col2, attention_mask = attention_mask_col2)
                      
 
 
-            if model_kwargs["encoder_forward_strategy"] == 'loop':
-                model_kwargs["attention_mask_col0"] = attention_mask_col0
-                model_kwargs["attention_mask_col1"] = attention_mask_col1
-                model_kwargs["attention_mask_col2"] = attention_mask_col2
+            model_kwargs["attention_mask_col0"] = attention_mask_col0
+            model_kwargs["attention_mask_col1"] = attention_mask_col1
+            model_kwargs["attention_mask_col2"] = attention_mask_col2
 
         return model_kwargs
         
@@ -185,6 +168,7 @@ class Data2TextGenerator(GenerationMixin):
         encoder_no_repeat_ngram_size: Optional[int] = None,
         num_return_sequences: Optional[int] = None,
         max_time: Optional[float] = None,
+        max_new_tokens: Optional[int] = None,
         decoder_start_token_id: Optional[int] = None,
         use_cache: Optional[bool] = None,
         num_beam_groups: Optional[int] = None,
@@ -205,6 +189,7 @@ class Data2TextGenerator(GenerationMixin):
         #print("USE CACHE", use_cache)
         #use_cache = False
         #use_cache = True
+        cur_len = batch[0].shape[-1]
         input_ids_col0 = batch[0] if len(batch) >1 else None
         input_ids_col0 = input_ids_col0.to(device)
         attention_mask_col0 = batch[1] if len(batch) >1 else None
@@ -220,7 +205,16 @@ class Data2TextGenerator(GenerationMixin):
         attention_mask_col2 = batch[5] if len(batch) >5 else None
         attention_mask_col2 = attention_mask_col2.to(device)
     
-        max_length = max_length if max_length is not None else self.config.max_length
+        #max_length = max_length if max_length is not None else self.config.max_length
+        # set init values
+        if max_length is None and max_new_tokens is None:
+            # Both are None, default
+            max_length = self.config.max_length
+        elif max_length is not None and max_new_tokens is not None:
+            # Both are set, this is odd, raise a warning
+            warnings.warn(
+                "Both `max_length` and `max_new_tokens` have been set but they serve the same purpose.", UserWarning
+            )
         num_beams = num_beams if num_beams is not None else self.config.num_beams
         num_beam_groups = num_beam_groups if num_beam_groups is not None else self.config.num_beam_groups
         do_sample = do_sample if do_sample is not None else self.config.do_sample
@@ -311,7 +305,7 @@ class Data2TextGenerator(GenerationMixin):
             remove_invalid_values=remove_invalid_values,
         )
 
-        stopping_criteria = self._get_stopping_criteria(max_length=max_length, max_time=max_time)
+        stopping_criteria = self._get_stopping_criteria(max_length=max_length, max_time=max_time, max_new_tokens=max_new_tokens, start_length=cur_len)
 
         if is_greedy_gen_mode:
             #print("GREEDY SEARCHING")

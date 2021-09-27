@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from transformers.models.bart.modeling_bart import BartEncoder, BartDecoder, BartPretrainedModel, shift_tokens_right, BartDecoderLayer, BartLearnedPositionalEmbedding, BartAttention, _make_causal_mask, _expand_mask
+from transformers.models.bart.modeling_bart import BartEncoder, BartDecoder, BartPretrainedModel, shift_tokens_right, BartDecoderLayer, BartLearnedPositionalEmbedding,  _make_causal_mask, _expand_mask
 from transformers.models.bart.configuration_bart import BartConfig
 from transformers.modeling_outputs import BaseModelOutput,Seq2SeqLMOutput,Seq2SeqModelOutput, Seq2SeqQuestionAnsweringModelOutput,Seq2SeqSequenceClassifierOutput
 from transformers.modeling_utils import PreTrainedModel
@@ -21,7 +21,142 @@ from transformers.modeling_outputs import (
     Seq2SeqSequenceClassifierOutput,
 )
 
+class BartAttention(nn.Module):
+    """Multi-headed attention from 'Attention Is All You Need' paper"""
 
+    def __init__(
+        self,
+        embed_dim: int,
+        num_heads: int,
+        dropout: float = 0.0,
+        is_decoder: bool = False,
+        bias: bool = True,
+    ):
+        super().__init__()
+        self.embed_dim = embed_dim
+        self.num_heads = num_heads
+        self.dropout = dropout
+        self.head_dim = embed_dim // num_heads
+        assert (
+            self.head_dim * num_heads == self.embed_dim
+        ), f"embed_dim must be divisible by num_heads (got `embed_dim`: {self.embed_dim} and `num_heads`: {num_heads})."
+        self.scaling = self.head_dim ** -0.5
+        self.is_decoder = is_decoder
+
+        self.k_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
+        self.v_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
+        self.q_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
+        self.out_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
+
+    def _shape(self, tensor: torch.Tensor, seq_len: int, bsz: int):
+        return tensor.view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2).contiguous()
+
+    def forward(
+        self,
+        hidden_states: torch.Tensor,
+        key_value_states: Optional[torch.Tensor] = None,
+        past_key_value: Optional[Tuple[torch.Tensor]] = None,
+        attention_mask: Optional[torch.Tensor] = None,
+        layer_head_mask: Optional[torch.Tensor] = None,
+        output_attentions: bool = False,
+    ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
+        """Input shape: Batch x Time x Channel"""
+
+        # if key_value_states are provided this layer is used as a cross-attention layer
+        # for the decoder
+        is_cross_attention = key_value_states is not None
+        bsz, tgt_len, embed_dim = hidden_states.size()
+
+        # get query proj
+        query_states = self.q_proj(hidden_states) * self.scaling
+        # get key, value proj
+        if is_cross_attention and past_key_value is not None:
+            # reuse k,v, cross_attentions
+            key_states = past_key_value[0]
+            value_states = past_key_value[1]
+        elif is_cross_attention:
+            # cross_attentions
+            key_states = self._shape(self.k_proj(key_value_states), -1, bsz)
+            value_states = self._shape(self.v_proj(key_value_states), -1, bsz)
+        elif past_key_value is not None:
+            # reuse k, v, self_attention
+            key_states = self._shape(self.k_proj(hidden_states), -1, bsz)
+            value_states = self._shape(self.v_proj(hidden_states), -1, bsz)
+            key_states = torch.cat([past_key_value[0], key_states], dim=2)
+            value_states = torch.cat([past_key_value[1], value_states], dim=2)
+        else:
+            # self_attention
+            key_states = self._shape(self.k_proj(hidden_states), -1, bsz)
+            #print("Key states", key_states.shape)
+            value_states = self._shape(self.v_proj(hidden_states), -1, bsz)
+            #print("Value states", value_states.shape)
+
+        if self.is_decoder:
+            # if cross_attention save Tuple(torch.Tensor, torch.Tensor) of all cross attention key/value_states.
+            # Further calls to cross_attention layer can then reuse all cross-attention
+            # key/value_states (first "if" case)
+            # if uni-directional self-attention (decoder) save Tuple(torch.Tensor, torch.Tensor) of
+            # all previous decoder key/value_states. Further calls to uni-directional self-attention
+            # can concat previous decoder key/value_states to current projected key/value_states (third "elif" case)
+            # if encoder bi-directional self-attention `past_key_value` is always `None`
+            past_key_value = (key_states, value_states)
+
+        proj_shape = (bsz * self.num_heads, -1, self.head_dim)
+        query_states = self._shape(query_states, tgt_len, bsz).view(*proj_shape)
+        key_states = key_states.view(*proj_shape)
+        value_states = value_states.view(*proj_shape)
+
+        src_len = key_states.size(1)
+        attn_weights = torch.bmm(query_states, key_states.transpose(1, 2))
+
+        if attn_weights.size() != (bsz * self.num_heads, tgt_len, src_len):
+            raise ValueError(
+                f"Attention weights should be of size {(bsz * self.num_heads, tgt_len, src_len)}, but is {attn_weights.size()}"
+            )
+
+        if attention_mask is not None:
+            if attention_mask.size() != (bsz, 1, tgt_len, src_len):
+                raise ValueError(
+                    f"Attention mask should be of size {(bsz, 1, tgt_len, src_len)}, but is {attention_mask.size()}"
+                )
+            attn_weights = attn_weights.view(bsz, self.num_heads, tgt_len, src_len) + attention_mask
+            attn_weights = attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
+
+        attn_weights = nn.functional.softmax(attn_weights, dim=-1)
+
+        if layer_head_mask is not None:
+            if layer_head_mask.size() != (self.num_heads,):
+                raise ValueError(
+                    f"Head mask for a single layer should be of size {(self.num_heads,)}, but is {layer_head_mask.size()}"
+                )
+            attn_weights = layer_head_mask.view(1, -1, 1, 1) * attn_weights.view(bsz, self.num_heads, tgt_len, src_len)
+            attn_weights = attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
+
+        if output_attentions:
+            # this operation is a bit awkward, but it's required to
+            # make sure that attn_weights keeps its gradient.
+            # In order to do so, attn_weights have to be reshaped
+            # twice and have to be reused in the following
+            attn_weights_reshaped = attn_weights.view(bsz, self.num_heads, tgt_len, src_len)
+            attn_weights = attn_weights_reshaped.view(bsz * self.num_heads, tgt_len, src_len)
+        else:
+            attn_weights_reshaped = None
+
+        attn_probs = nn.functional.dropout(attn_weights, p=self.dropout, training=self.training)
+
+        attn_output = torch.bmm(attn_probs, value_states)
+
+        if attn_output.size() != (bsz * self.num_heads, tgt_len, self.head_dim):
+            raise ValueError(
+                f"`attn_output` should be of size {(bsz, self.num_heads, tgt_len, self.head_dim)}, but is {attn_output.size()}"
+            )
+
+        attn_output = attn_output.view(bsz, self.num_heads, tgt_len, self.head_dim)
+        attn_output = attn_output.transpose(1, 2)
+        attn_output = attn_output.reshape(bsz, tgt_len, embed_dim)
+        attn_output = self.out_proj(attn_output)
+
+        return attn_output, attn_weights_reshaped, past_key_value
 
 class BartDecoderLayerMulti(nn.Module):
 
@@ -41,6 +176,8 @@ class BartDecoderLayerMulti(nn.Module):
         self.activation_fn = ACT2FN[config.activation_function]
         self.activation_dropout = config.activation_dropout
 
+        #self.tan_fn = ACT2FN['tanh']
+
         self.self_attn_layer_norm = nn.LayerNorm(self.embed_dim)
         self.encoder_attn = BartAttention(
             self.embed_dim,
@@ -59,13 +196,40 @@ class BartDecoderLayerMulti(nn.Module):
         self.encoder_attn_layer_norm = nn.LayerNorm(self.embed_dim)
         self.encoder_attn_layer_norm1 = nn.LayerNorm(self.embed_dim)
         
+        self.gating = nn.Linear(self.embed_dim * 3, 3)
+        #self.gate2 = nn.Linear(self.embed_dim * 2, self.embed_dim)
+
+
+        self.wA = nn.Linear(self.embed_dim, 3)
+        #self.wA = nn.Parameter(torch.Tensor(768, 3), requires_grad = True)
+        #nn.init.normal(self.wA.data, mean=0, std =0.1)
+
+        self.softmax_gate = nn.Softmax(dim = 2)
+        
+        self.w_hs0_hs0 = nn.Linear(self.embed_dim, self.embed_dim)
+        self.w_hs0_hs1 = nn.Linear(self.embed_dim, self.embed_dim)
+        self.w_hs0_hs2 = nn.Linear(self.embed_dim, self.embed_dim)
+
+        self.w_hs1_hs0 = nn.Linear(self.embed_dim, self.embed_dim)
+        self.w_hs1_hs1 = nn.Linear(self.embed_dim, self.embed_dim)
+        self.w_hs1_hs2 = nn.Linear(self.embed_dim, self.embed_dim)
+
+        self.w_hs2_hs0 = nn.Linear(self.embed_dim, self.embed_dim)
+        self.w_hs2_hs1 = nn.Linear(self.embed_dim, self.embed_dim)
+        self.w_hs2_hs2 = nn.Linear(self.embed_dim, self.embed_dim)
+
+        self.w0 = nn.Linear(self.embed_dim, self.embed_dim)
+        self.w1 = nn.Linear(self.embed_dim, self.embed_dim)
+        self.w2 = nn.Linear(self.embed_dim, self.embed_dim)
+
+        #self.w_hsall = nn.Linear(self.embed_dim * 3, self.embed_dim)
         self.fc1 = nn.Linear(self.embed_dim, config.decoder_ffn_dim)
         self.fc2 = nn.Linear(config.decoder_ffn_dim, self.embed_dim)
         self.final_layer_norm = nn.LayerNorm(self.embed_dim)
 
         
         
-        self.init_weights()
+        #self.init_weights()
 
 
     def _make_duplicate_attns(self):
@@ -108,7 +272,8 @@ class BartDecoderLayerMulti(nn.Module):
         """
         #use_cache = False
         residual = hidden_states
-
+  
+        #print('Forward')
         ####################### SELF ATTENTION ##############################
         # decoder uni-directional self-attention cached key/values tuple is at positions 1,2
         self_attn_past_key_value = past_key_value[:2] if past_key_value is not None else None
@@ -148,8 +313,8 @@ class BartDecoderLayerMulti(nn.Module):
         #### CA with ICO ####
         cross_attn_past_key_value = past_key_value[2:4] if past_key_value is not None else None
         hidden_states_0, cross_attn_present_key_value_0 = cross_attn_block(self.encoder_attn, encoder_hidden_states, encoder_attention_mask, hidden_states, residual, cross_attn_past_key_value)
-        hidden_states = hidden_states_0 + residual
-        hidden_states = self.encoder_attn_layer_norm1(hidden_states)
+        #hidden_states = hidden_states_0 + residual
+        #hidden_states = self.encoder_attn_layer_norm1(hidden_states)
 
 
         cross_attn_past_key_value = past_key_value[4:6] if past_key_value is not None else None
@@ -158,7 +323,79 @@ class BartDecoderLayerMulti(nn.Module):
         cross_attn_past_key_value = past_key_value[6:8] if past_key_value is not None else None
         hidden_states_2, cross_attn_present_key_value_2 = cross_attn_block(self.encoder_attn_2, encoder_hidden_states2, encoder_attention_mask2, hidden_states, residual, cross_attn_past_key_value)
         
-        hidden_states_all =  hidden_states_1 + hidden_states_2 
+        
+        '''hidden_states_0_1_2 = torch.cat([hidden_states_0, hidden_states_1, hidden_states_2], dim = 2)
+        #print("HS CONCAT", hidden_states_1_2.shape)
+        z_hs0 = torch.sigmoid(self.weight1_hs0(hidden_states_0_1_2))
+        z_hs1 = torch.sigmoid(self.weight1_hs1(hidden_states_0_1_2))
+        z_hs2 = torch.sigmoid(self.weight1_hs2(hidden_states_0_1_2))
+
+
+        #hidden_states_1_gate = torch.tanh(self.gate1(hidden_states_1_2))
+        #hidden_states_2_gate = torch.tanh(self.gate2(hidden_states_1_2))
+
+        #print("GATE", hidden_states_1_gate.shape)
+
+        hidden_states_0 = z_hs0 * hidden_states_0
+        hidden_states_1 = z_hs1 * hidden_states_1 
+        hidden_states_2 = z_hs2 * hidden_states_2'''
+
+
+        '''z_hs0 = torch.sigmoid(self.w_hs0_hs0(hidden_states_0) + self.w_hs0_hs1(hidden_states_1) + self.w_hs0_hs2(hidden_states_2))
+        hidden_states_0 = z_hs0 * self.u1(hidden_states_0)
+
+        z_hs1 = torch.sigmoid(self.w_hs1_hs0(hidden_states_0) + self.w_hs1_hs1(hidden_states_1) + self.w_hs1_hs2(hidden_states_2))
+        hidden_states_1 = z_hs1 * self.u2(hidden_states_1)
+
+        z_hs2 = torch.sigmoid(self.w_hs2_hs0(hidden_states_0) + self.w_hs2_hs1(hidden_states_1) + self.w_hs2_hs2(hidden_states_2))
+        hidden_states_2 = z_hs2 * self.u3(hidden_states_2)
+
+        hidden_states_all =  hidden_states_0 + hidden_states_1 + hidden_states_2 
+        #hidden_states_all = torch.cat([hidden_states_0, hidden_states_1, hidden_states_2], dim = 2)
+        #hidden_states_all = torch.tanh(self.w_hsall(hidden_states_all))'''
+
+        '''
+        **** TRIAL 3 ****
+        hidden_states_0_1_2 = torch.cat([hidden_states_0, hidden_states_1, hidden_states_2], dim = 2)
+        gates = torch.tanh(self.gating(hidden_states_0_1_2))
+        gates = self.softmax_gate(gates)
+        
+        z_hs0 = gates[:, :, 0].unsqueeze(-1)
+        z_hs1 = gates[:, :, 1].unsqueeze(-1)
+        z_hs2 = gates[:, :, 2].unsqueeze(-1)
+
+        hidden_states_0 = z_hs0 * hidden_states_0
+        hidden_states_1 = z_hs1 * hidden_states_1
+        hidden_states_2 = z_hs2 * hidden_states_2
+
+        hidden_states_all = hidden_states_0 + hidden_states_1 + hidden_states_2
+
+        #print('GATES', gates.shape)
+        #print('HS', hidden_states_0_1_2.shape)'''
+
+
+        '''print("WEIGHT", self.w0(hidden_states_0).shape)
+        hidden_states_0 = hidden_states_0 * torch.sigmoid(self.w0(hidden_states_0))
+        hidden_states_1 = hidden_states_1 * torch.sigmoid(self.w1(hidden_states_1))
+        hidden_states_2 = hidden_states_2 * torch.sigmoid(self.w2(hidden_states_2))
+        hidden_states_all = hidden_states_0 + hidden_states_1 + hidden_states_2 '''
+
+
+        def token_level_mixture(hidden_states_0, hidden_states_1, hidden_states_2):
+            f_hidden_states = torch.max(torch.stack([hidden_states_0, hidden_states_1, hidden_states_2], dim=1), dim = 1)[0]
+            r_hidden_states = self.wA(f_hidden_states)
+            #print('HS SHAPE', r_hidden_states.shape)
+            alpha_hidden_states = torch.sigmoid(r_hidden_states)
+            #print('ALPHA', self.wA.weight.shape)
+            alpha_0 = alpha_hidden_states[:, :, 0][0]
+            alpha_1 = alpha_hidden_states[:, :, 1][0]
+            alpha_2 = alpha_hidden_states[:, :, 2][0]
+            #print(alpha_0)
+            #print(alpha_0[:, None] + alpha_1[:, None] + alpha_2[:, None])
+            final_vector = hidden_states_0 * alpha_0[:, None] + hidden_states_1 * alpha_1[:, None] + hidden_states_2 * alpha_2[:, None]
+            return final_vector
+
+        hidden_states_all = token_level_mixture(hidden_states_0, hidden_states_1, hidden_states_2)
 
         hidden_states = hidden_states_all + residual
         hidden_states = self.encoder_attn_layer_norm(hidden_states)
@@ -181,7 +418,9 @@ class BartDecoderLayerMulti(nn.Module):
         if use_cache:
             outputs += (present_key_value,)
 
+        #print(outputs[0].shape)
         return outputs
+
 
 
 
@@ -454,7 +693,7 @@ class BartEncoderShared():
 
 
 
-class BartForDataToTextDecoderMod():
+class BartForDataToTextDecoderMod(BartPretrainedModel):
     base_model_prefix = "model" 
     _keys_to_ignore_on_load_missing = [r"final_logits_bias", r"lm_head\.weight"]
     
@@ -740,3 +979,10 @@ class BartForDataToTextDecoderMod():
             "use_cache": use_cache,  # change this to avoid caching (presumably for debugging)
 
         }
+
+    @staticmethod
+    def _reorder_cache(past, beam_idx):
+        reordered_past = ()
+        for layer_past in past:
+            reordered_past += (tuple(past_state.index_select(0, beam_idx) for past_state in layer_past),)
+        return reordered_past
