@@ -158,6 +158,31 @@ class BartAttention(nn.Module):
 
         return attn_output, attn_weights_reshaped, past_key_value
 
+
+
+
+class MultiLinear(torch.nn.Module):      
+  def __init__(self, embed_dim, N): 
+    super(M, self).__init__() 
+    self.multi_output = torch.nn.ModuleList([torch.nn.Linear(embed_dim,1) for i in range(N)]) 
+
+  def forward(self, x): 
+    outputs = [head(x) for head in self.multi_output] 
+    return torch.stack(outputs)
+
+class Mixture(torch.nn.Module):      
+  def __init__(self): 
+    super(Mixture, self).__init__() 
+    #self.multi_output = torch.nn.ModuleList([torch.nn.Linear(768,1) for i in range(1024)]) 
+
+  def forward(self, alpha, z_t): 
+    y = []
+    for t in range(alpha.shape[0]):
+        alpha_t = alpha[t]
+        y_t = sum(alpha_t * z_t)
+        y.append(y_t)
+    return torch.stack(y)
+
 class BartDecoderLayerMulti(nn.Module):
 
     def __init__(self, config : BartConfig):
@@ -200,11 +225,11 @@ class BartDecoderLayerMulti(nn.Module):
         #self.gate2 = nn.Linear(self.embed_dim * 2, self.embed_dim)
 
 
-        self.wA = nn.Linear(self.embed_dim, 3)
+        self.W = MultiLinear(self.embed_dim, 1024)
         #self.wA = nn.Parameter(torch.Tensor(768, 3), requires_grad = True)
         #nn.init.normal(self.wA.data, mean=0, std =0.1)
 
-        self.softmax_gate = nn.Softmax(dim = 2)
+        self.softmax_gate = nn.Softmax(dim = 0)
         
         self.w_hs0_hs0 = nn.Linear(self.embed_dim, self.embed_dim)
         self.w_hs0_hs1 = nn.Linear(self.embed_dim, self.embed_dim)
@@ -382,18 +407,14 @@ class BartDecoderLayerMulti(nn.Module):
 
 
         def token_level_mixture(hidden_states_0, hidden_states_1, hidden_states_2):
-            f_hidden_states = torch.max(torch.stack([hidden_states_0, hidden_states_1, hidden_states_2], dim=1), dim = 1)[0]
-            r_hidden_states = self.wA(f_hidden_states)
-            #print('HS SHAPE', r_hidden_states.shape)
-            alpha_hidden_states = torch.sigmoid(r_hidden_states)
-            #print('ALPHA', self.wA.weight.shape)
-            alpha_0 = alpha_hidden_states[:, :, 0][0]
-            alpha_1 = alpha_hidden_states[:, :, 1][0]
-            alpha_2 = alpha_hidden_states[:, :, 2][0]
-            #print(alpha_0)
-            #print(alpha_0[:, None] + alpha_1[:, None] + alpha_2[:, None])
-            final_vector = hidden_states_0 * alpha_0[:, None] + hidden_states_1 * alpha_1[:, None] + hidden_states_2 * alpha_2[:, None]
-            return final_vector
+            global_vector = torch.cat([hidden_states_0[0], hidden_states_1[0], hidden_states_2[0]], dim = 2)
+            print('GLOBAL VECT', global_vector.shape)
+            alpha = self.W(global_vector)
+            alpha = self.softmax_gate(alpha)
+            Y = Mixture().forward(alpha, global_vector)
+            Y = Y.unsqueeze(0)
+            print('Y', y.shape)
+            return Y
 
         hidden_states_all = token_level_mixture(hidden_states_0, hidden_states_1, hidden_states_2)
 
