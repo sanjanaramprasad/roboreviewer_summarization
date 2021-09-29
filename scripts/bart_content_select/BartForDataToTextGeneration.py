@@ -161,25 +161,6 @@ class BartAttention(nn.Module):
 
 
 
-class MultiLinear(torch.nn.Module):      
-  def __init__(self): 
-    super(MultiLinear, self).__init__() 
-    self.multi_output = torch.nn.ModuleList([torch.nn.Linear(768,3) for i in range(1024)]) 
-
-  def forward(self, x): 
-    outputs = [head(x) for head in self.multi_output] 
-    return torch.stack(outputs)
-
-def token_mix_n(alpha, z_t, v1, v2, v3):
-    y = []
-    for t in range(alpha.shape[0]):
-        alpha_t = alpha[t]
-        v_t = v1 * alpha[t][:, 0][: ,None] + v2 * alpha[t][:, 1][: ,None] + v3 * alpha[t][:, 2][: ,None]
-        #print(v_t.shape)
-        y_t = v_t.view(-1,v_t.shape[0] * v_t.shape[1])
-        y.append(y_t)
-    y = torch.cat(y, dim =0)
-    return y
 
 
 class BartDecoderLayerMulti(nn.Module):
@@ -222,29 +203,9 @@ class BartDecoderLayerMulti(nn.Module):
         
         self.gating = nn.Linear(self.embed_dim * 3, 3)
         #self.gate2 = nn.Linear(self.embed_dim * 2, self.embed_dim)
-
-
-        self.W = MultiLinear()
-        #self.wA = nn.Parameter(torch.Tensor(768, 3), requires_grad = True)
-        #nn.init.normal(self.wA.data, mean=0, std =0.1)
-
+        self.W = nn.Linear(self.embed_dim, 3)
         self.softmax_gate = nn.Softmax(dim = 2)
-        self.fcc_dim = torch.nn.Linear(1024 * 768,768)
-        self.w_hs0_hs0 = nn.Linear(self.embed_dim, self.embed_dim)
-        self.w_hs0_hs1 = nn.Linear(self.embed_dim, self.embed_dim)
-        self.w_hs0_hs2 = nn.Linear(self.embed_dim, self.embed_dim)
 
-        self.w_hs1_hs0 = nn.Linear(self.embed_dim, self.embed_dim)
-        self.w_hs1_hs1 = nn.Linear(self.embed_dim, self.embed_dim)
-        self.w_hs1_hs2 = nn.Linear(self.embed_dim, self.embed_dim)
-
-        self.w_hs2_hs0 = nn.Linear(self.embed_dim, self.embed_dim)
-        self.w_hs2_hs1 = nn.Linear(self.embed_dim, self.embed_dim)
-        self.w_hs2_hs2 = nn.Linear(self.embed_dim, self.embed_dim)
-
-        self.w0 = nn.Linear(self.embed_dim, self.embed_dim)
-        self.w1 = nn.Linear(self.embed_dim, self.embed_dim)
-        self.w2 = nn.Linear(self.embed_dim, self.embed_dim)
 
         #self.w_hsall = nn.Linear(self.embed_dim * 3, self.embed_dim)
         self.fc1 = nn.Linear(self.embed_dim, config.decoder_ffn_dim)
@@ -406,17 +367,11 @@ class BartDecoderLayerMulti(nn.Module):
 
 
         def token_level_mixture(hidden_states_0, hidden_states_1, hidden_states_2):
-            #print(hidden_states_0.shape)
-            #global_vector = torch.cat([hidden_states_0[0], hidden_states_1[0], hidden_states_2[0]], dim = 0)
-            global_vector = torch.max(torch.stack([hidden_states_0[0], hidden_states_1[0], hidden_states_2[0]], dim = 0), dim=0)[0]
-            print('GLOBAL VECT', global_vector.shape)
-            alpha = self.W(global_vector)
-            alpha = self.softmax_gate(alpha)
-            print(alpha.shape)
-            Y = token_mix_n(alpha, global_vector, hidden_states_0[0], hidden_states_1[0], hidden_states_2[0])
-            Y = self.fcc_dim(Y)
+            c = torch.max(torch.stack([hidden_states_0[0], hidden_states_1[0], hidden_states_2[0]], dim=0), dim = 0)
+            alpha = self.softmax_gate(self.W(c))
+            z = (hidden_states_0[0] * alpha[:,0][:,None]) + (hidden_states_1[0] * alpha[:,1][:,None]) + (hidden_states_2[0] * alpha[:,2][:,None])
+            Y = torch.mean(z, dim=0)
             Y = Y.unsqueeze(0)
-            print('Y', Y.shape)
             return Y
 
         hidden_states_all = token_level_mixture(hidden_states_0, hidden_states_1, hidden_states_2)
