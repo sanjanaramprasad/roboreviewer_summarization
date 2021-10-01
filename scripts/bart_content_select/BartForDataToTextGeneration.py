@@ -359,22 +359,20 @@ class BartDecoderLayerMulti(nn.Module):
         #print('HS', hidden_states_0_1_2.shape)'''
 
 
-        '''print("WEIGHT", self.w0(hidden_states_0).shape)
-        hidden_states_0 = hidden_states_0 * torch.sigmoid(self.w0(hidden_states_0))
+        #print("WEIGHT", self.w0(hidden_states_0).shape)
+    
+        '''hidden_states_0 = hidden_states_0 * torch.sigmoid(self.w0(hidden_states_0))
         hidden_states_1 = hidden_states_1 * torch.sigmoid(self.w1(hidden_states_1))
         hidden_states_2 = hidden_states_2 * torch.sigmoid(self.w2(hidden_states_2))
         hidden_states_all = hidden_states_0 + hidden_states_1 + hidden_states_2 '''
 
+        context_vector = torch.max(torch.stack([hidden_states_0[0], hidden_states_1[0], hidden_states_2[0]] , dim = 0),dim=0)[0]
+        alpha = self.softmax_gate(torch.sigmoid(self.W(context_vector)))
+        alpha_0 = alpha[:, 0]
+        alpha_1 = alpha[:, 1]
+        alpha_2 = alpha[:, 2]
+        hidden_states_all = (alpha_0[:,None] * hidden_states_0) + (alpha_1[:,None] * hidden_states_1) + (alpha_2[:,None] * hidden_states_2)
 
-        def token_level_mixture(hidden_states_0, hidden_states_1, hidden_states_2):
-            c = torch.max(torch.stack([hidden_states_0[0], hidden_states_1[0], hidden_states_2[0]], dim=0), dim = 0)
-            alpha = self.softmax_gate(self.W(c))
-            z = (hidden_states_0[0] * alpha[:,0][:,None]) + (hidden_states_1[0] * alpha[:,1][:,None]) + (hidden_states_2[0] * alpha[:,2][:,None])
-            Y = torch.mean(z, dim=0)
-            Y = Y.unsqueeze(0)
-            return Y
-
-        hidden_states_all = token_level_mixture(hidden_states_0, hidden_states_1, hidden_states_2)
 
         hidden_states = hidden_states_all + residual
         hidden_states = self.encoder_attn_layer_norm(hidden_states)
