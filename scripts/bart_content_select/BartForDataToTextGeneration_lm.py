@@ -49,14 +49,27 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         self._resize_final_logits_bias(new_num_tokens)
         return new_embeddings
 
-    def _resize_final_logits_bias(self, new_num_tokens: int) -> None:
-        old_num_tokens = self.final_logits_bias.shape[-1]
+    def _resize_func(self, final_logits_bias, new_num_tokens, old_num_tokens):
         if new_num_tokens <= old_num_tokens:
-            new_bias = self.final_logits_bias[:, :new_num_tokens]
+            new_bias = final_logits_bias[:, :new_num_tokens]
         else:
-            extra_bias = torch.zeros((1, new_num_tokens - old_num_tokens), device=self.final_logits_bias.device)
-            new_bias = torch.cat([self.final_logits_bias, extra_bias], dim=1)
-        self.register_buffer("final_logits_bias", new_bias)
+            extra_bias = torch.zeros((1, new_num_tokens - old_num_tokens), device=final_logits_bias.device)
+            new_bias = torch.cat([final_logits_bias, extra_bias], dim=1)
+        return new_bias
+
+
+    def _resize_final_logits_bias(self, new_num_tokens: int) -> None:
+        old_num_tokens = self.final_logits_bias0.shape[-1]
+        new_bias = self._resize_func(self.final_logits_bias0, new_num_tokens, old_num_tokens)
+        self.register_buffer("final_logits_bias0", new_bias)
+
+        old_num_tokens = self.final_logits_bias1.shape[-1]
+        new_bias = self._resize_func(self.final_logits_bias1, new_num_tokens, old_num_tokens)
+        self.register_buffer("final_logits_bias1", new_bias)
+
+        old_num_tokens = self.final_logits_bias2.shape[-1]
+        new_bias = self._resize_func(self.final_logits_bias2, new_num_tokens, old_num_tokens)
+        self.register_buffer("final_logits_bias2", new_bias)
 
     def get_output_embeddings(self):
         return self.lm_head
@@ -65,11 +78,6 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         self.lm_head0 = new_embeddings
         self.lm_head1 = new_embeddings
         self.lm_head2 = new_embeddings
-
-    def resize_token_embeddings(self, new_num_tokens: int) -> nn.Embedding:
-        new_embeddings = super().resize_token_embeddings(new_num_tokens)
-        self._resize_final_logits_bias(new_num_tokens)
-        return new_embeddings
 
 
     def forward(
