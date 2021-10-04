@@ -108,10 +108,59 @@ class BartForDataToTextGenerationTester():
         print('=' *13)
 
 
+    def test_model_forward_bart_multiLM(self):
+        from BartForDataToTextGeneration_lm import BartForDataToTextGeneration_MultiLM
+        #from Data2TextProcessor_1 import SummaryDataModule
+        model = BartForDataToTextGeneration_MultiLM.from_pretrained('facebook/bart-base')
+        model.resize_token_embeddings(len(tokenizer))
+        print("Loading Data ...")
+        data_files = ['train_rr_data.csv', 'dev_rr_data.csv' , 'test_rr_data.csv']
+        #summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)
+    
+        #summary_data.setup("stage")
+        #test_data = summary_data.test_dataloader(data_type = 'robo')
+        
+        summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)
+        print(summary_data.train)
+        summary_data.setup("stage")
+        it = summary_data.val_dataloader()
+        #batches = iter(it)
+        #batch = next(batches)
+        print("Done.")
+        it = iter(it)
+        
+        data = next(it)
+        input_ids_col0, attention_mask_col0, input_ids_col1, attention_mask_col1, \
+            input_ids_col2, attention_mask_col2 = get_data(data)
+
+        
+
+        print("forward...") 
+        outputs = model(
+            input_ids_col0 = input_ids_col0,
+            input_ids_col1 = input_ids_col1,
+            input_ids_col2 = input_ids_col2, 
+            attention_mask_col0 = attention_mask_col0,
+            attention_mask_col1 = attention_mask_col1,
+            attention_mask_col2 = attention_mask_col2,
+            labels = data[-1],
+            use_cache = True
+        )
+        tgt_ids = data[-1]
+        optimizer = optim.Adam(model.parameters())
+        loss = outputs[0]
+        #ce_loss_fct = torch.nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
+        #loss = ce_loss_fct(lm_logits.view(-1, lm_logits.shape[-1]), tgt_ids.view(-1))
+        optimizer.zero_grad()
+        loss.backward()
+        print("OUTPUTS", outputs[0])
+        print('=' *13)
+
+
 
 
  
         
 obj = BartForDataToTextGenerationTester()
-obj.test_model_forward_bart_decoder_addition()
+obj.test_model_forward_bart_multiLM()
 #obj.test_model_forward_bart_encoder_loop_per_study()
