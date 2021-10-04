@@ -72,7 +72,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         self.register_buffer("final_logits_bias2", new_bias)
 
     def get_output_embeddings(self):
-        return self.lm_head
+        return self.lm_head0
 
     def set_output_embeddings(self, new_embeddings):
         self.lm_head0 = new_embeddings
@@ -179,9 +179,9 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             return_dict=return_dict,
         )
 
-        lm_logits0 = self.lm_head(outputs0[0]) + self.final_logits_bias0
-        lm_logits1 = self.lm_head(outputs1[0]) + self.final_logits_bias1
-        lm_logits2 = self.lm_head(outputs2[0]) + self.final_logits_bias2
+        lm_logits0 = self.lm_head0(outputs0[0]) + self.final_logits_bias0
+        lm_logits1 = self.lm_head1(outputs1[0]) + self.final_logits_bias1
+        lm_logits2 = self.lm_head2(outputs2[0]) + self.final_logits_bias2
 
         masked_lm_loss = None
         if labels is not None:
