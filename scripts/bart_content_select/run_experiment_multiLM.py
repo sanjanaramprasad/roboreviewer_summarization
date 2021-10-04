@@ -69,6 +69,7 @@ class LitModel(pl.LightningModule):
         self.tokenizer = tokenizer
         self.model = model
         self.model.resize_token_embeddings(len(self.tokenizer))
+        self.model._make_multiple_lm_heads()
         self.learning_rate = learning_rate
         self.freeze_encoder = freeze_encoder
         self.freeze_embeds_ = freeze_embeds

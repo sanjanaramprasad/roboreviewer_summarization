@@ -113,6 +113,7 @@ class BartForDataToTextGenerationTester():
         #from Data2TextProcessor_1 import SummaryDataModule
         model = BartForDataToTextGeneration_MultiLM.from_pretrained('facebook/bart-base')
         model.resize_token_embeddings(len(tokenizer))
+        self.model._make_multiple_lm_heads()
         print("Loading Data ...")
         data_files = ['train_rr_data.csv', 'dev_rr_data.csv' , 'test_rr_data.csv']
         #summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)

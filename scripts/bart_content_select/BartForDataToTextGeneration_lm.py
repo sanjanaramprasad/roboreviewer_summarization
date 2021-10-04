@@ -32,11 +32,12 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         self.register_buffer("final_logits_bias0", torch.zeros((1, self.model.shared.num_embeddings)))
         self.register_buffer("final_logits_bias1", torch.zeros((1, self.model.shared.num_embeddings)))
         self.register_buffer("final_logits_bias2", torch.zeros((1, self.model.shared.num_embeddings)))
-        self.lm_head0 = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
-        self.lm_head1 = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
-        self.lm_head2 = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
-
+        self.lm_head = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
         self.init_weights()
+
+    def _make_multiple_lm_heads(self):
+        self.lm_head1 = copy.deepcopy(self.lm_head)
+        self.lm_head2 = copy.deepcopy(self.lm_head)
 
     def get_encoder(self):
         return self.model.get_encoder()
@@ -72,12 +73,10 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         self.register_buffer("final_logits_bias2", new_bias)
 
     def get_output_embeddings(self):
-        return self.lm_head0, self.lm_head1, self.lm_head2
+        return self.lm_head
 
     def set_output_embeddings(self, new_embeddings):
-        self.lm_head0 = new_embeddings
-        self.lm_head1 = new_embeddings
-        self.lm_head2 = new_embeddings
+        self.lm_head = new_embeddings
 
 
     def forward(
@@ -179,7 +178,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             return_dict=return_dict,
         )
 
-        lm_logits0 = self.lm_head0(outputs0[0]) + self.final_logits_bias0
+        lm_logits0 = self.lm_head(outputs0[0]) + self.final_logits_bias0
         lm_logits1 = self.lm_head1(outputs1[0]) + self.final_logits_bias1
         lm_logits2 = self.lm_head2(outputs2[0]) + self.final_logits_bias2
 
