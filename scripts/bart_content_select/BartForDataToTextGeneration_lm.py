@@ -178,22 +178,31 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             return_dict=return_dict,
         )
 
+        #print(self.final_logits_bias0.shape, self.lm_head(outputs0[0]).shape)
         lm_logits0 = self.lm_head(outputs0[0]) + self.final_logits_bias0
+        #print("LM logits", lm_logits0.shape)
         lm_logits1 = self.lm_head1(outputs1[0]) + self.final_logits_bias1
         lm_logits2 = self.lm_head2(outputs2[0]) + self.final_logits_bias2
 
+        def __combine_lm_heads():
+           lm_combined = torch.mean(torch.cat([lm_logits0, lm_logits1, lm_logits2]), dim =0)
+           lm_combined = lm_combined.unsqueeze(0)
+           return lm_combined 
+
+        lm_logits = __combine_lm_heads()
+        #print("LM combined", lm_logits.shape)
         masked_lm_loss = None
         if labels is not None:
             loss_fct = CrossEntropyLoss()
-            masked_lm_loss = loss_fct(lm_logits0.view(-1, self.config.vocab_size), labels.view(-1))
+            masked_lm_loss = loss_fct(lm_logits.view(-1, self.config.vocab_size), labels.view(-1))
 
         if not return_dict:
-            output = (lm_logits0,) + outputs0[1:]
+            output = (lm_logits,) + outputs0[1:]
             return ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
 
         return Seq2SeqLMOutput(
             loss=masked_lm_loss,
-            logits=lm_logits0,
+            logits=lm_logits,
             past_key_values=outputs0.past_key_values,
             decoder_hidden_states=outputs0.decoder_hidden_states,
             decoder_attentions=outputs0.decoder_attentions,
