@@ -26,9 +26,8 @@ class Mixture(nn.Module):
         super(Mixture, self).__init__()
         self.num_inputs = 1
         self.softmax_gate = nn.Softmax(dim = 0)
-        self.weights0 = nn.ParameterList([nn.Parameter(torch.randn(1)) for i in range(num_inputs)])
-        self.weights1 = nn.ParameterList([nn.Parameter(torch.randn(1)) for i in range(num_inputs)])
-        self.weights2 = nn.ParameterList([nn.Parameter(torch.randn(1)) for i in range(num_inputs)])
+        self.weights = nn.ModuleList([nn.Linear(3, 1) for i in range(0, self.num_inputs)])
+        
         
     def forward(self, v0, v1, v2, t=None):
         if not t :
@@ -41,12 +40,10 @@ class Mixture(nn.Module):
         for n in range(0, v0.shape[0]):
             if self.num_inputs == v0.shape[0] :
                 idx = n
-            weighted_softmax = torch.stack([self.weights0[idx], self.weights1[idx] , self.weights2[idx]])
-            weighted_softmax = self.softmax_gate(weighted_softmax)
-            v_t = (weighted_softmax[0] * v0[n]) + (weighted_softmax[1] * v1[n]) + (weighted_softmax[2] * v2[n])
-            v_mixt.append(v_t)
-            
-        return torch.stack(v_mixt)
+            W = self.weights[idx]
+            v_t = self.softmax_gate(W(torch.stack([v0[n], v1[n], v2[n]], dim = -1)))
+            v_mixt.append(v_t.t())
+        return torch.cat(v_mixt)
 
 
 class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
