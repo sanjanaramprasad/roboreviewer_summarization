@@ -211,3 +211,38 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             encoder_hidden_states=outputs0.encoder_hidden_states,
             encoder_attentions=outputs0.encoder_attentions,
         )
+
+    def prepare_inputs_for_generation(
+        self,
+        decoder_input_ids,
+        past=None,
+        attention_mask_col0 = None,
+        attention_mask_col1 = None,
+        attention_mask_col2 = None,
+        head_mask=None,
+        use_cache=None,
+        encoder_outputs_col0 =None,
+        encoder_outputs_col1 = None,
+        encoder_outputs_col2 = None,
+        **kwargs
+    ):
+        # cut decoder_input_ids if past is used
+        if past is not None:
+            decoder_input_ids = decoder_input_ids[:, -1:]
+
+        return {
+            "input_ids_col0": None,
+            "input_ids_col1": None,
+            "input_ids_col2": None,
+            "encoder_outputs_col0": encoder_outputs_col0,
+            "encoder_outputs_col1": encoder_outputs_col1,
+            "encoder_outputs_col2": encoder_outputs_col2,
+            "past_key_values": past,
+            "decoder_input_ids": decoder_input_ids,
+            "attention_mask_col0": attention_mask_col0,
+            "attention_mask_col1": attention_mask_col1,
+            "attention_mask_col2": attention_mask_col2,
+            "head_mask": head_mask,
+            "use_cache": use_cache,  # change this to avoid caching (presumably for debugging)
+
+        }
