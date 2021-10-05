@@ -21,6 +21,33 @@ from transformers.modeling_outputs import (
     Seq2SeqSequenceClassifierOutput,
 )
 
+class Mixture(nn.Module):
+    def __init__(self, num_inputs):
+        super(Mixture, self).__init__()
+        self.num_inputs = 1
+        self.softmax_gate = nn.Softmax(dim = 0)
+        self.weights0 = nn.ParameterList([nn.Parameter(torch.randn(1)) for i in range(num_inputs)])
+        self.weights1 = nn.ParameterList([nn.Parameter(torch.randn(1)) for i in range(num_inputs)])
+        self.weights2 = nn.ParameterList([nn.Parameter(torch.randn(1)) for i in range(num_inputs)])
+        
+    def forward(self, v0, v1, v2, t=None):
+        if not t :
+            idx = 0
+        
+        if t:
+            idx = t 
+
+        v_mixt = []
+        for n in range(0, v0.shape[0]):
+            if self.num_inputs == v0.shape[0] :
+                idx = n
+            weighted_softmax = torch.stack([self.weights0[idx], self.weights1[idx] , self.weights2[idx]])
+            weighted_softmax = self.softmax_gate(weighted_softmax)
+            v_t = (weighted_softmax[0] * v0[n]) + (weighted_softmax[1] * v1[n]) + (weighted_softmax[2] * v2[n])
+            v_mixt.append(v_t)
+            
+        return torch.stack(v_mixt)
+
 
 class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
     base_model_prefix = "model"
@@ -32,7 +59,9 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         self.register_buffer("final_logits_bias0", torch.zeros((1, self.model.shared.num_embeddings)))
         self.register_buffer("final_logits_bias1", torch.zeros((1, self.model.shared.num_embeddings)))
         self.register_buffer("final_logits_bias2", torch.zeros((1, self.model.shared.num_embeddings)))
+        self.softmax_logits = nn.Softmax(dim = 2)
         self.lm_head = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
+        self.lm_combine = Mixture(num_inputs=1)
         self.init_weights()
 
     def _make_multiple_lm_heads(self):
@@ -180,29 +209,17 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
 
         #print(self.final_logits_bias0.shape, self.lm_head(outputs0[0]).shape)
         lm_logits0 = self.lm_head(outputs0[0]) + self.final_logits_bias0
-        #print("LM logits", lm_logits0.shape)
+        print("LM logits", lm_logits0.shape)
         lm_logits1 = self.lm_head1(outputs1[0]) + self.final_logits_bias1
         lm_logits2 = self.lm_head2(outputs2[0]) + self.final_logits_bias2
+        lm_logits0 = self.softmax_logits(lm_logits0)
+        lm_logits1 = self.softmax_logits(lm_logits1)
+        lm_logits2 = self.softmax_logits(lm_logits2)
 
-        def __combine_lms():
-            batch_size = lm_logits0.shape[0]
-            results = []
-            for i in range(0, batch_size):
-                lm_i = torch.mean(torch.cat([lm_logits0[i].unsqueeze(0), lm_logits1[i].unsqueeze(0), lm_logits2[i].unsqueeze(0)]), dim=0)
-                results.append(lm_i)
-            results = torch.stack(results)
-            return results
-
-        print('lm_logits0', lm_logits0.shape)
-        print('decoder_input_ids', decoder_input_ids)
-        if not past_key_values is None:
-            print("past_key_values", len(past_key_values))
-        print('=' * 13)
-       
-        ##print('lm_logits0', lm_logits0.shape) 
-
-        lm_logits = __combine_lms()
-        #print("LM combined", lm_logits.shape)
+        lm_logits = torch.stack([self.lm_combine(lm_logits0[batch_id], lm_logits1[batch_id], lm_logits2[batch_id]) \
+                        for batch_id in range(0, lm_logits0.shape[0])])
+        print('lm combined', lm_logits.shape)
+        
         masked_lm_loss = None
         if labels is not None:
             loss_fct = CrossEntropyLoss()
