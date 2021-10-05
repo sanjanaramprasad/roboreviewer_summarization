@@ -119,22 +119,27 @@ class Data2TextGenerator(GenerationMixin):
             }
             
             if not(input_ids_col0 is None):
-                encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if  "col0" in argument}
-                attention_mask_col0 = encoder_kwargs.get("attention_mask_col0", None)
+                encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if  "col" not in argument}
+                attention_mask_col0 = model_kwargs.get("attention_mask_col0", None)
+                encoder_kwargs["attention_mask"] = attention_mask_col0
+                ##print(model_kwargs)
                 #encoder_outputs = encoder_kwargs.get('encoder_outputs_col0', None)
                 
                 model_kwargs["encoder_outputs_col0"]: ModelOutput = encoder_col(input_ids_col0, return_dict=True, **encoder_kwargs)
 
             if not(input_ids_col1 is None):
-                    encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if  "col1" in argument}
-                    attention_mask_col1 = encoder_kwargs.get("attention_mask_col1", None)
+                    encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if  "col" not in argument}
+                    attention_mask_col1 = model_kwargs.get("attention_mask_col1", None)
+                    encoder_kwargs["attention_mask"] = attention_mask_col1
                     #encoder_outputs = encoder_kwargs.get('encoder_outputs_col1', None)
 
                     model_kwargs["encoder_outputs_col1"]: ModelOutput = encoder_col(input_ids_col1, return_dict=True, **encoder_kwargs)
 
             if not(input_ids_col2 is None):
-                    encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if "col" in argument}
-                    attention_mask_col2 = encoder_kwargs.get("attention_mask_col2", None)
+                    encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if "col" not in argument}
+                    attention_mask_col2 = model_kwargs.get("attention_mask_col2", None)
+                    encoder_kwargs["attention_mask"] = attention_mask_col2
+                    print(encoder_kwargs)
                     #encoder_outputs = encoder_kwargs.get('encoder_outputs_col2', None)
 
                     model_kwargs["encoder_outputs_col2"]: ModelOutput = encoder_col(input_ids_col2, return_dict=True, **encoder_kwargs)
@@ -305,7 +310,7 @@ class Data2TextGenerator(GenerationMixin):
             remove_invalid_values=remove_invalid_values,
         )
 
-        stopping_criteria = self._get_stopping_criteria(max_length=max_length, max_time=max_time, max_new_tokens=max_new_tokens, start_length=cur_len)
+        stopping_criteria = self._get_stopping_criteria(max_length=max_length, max_time=max_time)
 
         if is_greedy_gen_mode:
             #print("GREEDY SEARCHING")

@@ -226,7 +226,7 @@ def main():
     
                                     
     
-    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/ramprasad.sa', files = data_files, max_len = 1024)
     
     bart_model = BartForDataToTextGeneration_MultiLM.from_pretrained('facebook/bart-base') 
 
@@ -236,11 +236,11 @@ def main():
     eval_beams = 4
 
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
-    checkpoint = ModelCheckpoint(dirpath = 'checkpoint_files_final/token_mixture',
+    checkpoint = ModelCheckpoint(dirpath = 'checkpoint_files_final/token_mixture_lm',
                                 filename = '{epoch}-{val_loss:.2f}',
                                 save_top_k=10,
                                 monitor = 'val_loss')
-    trainer = pl.Trainer(gpus=2,  
+    trainer = pl.Trainer(gpus=1,  
 			accelerator='dp',
                         max_epochs = max_epochs,
                         min_epochs = 1,

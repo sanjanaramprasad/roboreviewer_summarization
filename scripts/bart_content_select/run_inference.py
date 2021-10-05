@@ -6,7 +6,8 @@ from transformers.models.bart.configuration_bart import BartConfig
 import torch
 import torch.distributed as dist
 from torch.nn import functional as F
-from BartForDataToTextGeneration import BartForDataToTextDecoderMod
+#from BartForDataToTextGeneration import BartForDataToTextDecoderMod
+from BartForDataToTextGeneration_lm import BartForDataToTextGeneration_MultiLM
 from transformers.generation_utils import GenerationMixin
 from run_experiment import LitModel
 from transformers import BartTokenizer
@@ -18,14 +19,14 @@ from transformers.file_utils import ModelOutput
 import pandas as pd
 import nltk
 from nltk.translate import meteor_score
-from DataToTextGenerator import Data2TextGenerator
+from DataToTextGenerator_lm import Data2TextGenerator
 import numpy as np
 import subprocess, os, sys 
 #import config_single_addition as config_single_addition
 ##import config_single_decoder_addition 
 ##import config_single_decoder_concat
 #import config_single_addition
-import config_content_select
+import config_content_select_lm
 parent_dir_name = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
 
@@ -75,6 +76,7 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
         outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length = min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, device = device)
         model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[-1]])
+        print(model_output)
         if model_output.strip():
             model_outputs.append(model_output)
             targets.append(target)
@@ -129,7 +131,7 @@ def parameter_searca(sample,  model, tokenizer, device):
 
 
 def run_inference( checkpoint_file, parameter_look = False, write_results = True):
-    config = config_content_select
+    config = config_content_select_lm
 
     tokenizer = config.tokenizer
     special_tokens = config.additional_special_tokens

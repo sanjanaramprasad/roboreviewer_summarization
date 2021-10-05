@@ -184,12 +184,24 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         lm_logits1 = self.lm_head1(outputs1[0]) + self.final_logits_bias1
         lm_logits2 = self.lm_head2(outputs2[0]) + self.final_logits_bias2
 
-        def __combine_lm_heads():
-           lm_combined = torch.mean(torch.cat([lm_logits0, lm_logits1, lm_logits2]), dim =0)
-           lm_combined = lm_combined.unsqueeze(0)
-           return lm_combined 
+        def __combine_lms():
+            batch_size = lm_logits0.shape[0]
+            results = []
+            for i in range(0, batch_size):
+                lm_i = torch.mean(torch.cat([lm_logits0[i].unsqueeze(0), lm_logits1[i].unsqueeze(0), lm_logits2[i].unsqueeze(0)]), dim=0)
+                results.append(lm_i)
+            results = torch.stack(results)
+            return results
 
-        lm_logits = __combine_lm_heads()
+        print('lm_logits0', lm_logits0.shape)
+        print('decoder_input_ids', decoder_input_ids)
+        if not past_key_values is None:
+            print("past_key_values", len(past_key_values))
+        print('=' * 13)
+       
+        ##print('lm_logits0', lm_logits0.shape) 
+
+        lm_logits = __combine_lms()
         #print("LM combined", lm_logits.shape)
         masked_lm_loss = None
         if labels is not None:
@@ -245,4 +257,12 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             "head_mask": head_mask,
             "use_cache": use_cache,  # change this to avoid caching (presumably for debugging)
 
-        }
+     }
+
+
+    @staticmethod
+    def _reorder_cache(past, beam_idx):
+        reordered_past = ()
+        for layer_past in past:
+            reordered_past += (tuple(past_state.index_select(0, beam_idx) for past_state in layer_past),)
+        return reordered_past
