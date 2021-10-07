@@ -236,7 +236,7 @@ def main():
     eval_beams = 4
 
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
-    checkpoint = ModelCheckpoint(dirpath = 'checkpoint_files_final/token_mixture_lm',
+    checkpoint = ModelCheckpoint(dirpath = 'checkpoint_files_final/token_mixture_lm_global',
                                 filename = '{epoch}-{val_loss:.2f}',
                                 save_top_k=10,
                                 monitor = 'val_loss')
