@@ -26,10 +26,11 @@ class Mixture(nn.Module):
         super(Mixture, self).__init__()
         self.num_inputs = 1
         self.softmax_gate = nn.Softmax(dim = 0)
-        self.weights = nn.ModuleList([nn.Linear(3, 1) for i in range(0, self.num_inputs)])
+        self.weights = nn.ParameterList([nn.Parameter(torch.rand(3)) for i in range(0, self.num_inputs)])
         
         
     def forward(self, v0, v1, v2, t=None):
+        #softmaxed_weights = torch.nn.functional.softmax(self.weights)
         if not t :
             idx = 0
         
@@ -41,8 +42,11 @@ class Mixture(nn.Module):
             if self.num_inputs == v0.shape[0] :
                 idx = n
             W = self.weights[idx]
-            v_t = self.softmax_gate(W(torch.stack([v0[n], v1[n], v2[n]], dim = -1)))
+            W = self.softmax_gate(W)
+            v_t = (1.0 * v0[n][:, None]) + (0.0 * v1[n][:, None]) + (0.0 * v2[n][:, None])
             v_mixt.append(v_t.t())
+        #print(torch.cat(v_mixt).shape, v0.shape)
+        #print(W[0], W[1], W[2])
         return torch.cat(v_mixt)
 
 
@@ -53,10 +57,12 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
     def __init__(self, config: BartConfig):
         super().__init__(config)
         self.model = BartModel(config)
+        #self.model1 = BartModel(config)
+        #self.model2 = BartModel(config)
         self.register_buffer("final_logits_bias0", torch.zeros((1, self.model.shared.num_embeddings)))
         self.register_buffer("final_logits_bias1", torch.zeros((1, self.model.shared.num_embeddings)))
         self.register_buffer("final_logits_bias2", torch.zeros((1, self.model.shared.num_embeddings)))
-        self.softmax_logits = nn.Softmax(dim = 2)
+        self.softmax_logits = nn.LogSoftmax(dim = 2)
         self.lm_head = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
         self.lm_combine = Mixture(num_inputs=1)
         self.init_weights()
@@ -204,9 +210,8 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             return_dict=return_dict,
         )
 
-        #print(self.final_logits_bias0.shape, self.lm_head(outputs0[0]).shape)
+      
         lm_logits0 = self.lm_head(outputs0[0]) + self.final_logits_bias0
-        print("LM logits", lm_logits0.shape)
         lm_logits1 = self.lm_head1(outputs1[0]) + self.final_logits_bias1
         lm_logits2 = self.lm_head2(outputs2[0]) + self.final_logits_bias2
         lm_logits0 = self.softmax_logits(lm_logits0)
@@ -215,11 +220,11 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
 
         lm_logits = torch.stack([self.lm_combine(lm_logits0[batch_id], lm_logits1[batch_id], lm_logits2[batch_id]) \
                         for batch_id in range(0, lm_logits0.shape[0])])
-        print('lm combined', lm_logits.shape)
-        
+        #print('lm combined', lm_logits.shape)
+        #lm_logits = self.softmax_logits(lm_logits)
         masked_lm_loss = None
         if labels is not None:
-            loss_fct = CrossEntropyLoss()
+            loss_fct = nn.CrossEntropyLoss()
             masked_lm_loss = loss_fct(lm_logits.view(-1, self.config.vocab_size), labels.view(-1))
 
         if not return_dict:
