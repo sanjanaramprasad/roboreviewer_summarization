@@ -43,7 +43,7 @@ class Mixture(nn.Module):
                 idx = n
             W = self.weights[idx]
             W = self.softmax_gate(W)
-            v_t = (1.0 * v0[n][:, None]) + (0.0 * v1[n][:, None]) + (0.0 * v2[n][:, None])
+            v_t = (W[0] * v0[n][:, None]) + (W[1] * v1[n][:, None]) + (W[2] * v2[n][:, None])
             v_mixt.append(v_t.t())
         #print(torch.cat(v_mixt).shape, v0.shape)
         #print(W[0], W[1], W[2])
@@ -64,14 +64,15 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         self.register_buffer("final_logits_bias2", torch.zeros((1, self.model2.shared.num_embeddings)))
         self.softmax_logits = nn.LogSoftmax(dim = 2)
         self.lm_head = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
-        self.lm_head1 = nn.Linear(config.d_model, self.model1.shared.num_embeddings, bias=False)
-        self.lm_head2 = nn.Linear(config.d_model, self.model2.shared.num_embeddings, bias=False)
+        
+        #self.lm_head1 = nn.Linear(config.d_model, self.model1.shared.num_embeddings, bias=False)
+        #self.lm_head2 = nn.Linear(config.d_model, self.model2.shared.num_embeddings, bias=False)
         self.lm_combine = Mixture(num_inputs=1)
         self.init_weights()
 
     def _make_multiple_lm_heads(self):
-        #self.lm_head1 = copy.deepcopy(self.lm_head)
-        #self.lm_head2 = copy.deepcopy(self.lm_head)
+        self.lm_head1 = copy.deepcopy(self.lm_head)
+        self.lm_head2 = copy.deepcopy(self.lm_head)
         return
 
     def get_encoder(self):
@@ -179,7 +180,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             return_dict=return_dict,
         )
 
-        outputs1 = self.model(
+        outputs1 = self.model1(
             input_ids_col1,
             attention_mask=attention_mask_col1,
             decoder_input_ids=decoder_input_ids,
@@ -197,7 +198,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             return_dict=return_dict,
         )
 
-        outputs2 = self.model(
+        outputs2 = self.model2(
             input_ids_col2,
             attention_mask=attention_mask_col2,
             decoder_input_ids=decoder_input_ids,
