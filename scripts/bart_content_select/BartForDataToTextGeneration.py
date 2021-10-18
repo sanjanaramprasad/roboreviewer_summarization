@@ -436,8 +436,8 @@ class BartDecoderMulti(BartPretrainedModel):
     def set_input_embeddings(self, value):
         self.shared = value
         self.encoder.embed_tokens = value
-        self.encoder1.embed_tokens = value
-        self.encoder2.embed_tokens = value
+        '''self.encoder1.embed_tokens = value
+        self.encoder2.embed_tokens = value'''
 
     def get_input_embeddings(self):
         return self.embed_tokens
@@ -713,13 +713,14 @@ class BartForDataToTextDecoderMod(BartPretrainedModel):
     def set_input_embeddings(self, value):
         self.shared = value
         self.encoder.embed_tokens = value
-        self.encoder1.embed_tokens = value
-        self.encoder2.embed_tokens = value
+        #self.encoder1.embed_tokens = value
+        #self.encoder2.embed_tokens = value
         self.decoder.embed_tokens = value
         
     def get_encoders(self):
-        return self.encoder, self.encoder1, \
-            self.encoder2
+        return self.encoder
+        '''self.encoder1, \
+            self.encoder2'''
     
     def get_decoder(self):
         self.decoder
@@ -827,7 +828,7 @@ class BartForDataToTextDecoderMod(BartPretrainedModel):
 
         if not (input_ids_col1 is None):
             encoder_outputs_col1 = self._get_encoder_outputs(
-                        encoder = self.encoder1, 
+                        encoder = self.encoder, 
                         encoder_outputs = encoder_outputs_col1, 
                         input_ids = input_ids_col1,
                         attention_mask = attention_mask_col1,
@@ -840,7 +841,7 @@ class BartForDataToTextDecoderMod(BartPretrainedModel):
 
         if not (input_ids_col2 is None):
             encoder_outputs_col2 = self._get_encoder_outputs(
-                        encoder = self.encoder2, 
+                        encoder = self.encoder, 
                         encoder_outputs = encoder_outputs_col2, 
                         input_ids = input_ids_col2,
                         attention_mask = attention_mask_col2,
