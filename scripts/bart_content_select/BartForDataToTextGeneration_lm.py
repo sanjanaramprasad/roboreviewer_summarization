@@ -290,7 +290,10 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
 
     @staticmethod
     def _reorder_cache(past, beam_idx):
-        reordered_past = ()
-        for layer_past in past:
-            reordered_past += (tuple(past_state.index_select(0, beam_idx) for past_state in layer_past),)
-        return reordered_past
+        past_reordered = ()
+        for past_idx in past:
+            reordered_past = ()
+            for layer_past in past_idx:
+                reordered_past += (tuple(past_state.index_select(0, beam_idx) for past_state in layer_past),)
+            past_reordered += reordered_past
+        return past_reordered
