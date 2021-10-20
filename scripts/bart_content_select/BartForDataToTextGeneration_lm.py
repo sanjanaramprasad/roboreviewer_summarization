@@ -43,7 +43,7 @@ class Mixture(nn.Module):
                 idx = n
             W = self.weights[idx]
             W = self.softmax_gate(W)
-            v_t = (W[0] * v0[n][:, None]) + (W[1] * v1[n][:, None]) + (W[2] * v2[n][:, None])
+            v_t = (0 * v0[n][:, None]) + (1 * v1[n][:, None]) + (0 * v2[n][:, None])
             v_mixt.append(v_t.t())
         #print(torch.cat(v_mixt).shape, v0.shape)
         print(W[0], W[1], W[2])
@@ -181,7 +181,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             return_dict=return_dict,
         )
 
-        '''outputs1 = self.model(
+        outputs1 = self.model(
             input_ids_col1,
             attention_mask=attention_mask_col1,
             decoder_input_ids=decoder_input_ids,
@@ -215,20 +215,20 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
-        )'''
+        )
 
         #print(input_ids)
         lm_logits0 = self.lm_head(outputs0[0]) + self.final_logits_bias0
-        #lm_logits1 = self.lm_head1(outputs1[0]) + self.final_logits_bias1
-        #lm_logits2 = self.lm_head2(outputs2[0]) + self.final_logits_bias2
+        lm_logits1 = self.lm_head1(outputs1[0]) + self.final_logits_bias1
+        lm_logits2 = self.lm_head2(outputs2[0]) + self.final_logits_bias2
         lm_logits0 = self.softmax_logits(lm_logits0)
-        #lm_logits1 = self.softmax_logits(lm_logits1)
-        #lm_logits2 = self.softmax_logits(lm_logits2)
+        lm_logits1 = self.softmax_logits(lm_logits1)
+        lm_logits2 = self.softmax_logits(lm_logits2)
 
-        '''lm_logits = torch.stack([self.lm_combine(lm_logits0[batch_id], lm_logits1[batch_id], lm_logits2[batch_id], t = decoder_time_step) \
+        lm_logits = torch.stack([self.lm_combine(lm_logits0[batch_id], lm_logits1[batch_id], lm_logits2[batch_id], t = decoder_time_step) \
                         for batch_id in range(0, lm_logits0.shape[0])])
         #print('lm combined', lm_logits.shape)
-        #lm_logits = self.softmax_logits(lm_logits)'''
+        #lm_logits = self.softmax_logits(lm_logits)
         masked_lm_loss = None
         if labels is not None:
             loss_fct = nn.CrossEntropyLoss()
@@ -273,7 +273,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             "input_ids_col0": None,
             "input_ids_col1": None,
             "input_ids_col2": None,
-            "decoder_time_step":decoder_time_step,
+            "decoder_time_step":None,
             "encoder_outputs_col0": encoder_outputs_col0,
             "encoder_outputs_col1": encoder_outputs_col1,
             "encoder_outputs_col2": encoder_outputs_col2,

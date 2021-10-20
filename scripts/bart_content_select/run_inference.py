@@ -76,10 +76,10 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
         outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length = min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, device = device)
         model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[-1]])
-        #print("TARGET", target)
+        print("TARGET", target)
         #print('=' * 13)
-        #print("MO", model_output)
-        #print('=' * 13)
+        print("MO", model_output)
+        print('=' * 13)
         if model_output.strip():
             model_outputs.append(model_output)
             targets.append(target)
