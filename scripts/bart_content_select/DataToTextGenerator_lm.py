@@ -320,7 +320,12 @@ class Data2TextGenerator(GenerationMixin):
                 outputs, model_kwargs, is_encoder_decoder=self.config.is_encoder_decoder
             )
             if model_kwargs["past"] is not None:
-                model_kwargs['past'] = (self._reorder_cache(each, beam_idx) for each in model_kwargs['past'])
+                past_key_values0, past_key_values1, past_key_values2 = model_kwargs["past"]
+
+                past_key_values0 = self._reorder_cache(past_key_values0, beam_idx)
+                past_key_values1 = self._reorder_cache(past_key_values1, beam_idx)
+                past_key_values2 = self._reorder_cache(past_key_values2, beam_idx)
+                model_kwargs['past'] = (past_key_values0, past_key_values1, past_key_values2)
 
             # increase cur_len
             cur_len = cur_len + 1
