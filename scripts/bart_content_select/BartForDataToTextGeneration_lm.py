@@ -43,10 +43,10 @@ class Mixture(nn.Module):
                 idx = n
             W = self.weights[idx]
             W = self.softmax_gate(W)
-            v_t = (1 * v0[n][:, None]) + (0 * v1[n][:, None]) + (0 * v2[n][:, None])
+            v_t = (0 * v0[n][:, None]) + (1 * v1[n][:, None]) + (0 * v2[n][:, None])
             v_mixt.append(v_t.t())
         #print(torch.cat(v_mixt).shape, v0.shape)
-        #print(W[0], W[1], W[2])
+        print(W[0], W[1], W[2])
         return torch.cat(v_mixt)
 
 
@@ -67,7 +67,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         
         #self.lm_head1 = nn.Linear(config.d_model, self.model1.shared.num_embeddings, bias=False)
         #self.lm_head2 = nn.Linear(config.d_model, self.model2.shared.num_embeddings, bias=False)
-        self.lm_combine = Mixture(num_inputs=1)
+        self.lm_combine = Mixture(num_inputs=1024)
         self.init_weights()
 
     def _make_multiple_lm_heads(self):
@@ -172,7 +172,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             head_mask=head_mask,
             decoder_head_mask=decoder_head_mask,
             cross_attn_head_mask=cross_attn_head_mask,
-            past_key_values=past_key_values[0] if past_key_values else None,
+            past_key_values=past_key_values,
             inputs_embeds=inputs_embeds,
             decoder_inputs_embeds=decoder_inputs_embeds,
             use_cache=use_cache,
@@ -190,7 +190,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             head_mask=head_mask,
             decoder_head_mask=decoder_head_mask,
             cross_attn_head_mask=cross_attn_head_mask,
-            past_key_values=past_key_values[1] if past_key_values else None,
+            past_key_values=past_key_values,
             inputs_embeds=inputs_embeds,
             decoder_inputs_embeds=decoder_inputs_embeds,
             use_cache=use_cache,
@@ -208,7 +208,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             head_mask=head_mask,
             decoder_head_mask=decoder_head_mask,
             cross_attn_head_mask=cross_attn_head_mask,
-            past_key_values=past_key_values[2] if past_key_values else None,
+            past_key_values=past_key_values,
             inputs_embeds=inputs_embeds,
             decoder_inputs_embeds=decoder_inputs_embeds,
             use_cache=use_cache,
@@ -232,22 +232,22 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         masked_lm_loss = None
         if labels is not None:
             loss_fct = nn.CrossEntropyLoss()
-            masked_lm_loss = loss_fct(lm_logits.view(-1, self.config.vocab_size), labels.view(-1))
+            masked_lm_loss = loss_fct(lm_logits0.view(-1, self.config.vocab_size), labels.view(-1))
 
         if not return_dict:
-            output = (lm_logits1,) + outputs1[1:]
+            output = (lm_logits0,) + outputs0[1:]
             return ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
 
         return Seq2SeqLMOutput(
             loss=masked_lm_loss,
-            logits=lm_logits0,
-            past_key_values=(outputs0.past_key_values, outputs1.past_key_values, outputs2.past_key_values),
-            decoder_hidden_states=outputs1.decoder_hidden_states,
-            decoder_attentions=outputs1.decoder_attentions,
-            cross_attentions=outputs1.cross_attentions,
-            encoder_last_hidden_state=outputs1.encoder_last_hidden_state,
-            encoder_hidden_states=outputs1.encoder_hidden_states,
-            encoder_attentions=outputs1.encoder_attentions,
+            logits=lm_logits,
+            past_key_values=outputs0.past_key_values,
+            decoder_hidden_states=outputs0.decoder_hidden_states,
+            decoder_attentions=outputs0.decoder_attentions,
+            cross_attentions=outputs0.cross_attentions,
+            encoder_last_hidden_state=outputs0.encoder_last_hidden_state,
+            encoder_hidden_states=outputs0.encoder_hidden_states,
+            encoder_attentions=outputs0.encoder_attentions,
         )
 
     def prepare_inputs_for_generation(
@@ -283,17 +283,15 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             "attention_mask_col1": attention_mask_col1,
             "attention_mask_col2": attention_mask_col2,
             "head_mask": head_mask,
-            "use_cache": None,  # change this to avoid caching (presumably for debugging)
+            "use_cache": use_cache,  # change this to avoid caching (presumably for debugging)
 
      }
 
 
     @staticmethod
     def _reorder_cache(past, beam_idx):
-        past_reordered = ()
-        for past_idx in past:
-            reordered_past = ()
-            for layer_past in past_idx:
-                reordered_past += (tuple(past_state.index_select(0, beam_idx) for past_state in layer_past),)
-            past_reordered += reordered_past
-        return past_reordered
+        reordered_past = ()
+        for layer_past in past:
+            reordered_past += (tuple(past_state.index_select(0, beam_idx) for past_state in layer_past),)
+        print('PAST', reordered_past)
+        return reordered_past
