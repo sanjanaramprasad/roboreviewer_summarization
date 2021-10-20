@@ -43,7 +43,7 @@ class Mixture(nn.Module):
                 idx = n
             W = self.weights[idx]
             W = self.softmax_gate(W)
-            v_t = (0 * v0[n][:, None]) + (1 * v1[n][:, None]) + (0 * v2[n][:, None])
+            v_t = (1 * v0[n][:, None]) + (0 * v1[n][:, None]) + (0 * v2[n][:, None])
             v_mixt.append(v_t.t())
         #print(torch.cat(v_mixt).shape, v0.shape)
         print(W[0], W[1], W[2])
@@ -67,7 +67,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         
         #self.lm_head1 = nn.Linear(config.d_model, self.model1.shared.num_embeddings, bias=False)
         #self.lm_head2 = nn.Linear(config.d_model, self.model2.shared.num_embeddings, bias=False)
-        self.lm_combine = Mixture(num_inputs=1024)
+        self.lm_combine = Mixture(num_inputs=1)
         self.init_weights()
 
     def _make_multiple_lm_heads(self):
@@ -240,7 +240,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
 
         return Seq2SeqLMOutput(
             loss=masked_lm_loss,
-            logits=lm_logits,
+            logits=lm_logits0,
             past_key_values=[outputs0.past_key_values, outputs1.past_key_values, outputs2.past_key_values],
             decoder_hidden_states=outputs0.decoder_hidden_states,
             decoder_attentions=outputs0.decoder_attentions,
@@ -278,7 +278,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             "encoder_outputs_col1": encoder_outputs_col1,
             "encoder_outputs_col2": encoder_outputs_col2,
             "past_key_values": past,
-            "decoder_input_ids": decoder_input_ids,
+            "decoder_input_ids": None,
             "attention_mask_col0": attention_mask_col0,
             "attention_mask_col1": attention_mask_col1,
             "attention_mask_col2": attention_mask_col2,
