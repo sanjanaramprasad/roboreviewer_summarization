@@ -278,7 +278,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             "encoder_outputs_col1": encoder_outputs_col1,
             "encoder_outputs_col2": encoder_outputs_col2,
             "past_key_values": past,
-            "decoder_input_ids": None,
+            "decoder_input_ids": decoder_input_ids,
             "attention_mask_col0": attention_mask_col0,
             "attention_mask_col1": attention_mask_col1,
             "attention_mask_col2": attention_mask_col2,
