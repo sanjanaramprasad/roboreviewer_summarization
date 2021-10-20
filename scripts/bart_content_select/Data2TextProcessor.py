@@ -142,27 +142,27 @@ class SummaryDataModule(pl.LightningDataModule):
         
     def train_dataloader(self, data_type = 'robo'):
         #dataset = TensorDataset
-        dataset = TensorDataset(self.train['content_ids'], self.train['content_attention_masks'],
-                                self.train['population_ids'], self.train['population_attention_masks'],
+        dataset = TensorDataset(self.train['population_ids'], self.train['population_attention_masks'],
                                 self.train['punchline_text_ids'], self.train['punchline_text_attention_masks'],
+                                self.train['content_ids'], self.train['content_attention_masks'],
                                     self.train['labels'])
         #dataset = TensorDataset(self.train['input_ids'], self.train['attention_mask'], self.train['labels'])                          
         train_data = DataLoader(dataset, sampler = RandomSampler(dataset), batch_size = self.batch_size)
         return train_data
 
     def val_dataloader(self, data_type = 'robo'):
-        dataset = TensorDataset(self.validate['content_ids'], self.validate['content_attention_masks'],
-                                self.validate['population_ids'], self.validate['population_attention_masks'],
+        dataset = TensorDataset(self.validate['population_ids'], self.validate['population_attention_masks'],
                                 self.validate['punchline_text_ids'], self.validate['punchline_text_attention_masks'],
+                                self.validate['content_ids'], self.validate['content_attention_masks'],
                                     self.validate['labels'])
         val_data = DataLoader(dataset, batch_size = self.batch_size)                       
         return val_data
 
     def test_dataloader(self, data_type = 'robo'):
         #print(self.test['punchline_text_ids'])
-        dataset = TensorDataset(self.test['content_ids'], self.test['content_attention_masks'],
-                                self.test['population_ids'], self.test['population_attention_masks'],
+        dataset = TensorDataset(self.test['population_ids'], self.test['population_attention_masks'],
                                 self.test['punchline_text_ids'], self.test['punchline_text_attention_masks'],
+                                self.test['content_ids'], self.test['content_attention_masks'],
                                     self.train['labels'])
         test_data = DataLoader(dataset, batch_size = self.batch_size)                   
         return test_data
@@ -200,7 +200,7 @@ if __name__ == '__main__':
     
                                     
     
-    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/ramprasad.sa', files = data_files, max_len = 1024)
     print(summary_data.train)
     summary_data.setup("stage")
     it = summary_data.val_dataloader()

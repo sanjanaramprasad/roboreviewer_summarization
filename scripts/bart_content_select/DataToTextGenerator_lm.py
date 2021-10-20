@@ -133,16 +133,16 @@ class Data2TextGenerator(GenerationMixin):
                     encoder_kwargs["attention_mask"] = attention_mask_col1
                     #encoder_outputs = encoder_kwargs.get('encoder_outputs_col1', None)
 
-                    model_kwargs["encoder_outputs_col1"]: ModelOutput = self.model.model1.get_encoder()(input_ids_col1, return_dict=True, **encoder_kwargs)
+                    model_kwargs["encoder_outputs_col1"]: ModelOutput = self.model.model.get_encoder()(input_ids_col1, return_dict=True, **encoder_kwargs)
 
             if not(input_ids_col2 is None):
                     encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if "col" not in argument}
                     attention_mask_col2 = model_kwargs.get("attention_mask_col2", None)
                     encoder_kwargs["attention_mask"] = attention_mask_col2
-                    print(encoder_kwargs)
+                    #print(encoder_kwargs)
                     #encoder_outputs = encoder_kwargs.get('encoder_outputs_col2', None)
 
-                    model_kwargs["encoder_outputs_col2"]: ModelOutput = self.model.model1.get_encoder()(input_ids_col2, return_dict=True, **encoder_kwargs)
+                    model_kwargs["encoder_outputs_col2"]: ModelOutput = self.model.model.get_encoder()(input_ids_col2, return_dict=True, **encoder_kwargs)
                      
 
 
