@@ -69,6 +69,8 @@ class LitModel(pl.LightningModule):
         self.tokenizer = tokenizer
         self.model = model
         self.model.resize_token_embeddings(len(self.tokenizer))
+        #self.model.model1.resize_token_embeddings(len(tokenizer))
+        #self.model.model2.resize_token_embeddings(len(tokenizer))
         self.model._make_multiple_lm_heads()
         self.learning_rate = learning_rate
         self.freeze_encoder = freeze_encoder
@@ -77,17 +79,17 @@ class LitModel(pl.LightningModule):
         #self.hparams.update(hparams)
 
         if self.freeze_encoder:
-            freeze_params(self.model.encoder)
+            freeze_params(self.model.model.encoder)
 
 
         if freeze_embeds:
             self.freeze_embeds()
-        self.save_hyperparameters()
+        #self.save_hyperparameters()
   
     def freeze_embeds(self):
         ''' freeze the positional embedding parameters of the model; adapted from finetune.py '''
-        freeze_params(self.model.shared)
-        for d in [self.model.encoder, self.model.decoder]:
+        freeze_params(self.model.model.shared)
+        for d in [self.model.model.encoder, self.model.model.decoder]:
             freeze_params(d.embed_positions)
             freeze_params(d.embed_tokens)
 
@@ -236,7 +238,7 @@ def main():
     eval_beams = 4
 
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
-    checkpoint = ModelCheckpoint(dirpath = 'checkpoint_files_final/token_mixture_lm_global',
+    checkpoint = ModelCheckpoint(dirpath = 'checkpoint_files_final/token_mixture_lm_timed_multibart',
                                 filename = '{epoch}-{val_loss:.2f}',
                                 save_top_k=10,
                                 monitor = 'val_loss')

@@ -69,20 +69,30 @@ def run_rouge(model_outputs, targets):
 def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalty, generator, device):
     targets = []
     model_outputs = []
+    populations = []
     rouge = Rouge()
-    
+    additional_special_tokens = [ "<study>", "</study>",
+            "<outcomes_mesh>", "</outcomes_mesh>",
+            "<punchline_text>", "</punchline_text>",
+            "<population>", "</population>",
+            "<interventions_mesh>", "</interventions_mesh>",
+            "<punchline_effect>", "</punchline_effect>"]
+ 
     print("Sample scoring")
     for each in sample:
         outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length = min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, device = device)
         model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
+        population = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[0]])
+        population = ' '.join([w for w in population.split(' ') if w not in additional_special_tokens])
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[-1]])
-        print("TARGET", target)
+        print("CONT", population)
         #print('=' * 13)
         print("MO", model_output)
         print('=' * 13)
         if model_output.strip():
             model_outputs.append(model_output)
             targets.append(target)
+            populations.append(population)
     print('='*13)
     print("Values: num_beam:%s || min_len:%s || r_penalty:%s || l_penalty:%s"%( nbeams, min_len, r_penalty, l_penalty))
     show_gpu('GPU memory usage after sample:')
@@ -96,7 +106,7 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     print("Bleu : ", bleuScores)
     print("Meteor : ", meteorScores)
     print('=' * 13)
-    return model_outputs, targets,  rougeScores, meteorScores, bleuScores
+    return model_outputs, populations, targets,  rougeScores, meteorScores, bleuScores
 
 
 def parameter_searca(sample,  model, tokenizer, device):
@@ -168,8 +178,8 @@ def run_inference( checkpoint_file, parameter_look = False, write_results = True
         length_penalty = config.length_penalty
     generator = Data2TextGenerator(model, tokenizer)
 
-    model_outputs, targets,  rougeScores, meteorScores, bleuScores = sample_scorer(sample = list(it), model = model, tokenizer = tokenizer, nbeams = num_beams, min_len = min_len, r_penalty = repetition_penalty, l_penalty = length_penalty, generator = generator, device = device) 
-    return model_outputs, targets,  rougeScores, meteorScores, bleuScores
+    model_outputs, populations, targets,  rougeScores, meteorScores, bleuScores = sample_scorer(sample = list(it), model = model, tokenizer = tokenizer, nbeams = num_beams, min_len = min_len, r_penalty = repetition_penalty, l_penalty = length_penalty, generator = generator, device = device) 
+    return model_outputs, populations, targets,  rougeScores, meteorScores, bleuScores
 
 
 
@@ -181,9 +191,9 @@ if __name__ =='__main__':
 
     if not output_file:
         with torch.no_grad():
-            model_outputs, targets,  rougeScore, meteorScore, bleuScore = run_inference(checkpoint_file)
-        df_write = pd.DataFrame(list(zip(targets, model_outputs)), columns=["Reference Summary", "Generated Summary"])
-        file_name = "run_inference_output_lm_ptext"
+            model_outputs, populations, targets,  rougeScore, meteorScore, bleuScore = run_inference(checkpoint_file)
+        df_write = pd.DataFrame(list(zip(targets, model_outputs, populations)), columns=["Reference Summary", "Generated Summary", "Population"])
+        file_name = "run_inference_output_lm_pop"
         df_write.to_csv("%s.csv"%file_name)
 
 
