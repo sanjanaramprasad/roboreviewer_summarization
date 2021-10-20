@@ -648,7 +648,7 @@ class Data2TextGenerator(GenerationMixin):
                 input_ids, expand_size=num_beams, is_encoder_decoder=self.config.is_encoder_decoder, **model_kwargs
             )
             ##print("BEAM SEARCH KWARGS", model_kwargs)
-            return self.model.beam_search(
+            return self.beam_search(
                 input_ids,
                 beam_scorer,
                 logits_processor=logits_processor,
