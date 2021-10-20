@@ -172,7 +172,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             head_mask=head_mask,
             decoder_head_mask=decoder_head_mask,
             cross_attn_head_mask=cross_attn_head_mask,
-            past_key_values=past_key_values,
+            past_key_values=past_key_values[0] if past_key_values else None,
             inputs_embeds=inputs_embeds,
             decoder_inputs_embeds=decoder_inputs_embeds,
             use_cache=use_cache,
@@ -190,7 +190,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             head_mask=head_mask,
             decoder_head_mask=decoder_head_mask,
             cross_attn_head_mask=cross_attn_head_mask,
-            past_key_values=past_key_values,
+            past_key_values=past_key_values[1] if past_key_values else None,
             inputs_embeds=inputs_embeds,
             decoder_inputs_embeds=decoder_inputs_embeds,
             use_cache=use_cache,
@@ -208,7 +208,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             head_mask=head_mask,
             decoder_head_mask=decoder_head_mask,
             cross_attn_head_mask=cross_attn_head_mask,
-            past_key_values=past_key_values,
+            past_key_values=past_key_values[2] if past_key_values else None,
             inputs_embeds=inputs_embeds,
             decoder_inputs_embeds=decoder_inputs_embeds,
             use_cache=use_cache,
@@ -241,7 +241,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         return Seq2SeqLMOutput(
             loss=masked_lm_loss,
             logits=lm_logits,
-            past_key_values=outputs0.past_key_values,
+            past_key_values=[outputs0.past_key_values, outputs1.past_key_values, outputs2.past_key_values],
             decoder_hidden_states=outputs0.decoder_hidden_states,
             decoder_attentions=outputs0.decoder_attentions,
             cross_attentions=outputs0.cross_attentions,
@@ -290,8 +290,10 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
 
     @staticmethod
     def _reorder_cache(past, beam_idx):
-        reordered_past = ()
-        for layer_past in past:
-            reordered_past += (tuple(past_state.index_select(0, beam_idx) for past_state in layer_past),)
-        print('PAST', reordered_past)
-        return reordered_past
+        past_all = []
+        for past_idx in past:
+            reordered_past = ()
+            for layer_past in past_idx:
+                reordered_past += (tuple(past_state.index_select(0, beam_idx) for past_state in layer_past),)
+            past_all.append(reordered_past)
+        return past_all
