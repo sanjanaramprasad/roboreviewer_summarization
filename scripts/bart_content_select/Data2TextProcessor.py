@@ -122,21 +122,21 @@ class SummaryDataModule(pl.LightningDataModule):
     def setup(self, stage):
         self.train = encode_sentences(self.tokenizer, 
                                       self.train,
+                                        ['population', 'interventions', 'outcomes'],
                                         ['punchline_text', 'punchline_effect'],
-                                        ['population', 'interventions', 'outcomes'], 
                                         self.train['SummaryConclusions'],
                                         max_length = self.max_len)
         
         self.validate = encode_sentences(self.tokenizer, 
                                       self.validate,
+                                        ['population', 'interventions', 'outcomes'],
                                         ['punchline_text', 'punchline_effect'],
-                                        ['population', 'interventions', 'outcomes'], 
                                         self.validate['SummaryConclusions'],
                                         max_length = self.max_len)
         self.test = encode_sentences(self.tokenizer, 
                                       self.test,
+                                        ['population', 'interventions', 'outcomes'],
                                         ['punchline_text', 'punchline_effect'],
-                                        ['population', 'interventions', 'outcomes'], 
                                         self.test['SummaryConclusions'],
                                         max_length = self.max_len)
         
@@ -144,7 +144,7 @@ class SummaryDataModule(pl.LightningDataModule):
         #dataset = TensorDataset
         dataset = TensorDataset(self.train['population_ids'], self.train['population_attention_masks'],
                                 self.train['interventions_ids'], self.train['interventions_attention_masks'],
-                                self.train['outcomes_ids'], self.train['outcomes_masks'],
+                                self.train['outcomes_ids'], self.train['outcomes_attention_masks'],
                                 self.train['content_ids'], self.train['content_attention_masks'],
                                     self.train['labels'])
         #dataset = TensorDataset(self.train['input_ids'], self.train['attention_mask'], self.train['labels'])                          
@@ -154,7 +154,7 @@ class SummaryDataModule(pl.LightningDataModule):
     def val_dataloader(self, data_type = 'robo'):
         dataset = TensorDataset(self.validate['population_ids'], self.validate['population_attention_masks'],
                                 self.validate['interventions_ids'], self.validate['interventions_attention_masks'],
-                                self.validate['outcomes_ids'], self.validate['outcomes_masks'],
+                                self.validate['outcomes_ids'], self.validate['outcomes_attention_masks'],
                                 self.validate['content_ids'], self.validate['content_attention_masks'],
                                     self.validate['labels'])
         val_data = DataLoader(dataset, batch_size = self.batch_size)                       
@@ -164,13 +164,13 @@ class SummaryDataModule(pl.LightningDataModule):
         #print(self.test['punchline_text_ids'])
         dataset = TensorDataset(self.test['population_ids'], self.test['population_attention_masks'],
                                 self.test['interventions_ids'], self.test['interventions_attention_masks'],
-                                self.test['outcomes_ids'], self.test['outcomes_masks'],
+                                self.test['outcomes_ids'], self.test['outcomes_attention_masks'],
                                 self.test['content_ids'], self.test['content_attention_masks'],
                                     self.test['labels'])
         test_data = DataLoader(dataset, batch_size = self.batch_size)                   
         return test_data
 
-def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
+def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/ramprasad.sa', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
     if data_type == 'robo':
         train_file = path + '/summarization/datasets/%s'%(files[0])
         dev_file = path + '/summarization/datasets/%s'%(files[1])
@@ -203,7 +203,7 @@ if __name__ == '__main__':
     
                                     
     
-    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/ramprasad.sa', files = data_files, max_len = 1024)
     print(summary_data.train)
     summary_data.setup("stage")
     it = summary_data.val_dataloader()
