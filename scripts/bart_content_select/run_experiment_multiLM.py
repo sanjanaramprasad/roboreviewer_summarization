@@ -115,6 +115,9 @@ class LitModel(pl.LightningModule):
         input_ids_col2 = batch[4] if len(batch) >5 else None
         attention_mask_col2 = batch[5] if len(batch) >5 else None
 
+        input_ids_col3 = batch[6] if len(batch) >5 else None
+        attention_mask_col3 = batch[7] if len(batch) >5 else None
+
         
         # Load the data into variables
         #src_ids, src_mask = batch[0], batch[1]
@@ -125,9 +128,11 @@ class LitModel(pl.LightningModule):
             input_ids_col0 = input_ids_col0,
             input_ids_col1 = input_ids_col1,
             input_ids_col2 = input_ids_col2, 
+            input_ids_col3 = input_ids_col3,
             attention_mask_col0 = attention_mask_col0,
             attention_mask_col1 = attention_mask_col1,
             attention_mask_col2 = attention_mask_col2,
+            attention_mask_col3 = attention_mask_col3,
             labels = tgt_ids,
             decoder_input_ids = None,
             use_cache = False
@@ -153,7 +158,9 @@ class LitModel(pl.LightningModule):
 
         input_ids_col2 = batch[4] if len(batch) >5 else None
         attention_mask_col2 = batch[5] if len(batch) >5 else None
-    
+
+        input_ids_col3 = batch[6] if len(batch) >5 else None
+        attention_mask_col3 = batch[7] if len(batch) >5 else None
         
 
         # Load the data into variables
@@ -166,9 +173,11 @@ class LitModel(pl.LightningModule):
             input_ids_col0 = input_ids_col0,
             input_ids_col1 = input_ids_col1,
             input_ids_col2 = input_ids_col2, 
+            input_ids_col3 = input_ids_col3,
             attention_mask_col0 = attention_mask_col0,
             attention_mask_col1 = attention_mask_col1,
             attention_mask_col2 = attention_mask_col2,
+            attention_mask_col3 = attention_mask_col3,
             labels = tgt_ids,
             decoder_input_ids = None,
             use_cache = False,
@@ -211,10 +220,10 @@ def main():
     #additional_special_tokens=["<attribute>",  "</attribute>", "<sep>"]
     
     additional_special_tokens = ["<sep>", "<study>", "</study>",
-            "<outcomes_mesh>", "</outcomes_mesh>",
+            "<outcomes>", "</outcomes>",
             "<punchline_text>", "</punchline_text>",
             "<population>", "</population>",
-            "<interventions_mesh>", "</interventions_mesh>",
+            "<interventions>", "</interventions>",
             "<punchline_effect>", "</punchline_effect>"]
 
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
