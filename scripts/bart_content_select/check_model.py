@@ -35,17 +35,21 @@ def get_data(data):
         input_ids_col2 = data[4] if len(data) >5 else None
         attention_mask_col2 = data[5] if len(data) >5 else None
 
+        input_ids_col3 = data[6] if len(data) >7 else None
+        attention_mask_col3 = data[7] if len(data) >7 else None
+
 
         return input_ids_col0, attention_mask_col0, \
             input_ids_col1, attention_mask_col1, \
-            input_ids_col2, attention_mask_col2,
+            input_ids_col2, attention_mask_col2,\
+            input_ids_col3, attention_mask_col3
 
 additional_special_tokens = ["<sep>", "<content>", "</content>",
             "<surface>", "</surface>",
-            "<outcomes_mesh>", "</outcomes_mesh>",
+            "<outcomes>", "</outcomes>",
             "<punchline_text>", "</punchline_text>",
             "<population>", "</population>",
-            "<interventions_mesh>", "</interventions_mesh>",
+            "<interventions>", "</interventions>",
             "<punchline_effect>", "</punchline_effect>"]
 
 tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>",
@@ -133,7 +137,7 @@ class BartForDataToTextGenerationTester():
         
         data = next(it)
         input_ids_col0, attention_mask_col0, input_ids_col1, attention_mask_col1, \
-            input_ids_col2, attention_mask_col2 = get_data(data)
+            input_ids_col2, attention_mask_col2, input_ids_col3, attention_mask_col3 = get_data(data)
 
         
 
@@ -142,9 +146,11 @@ class BartForDataToTextGenerationTester():
             input_ids_col0 = input_ids_col0,
             input_ids_col1 = input_ids_col1,
             input_ids_col2 = input_ids_col2, 
+            input_ids_col3 = input_ids_col3, 
             attention_mask_col0 = attention_mask_col0,
             attention_mask_col1 = attention_mask_col1,
             attention_mask_col2 = attention_mask_col2,
+            attention_mask_col3 = attention_mask_col3,
             labels = data[-1],
             use_cache = True
         )

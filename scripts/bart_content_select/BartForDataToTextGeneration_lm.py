@@ -63,6 +63,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         self.register_buffer("final_logits_bias0", torch.zeros((1, self.model.shared.num_embeddings)))
         self.register_buffer("final_logits_bias1", torch.zeros((1, self.model.shared.num_embeddings)))
         self.register_buffer("final_logits_bias2", torch.zeros((1, self.model.shared.num_embeddings)))
+        self.register_buffer("final_logits_bias3", torch.zeros((1, self.model.shared.num_embeddings)))
         self.softmax_logits = nn.LogSoftmax(dim = 2)
         self.lm_head = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
         
@@ -75,6 +76,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
     def _make_multiple_lm_heads(self):
         self.lm_head1 = copy.deepcopy(self.lm_head)
         self.lm_head2 = copy.deepcopy(self.lm_head)
+        self.lm_head3 = copy.deepcopy(self.lm_head)
         return
 
     def get_encoder(self):
@@ -110,6 +112,10 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         new_bias = self._resize_func(self.final_logits_bias2, new_num_tokens, old_num_tokens)
         self.register_buffer("final_logits_bias2", new_bias)
 
+        old_num_tokens = self.final_logits_bias3.shape[-1]
+        new_bias = self._resize_func(self.final_logits_bias3, new_num_tokens, old_num_tokens)
+        self.register_buffer("final_logits_bias3", new_bias)
+
     def get_output_embeddings(self):
         return self.lm_head
 
@@ -117,6 +123,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         self.lm_head = new_embeddings
         self.lm_head1 = new_embeddings
         self.lm_head2 = new_embeddings
+        self.lm_head3 = new_embeddings
 
 
     def forward(
@@ -124,9 +131,11 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         input_ids_col0 = None,
         input_ids_col1 = None,
         input_ids_col2 = None, 
+        input_ids_col3 = None,
         attention_mask_col0 = None,
         attention_mask_col1 = None,
         attention_mask_col2 = None,
+        attention_mask_col3 = None,
         decoder_input_ids=None,
         decoder_attention_mask=None,
         head_mask=None,
@@ -134,6 +143,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         encoder_outputs_col0 = None,
         encoder_outputs_col1 = None,
         encoder_outputs_col2 = None,
+        encoder_outputs_col3 = None,
         past_key_values=None,
         inputs_embeds=None,
         decoder_inputs_embeds=None,
@@ -219,21 +229,41 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             return_dict=return_dict,
         )
 
+        outputs3 = self.model(
+            input_ids_col3,
+            attention_mask=attention_mask_col3,
+            decoder_input_ids=decoder_input_ids,
+            encoder_outputs=encoder_outputs_col3,
+            decoder_attention_mask=decoder_attention_mask,
+            head_mask=head_mask,
+            decoder_head_mask=decoder_head_mask,
+            cross_attn_head_mask=cross_attn_head_mask,
+            past_key_values=past_key_values[3] if past_key_values else None,
+            inputs_embeds=inputs_embeds,
+            decoder_inputs_embeds=decoder_inputs_embeds,
+            use_cache=use_cache,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+
        
         #print(outputs0[0].shape) 
         #print(torch.cat([outputs0[0], outputs1[0], outputs2[0]], dim = -1).shape) 
-        alphas = self.weigh_context(torch.cat([outputs0[0], outputs1[0], outputs2[0]], dim = -1))
+        alphas = self.weigh_context(torch.cat([outputs0[0], outputs1[0], outputs2[0], outputs3[0]], dim = -1))
         alphas = alphas[0]
         #print('WEIGHTS', alphas.shape)
         #print(input_ids)
         lm_logits0 = self.lm_head(outputs0[0]) + self.final_logits_bias0
         lm_logits1 = self.lm_head1(outputs1[0]) + self.final_logits_bias1
         lm_logits2 = self.lm_head2(outputs2[0]) + self.final_logits_bias2
+        lm_logits3 = self.lm_head2(outputs3[0]) + self.final_logits_bias3
         lm_logits0 = self.softmax_logits(lm_logits0)
         lm_logits1 = self.softmax_logits(lm_logits1)
         lm_logits2 = self.softmax_logits(lm_logits2)
+        lm_logits3 = self.softmax_logits(lm_logits3)
 
-        lm_logits = [ alphas[batch_id][0] *  lm_logits0 + alphas[batch_id][1] *  lm_logits1  + alphas[batch_id][2] *  lm_logits2 \
+        lm_logits = [ alphas[batch_id][0] *  lm_logits0 + alphas[batch_id][1] *  lm_logits1  + alphas[batch_id][2] *  lm_logits2 + alphas[batch_id][3] *  lm_logits3 \
                 for batch_id in range(0, lm_logits0.shape[0])]
         lm_logits = torch.cat(lm_logits)
         #print('lm combined', lm_logits.shape)
@@ -266,11 +296,13 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         attention_mask_col0 = None,
         attention_mask_col1 = None,
         attention_mask_col2 = None,
+        attention_mask_col3 = None,
         head_mask=None,
         use_cache=None,
         encoder_outputs_col0 =None,
         encoder_outputs_col1 = None,
         encoder_outputs_col2 = None,
+        encoder_outputs_col3 = None,
         **kwargs
     ):
         decoder_time_step =  decoder_input_ids.shape[1] - 1
@@ -282,15 +314,18 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             "input_ids_col0": None,
             "input_ids_col1": None,
             "input_ids_col2": None,
+            "input_ids_col3": None,
             "decoder_time_step":decoder_time_step,
             "encoder_outputs_col0": encoder_outputs_col0,
             "encoder_outputs_col1": encoder_outputs_col1,
             "encoder_outputs_col2": encoder_outputs_col2,
+            "encoder_outputs_col3": encoder_outputs_col3,
             "past_key_values": past,
             "decoder_input_ids": decoder_input_ids,
             "attention_mask_col0": attention_mask_col0,
             "attention_mask_col1": attention_mask_col1,
             "attention_mask_col2": attention_mask_col2,
+            "attention_mask_col3": attention_mask_col3,
             "head_mask": head_mask,
             "use_cache": use_cache,  # change this to avoid caching (presumably for debugging)
 
