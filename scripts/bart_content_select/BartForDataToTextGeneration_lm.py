@@ -218,6 +218,8 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             return_dict=return_dict,
         )
 
+        print("outputs shape", outputs[0].shape)
+
         #print(input_ids)
         lm_logits0 = self.lm_head(outputs0[0]) + self.final_logits_bias0
         lm_logits1 = self.lm_head1(outputs1[0]) + self.final_logits_bias1
