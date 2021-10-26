@@ -68,7 +68,8 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         
         #self.lm_head1 = nn.Linear(config.d_model, self.model1.shared.num_embeddings, bias=False)
         #self.lm_head2 = nn.Linear(config.d_model, self.model2.shared.num_embeddings, bias=False)
-        self.lm_combine = Mixture(num_inputs=1)
+        #self.lm_combine = Mixture(num_inputs=1)
+        self.weigh_context = nn.Linear(config.d_model * 3, 3)
         self.init_weights()
 
     def _make_multiple_lm_heads(self):
@@ -218,8 +219,10 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             return_dict=return_dict,
         )
 
-        print("outputs shape", outputs[0].shape)
-
+        
+        alphas = self.weigh_context(torch.cat([[outputs0[0], outputs1[0], outputs2[0]]], dim = -1))
+        alphas = alphas[0]
+        print('WEIGHTS', alphas.shape)
         #print(input_ids)
         lm_logits0 = self.lm_head(outputs0[0]) + self.final_logits_bias0
         lm_logits1 = self.lm_head1(outputs1[0]) + self.final_logits_bias1
@@ -228,9 +231,10 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         lm_logits1 = self.softmax_logits(lm_logits1)
         lm_logits2 = self.softmax_logits(lm_logits2)
 
-        lm_logits = torch.stack([self.lm_combine(lm_logits0[batch_id], lm_logits1[batch_id], lm_logits2[batch_id], t = decoder_time_step) \
-                        for batch_id in range(0, lm_logits0.shape[0])])
-        #print('lm combined', lm_logits.shape)
+        lm_logits = [ alphas[batch_id][0] *  lm_logits0 + alphas[batch_id][1] *  lm_logits1  + alphas[batch_id][2] *  lm_logits2 \
+                for batch_id in range(0, lm_logits0.shape[0])]
+        lm_logits = torch.stack(lm_logits)
+        print('lm combined', lm_logits.shape)
         #lm_logits = self.softmax_logits(lm_logits)
         masked_lm_loss = None
         if labels is not None:
