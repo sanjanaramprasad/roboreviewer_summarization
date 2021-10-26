@@ -61,7 +61,7 @@ eval_beams = 4
 #summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/ramprasad.sa', files = data_files, max_len = 1024)
 
 learning_rate = 3e-5
-checkpoint_file = 'checkpoint_files_final/token_mixture_lm_global/epoch=2-val_loss=0.26.ckpt'
+checkpoint_file = 'checkpoint_files_final/token_mixture_lm_timed_multibart/epoch=4-val_loss=0.28.ckpt'
 model = LitModel.load_from_checkpoint(checkpoint_path=checkpoint_file, learning_rate = learning_rate, model=bart_model, tokenizer = tokenizer,  freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
 
 num_beams = 3

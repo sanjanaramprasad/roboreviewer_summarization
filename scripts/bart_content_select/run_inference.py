@@ -82,13 +82,13 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     for each in sample:
         outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length = min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, device = device)
         model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
-        population = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[0]])
-        population = ' '.join([w for w in population.split(' ') if w not in additional_special_tokens])
+        population = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[4]])
+        #population = ' '.join([w for w in population.split(' ') if w not in additional_special_tokens])
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[-1]])
-        print("CONT", population)
+        #print("TGT", target)
         #print('=' * 13)
-        print("MO", model_output)
-        print('=' * 13)
+        #print("MO", model_output)
+        #print('=' * 13)
         if model_output.strip():
             model_outputs.append(model_output)
             targets.append(target)
@@ -192,8 +192,8 @@ if __name__ =='__main__':
     if not output_file:
         with torch.no_grad():
             model_outputs, populations, targets,  rougeScore, meteorScore, bleuScore = run_inference(checkpoint_file)
-        df_write = pd.DataFrame(list(zip(targets, model_outputs, populations)), columns=["Reference Summary", "Generated Summary", "Population"])
-        file_name = "run_inference_output_lm_pop"
+        df_write = pd.DataFrame(list(zip(targets, model_outputs)), columns=["Reference Summary", "Generated Summary"])
+        file_name = "run_inference_output_lm_global"
         df_write.to_csv("%s.csv"%file_name)
 
 

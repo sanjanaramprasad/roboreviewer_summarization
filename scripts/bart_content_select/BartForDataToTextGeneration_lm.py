@@ -43,10 +43,11 @@ class Mixture(nn.Module):
                 idx = n
             W = self.weights[idx]
             W = self.softmax_gate(W)
-            v_t = (1 * v0[n][:, None]) + (0 * v1[n][:, None]) + (0 * v2[n][:, None])
+            print('v0', torch.stack([v0[n].unsqueeze(0), v1[n].unsqueeze(0), v2[n].unsqueeze(0) ], dim = 0).shape)
+            v_t = (W[0] * v0[n][:, None]) + (W[1] * v1[n][:, None]) + (W[2] * v2[n][:, None])
             v_mixt.append(v_t.t())
         #print(torch.cat(v_mixt).shape, v0.shape)
-        print(W[0], W[1], W[2])
+        #print(W[0], W[1], W[2])
         return torch.cat(v_mixt)
 
 
@@ -240,7 +241,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
 
         return Seq2SeqLMOutput(
             loss=masked_lm_loss,
-            logits=lm_logits0,
+            logits=lm_logits,
             past_key_values=[outputs0.past_key_values, outputs1.past_key_values, outputs2.past_key_values],
             decoder_hidden_states=outputs0.decoder_hidden_states,
             decoder_attentions=outputs0.decoder_attentions,
@@ -273,7 +274,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             "input_ids_col0": None,
             "input_ids_col1": None,
             "input_ids_col2": None,
-            "decoder_time_step":None,
+            "decoder_time_step":decoder_time_step,
             "encoder_outputs_col0": encoder_outputs_col0,
             "encoder_outputs_col1": encoder_outputs_col1,
             "encoder_outputs_col2": encoder_outputs_col2,
