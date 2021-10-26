@@ -219,8 +219,10 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             return_dict=return_dict,
         )
 
-        
-        alphas = self.weigh_context(torch.cat([[outputs0[0], outputs1[0], outputs2[0]]], dim = -1))
+       
+        #print(outputs0[0].shape) 
+        #print(torch.cat([outputs0[0], outputs1[0], outputs2[0]], dim = -1).shape) 
+        alphas = self.weigh_context(torch.cat([outputs0[0], outputs1[0], outputs2[0]], dim = -1))
         alphas = alphas[0]
         print('WEIGHTS', alphas.shape)
         #print(input_ids)
@@ -233,7 +235,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
 
         lm_logits = [ alphas[batch_id][0] *  lm_logits0 + alphas[batch_id][1] *  lm_logits1  + alphas[batch_id][2] *  lm_logits2 \
                 for batch_id in range(0, lm_logits0.shape[0])]
-        lm_logits = torch.stack(lm_logits)
+        lm_logits = torch.cat(lm_logits)
         print('lm combined', lm_logits.shape)
         #lm_logits = self.softmax_logits(lm_logits)
         masked_lm_loss = None
