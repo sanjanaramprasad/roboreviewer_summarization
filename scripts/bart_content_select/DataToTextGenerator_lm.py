@@ -16,7 +16,22 @@ import nltk
 from nltk.translate import meteor_score
 import numpy as np
 import subprocess 
-
+from transformers.generation_logits_process import (
+    EncoderNoRepeatNGramLogitsProcessor,
+    ForcedBOSTokenLogitsProcessor,
+    ForcedEOSTokenLogitsProcessor,
+    HammingDiversityLogitsProcessor,
+    InfNanRemoveLogitsProcessor,
+    LogitsProcessorList,
+    MinLengthLogitsProcessor,
+    NoBadWordsLogitsProcessor,
+    NoRepeatNGramLogitsProcessor,
+    PrefixConstrainedLogitsProcessor,
+    RepetitionPenaltyLogitsProcessor,
+    TemperatureLogitsWarper,
+    TopKLogitsWarper,
+    TopPLogitsWarper,
+)
 from transformers.generation_stopping_criteria import (
     MaxLengthCriteria,
     MaxTimeCriteria,
@@ -24,7 +39,7 @@ from transformers.generation_stopping_criteria import (
     validate_stopping_criteria,
 )
 
-
+BeamSearchOutput = Union[BeamSearchEncoderDecoderOutput, BeamSearchDecoderOnlyOutput]
 class Data2TextGenerator(GenerationMixin):
 
     def __init__(self, model, tokenizer):
@@ -100,7 +115,7 @@ class Data2TextGenerator(GenerationMixin):
         return input_ids, model_kwargs
 
 
-    def beam_search(
+    def beam_searcher(
         self,
         input_ids: torch.LongTensor,
         beam_scorer: BeamScorer,
@@ -119,8 +134,9 @@ class Data2TextGenerator(GenerationMixin):
         r"""
         Generates sequences for models with a language modeling head using beam search decoding.
         Parameters:
-            input_ids (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`):
-                The sequence used as a prompt for the generation.
+            input_ids (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`, `optional`):
+                The sequence used as a prompt for the generation. If :obj:`None` the method initializes it as an empty
+                :obj:`torch.LongTensor` of shape :obj:`(1,)`.
             beam_scorer (:obj:`BeamScorer`):
                 An derived instance of :class:`~transformers.BeamScorer` that defines how beam hypotheses are
                 constructed, stored and sorted during generation. For more information, the documentation of
@@ -143,7 +159,7 @@ class Data2TextGenerator(GenerationMixin):
                 Whether or not to return the attentions tensors of all attention layers. See ``attentions`` under
                 returned tensors for more details.
             output_hidden_states (:obj:`bool`, `optional`, defaults to `False`):
-                Whether or not to return the hidden states of all layers. See ``hidden_states`` under returned tensors
+                Whether or not to return trhe hidden states of all layers. See ``hidden_states`` under returned tensors
                 for more details.
             output_scores (:obj:`bool`, `optional`, defaults to `False`):
                 Whether or not to return the prediction scores. See ``scores`` under returned tensors for more details.
@@ -198,7 +214,6 @@ class Data2TextGenerator(GenerationMixin):
             >>> print("Generated:", tokenizer.batch_decode(outputs, skip_special_tokens=True))
         """
         # init values
-        print("BEAM SEARCHING")
         logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList()
         stopping_criteria = stopping_criteria if stopping_criteria is not None else StoppingCriteriaList()
         if max_length is not None:
@@ -273,12 +288,11 @@ class Data2TextGenerator(GenerationMixin):
                 continue  # don't waste resources running the code we don't need
 
             next_token_logits = outputs.logits[:, -1, :]
+
             # hack: adjust tokens for Marian. For Marian we have to make sure that the `pad_token_id`
-            # cannot be generated both before and after the `nn.functional.log_softmax` operation.
+            # cannot be generated both before and after the `F.log_softmax` operation.
             next_token_logits = self.adjust_logits_during_generation(next_token_logits, cur_len=cur_len)
-            next_token_scores = nn.functional.log_softmax(
-                next_token_logits, dim=-1
-            )  # (batch_size * num_beams, vocab_size)
+            next_token_scores = F.log_softmax(next_token_logits, dim=-1)  # (batch_size * num_beams, vocab_size)
 
             next_token_scores = logits_processor(input_ids, next_token_scores)
             next_token_scores = next_token_scores + beam_scores[:, None].expand_as(next_token_scores)
@@ -309,7 +323,7 @@ class Data2TextGenerator(GenerationMixin):
                 next_token_scores, 2 * num_beams, dim=1, largest=True, sorted=True
             )
 
-            next_indices = (next_tokens / vocab_size).long()
+            next_indices = next_tokens // vocab_size
             next_tokens = next_tokens % vocab_size
 
             # stateless
@@ -331,13 +345,7 @@ class Data2TextGenerator(GenerationMixin):
                 outputs, model_kwargs, is_encoder_decoder=self.config.is_encoder_decoder
             )
             if model_kwargs["past"] is not None:
-                past_key_values0, past_key_values1, past_key_values2, past_key_values3 = model_kwargs["past"]
-
-                past_key_values0 = self._reorder_cache(past_key_values0, beam_idx)
-                past_key_values1 = self._reorder_cache(past_key_values1, beam_idx)
-                past_key_values2 = self._reorder_cache(past_key_values2, beam_idx)
-                past_key_values3 = self._reorder_cache(past_key_values3, beam_idx)
-                model_kwargs['past'] = (past_key_values0, past_key_values1, past_key_values2, past_key_values3)
+                model_kwargs["past"] = self._reorder_cache(model_kwargs["past"], beam_idx)
 
             # increase cur_len
             cur_len = cur_len + 1
@@ -382,7 +390,6 @@ class Data2TextGenerator(GenerationMixin):
                 )
         else:
             return sequence_outputs["sequences"]
-
 
     def _prepare_attention_mask_for_generation(self, batch, device, model_kwargs):
         attention_mask_col0 = batch[1] if len(batch) >1 else None
@@ -682,7 +689,7 @@ class Data2TextGenerator(GenerationMixin):
                 input_ids, expand_size=num_beams, is_encoder_decoder=self.config.is_encoder_decoder, **model_kwargs
             )
             ##print("BEAM SEARCH KWARGS", model_kwargs)
-            return self.model.beam_search(
+            return self.model.beam_searcher(
                 input_ids,
                 beam_scorer,
                 logits_processor=logits_processor,
