@@ -20,10 +20,10 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/
 
 
 '''additional_special_tokens = ["<sep>", "<study>", "</study>",
-            "<outcomes_mesh>", "</outcomes_mesh>",
+            "<outcomes>", "</outcomes>",
             "<punchline_text>", "</punchline_text>",
-            "<population_mesh>", "</population_mesh>",
-            "<interventions_mesh>", "</interventions_mesh>",
+            "<population>", "</population>",
+            "<interventions>", "</interventions>",
             "<punchline_effect>", "</punchline_effect>"]
 '''    
 #tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>",eos_token="</s>",pad_token = "<pad>")
@@ -32,10 +32,10 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/
 #tokenizer.add_tokens(additional_special_tokens)
 
 additional_special_tokens = ["<sep>", "<study>", "</study>",
-            "<outcomes_mesh>", "</outcomes_mesh>",
+            "<outcomes>", "</outcomes>",
             "<punchline_text>", "</punchline_text>",
             "<population>", "</population>",
-            "<interventions_mesh>", "</interventions_mesh>",
+            "<interventions>", "</interventions>",
             "<punchline_effect>", "</punchline_effect>"]
 
 tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>",
@@ -61,7 +61,7 @@ eval_beams = 4
 #summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/ramprasad.sa', files = data_files, max_len = 1024)
 
 learning_rate = 3e-5
-checkpoint_file = 'checkpoint_files_final/token_mixture_lm_timed_multibart/epoch=4-val_loss=0.28.ckpt'
+checkpoint_file = 'checkpoint_files_final/token_mixture_lm_timed_multibart/epoch=4-val_loss=0.27.ckpt'
 model = LitModel.load_from_checkpoint(checkpoint_path=checkpoint_file, learning_rate = learning_rate, model=bart_model, tokenizer = tokenizer,  freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
 
 num_beams = 3

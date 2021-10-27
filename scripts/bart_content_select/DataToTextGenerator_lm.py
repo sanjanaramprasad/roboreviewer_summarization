@@ -43,9 +43,11 @@ class Data2TextGenerator(GenerationMixin):
         attention_mask_col0: torch.LongTensor = None,
         attention_mask_col1: torch.LongTensor = None,
         attention_mask_col2: torch.LongTensor = None,
+        attention_mask_col3: torch.LongTensor = None,
         encoder_outputs_col0: ModelOutput = None,
         encoder_outputs_col1: ModelOutput = None,
         encoder_outputs_col2: ModelOutput = None,
+        encoder_outputs_col3: ModelOutput = None,
         **model_kwargs,
     ) -> Tuple[torch.LongTensor, Dict[str, Any]]:
 
@@ -64,6 +66,8 @@ class Data2TextGenerator(GenerationMixin):
             model_kwargs["attention_mask_col1"] = attention_mask_col1.index_select(0, expanded_return_idx)
         if attention_mask_col2 is not None:
             model_kwargs["attention_mask_col2"] = attention_mask_col2.index_select(0, expanded_return_idx)
+        if attention_mask_col3 is not None:
+            model_kwargs["attention_mask_col3"] = attention_mask_col3.index_select(0, expanded_return_idx)
 
         if is_encoder_decoder:
             if encoder_outputs_col0 is not None:
@@ -84,6 +88,12 @@ class Data2TextGenerator(GenerationMixin):
                     0, expanded_return_idx.to(encoder_outputs_col2.last_hidden_state.device)
                 )
                 model_kwargs["encoder_outputs_col2"] = encoder_outputs_col2
+
+            if encoder_outputs_col3 is not None:
+                encoder_outputs_col3["last_hidden_state"] = encoder_outputs_col3.last_hidden_state.index_select(
+                    0, expanded_return_idx.to(encoder_outputs_col3.last_hidden_state.device)
+                )
+                model_kwargs["encoder_outputs_col3"] = encoder_outputs_col3
 
 
 
@@ -320,12 +330,13 @@ class Data2TextGenerator(GenerationMixin):
                 outputs, model_kwargs, is_encoder_decoder=self.config.is_encoder_decoder
             )
             if model_kwargs["past"] is not None:
-                past_key_values0, past_key_values1, past_key_values2 = model_kwargs["past"]
+                past_key_values0, past_key_values1, past_key_values2, past_key_values3 = model_kwargs["past"]
 
                 past_key_values0 = self._reorder_cache(past_key_values0, beam_idx)
                 past_key_values1 = self._reorder_cache(past_key_values1, beam_idx)
                 past_key_values2 = self._reorder_cache(past_key_values2, beam_idx)
-                model_kwargs['past'] = (past_key_values0, past_key_values1, past_key_values2)
+                past_key_values3 = self._reorder_cache(past_key_values3, beam_idx)
+                model_kwargs['past'] = (past_key_values0, past_key_values1, past_key_values2, past_key_values3)
 
             # increase cur_len
             cur_len = cur_len + 1
@@ -376,6 +387,7 @@ class Data2TextGenerator(GenerationMixin):
         attention_mask_col0 = batch[1] if len(batch) >1 else None
         attention_mask_col1 = batch[3] if len(batch) >3 else None
         attention_mask_col2 = batch[5] if len(batch) >5 else None
+        attention_mask_col3 = batch[7] if len(batch) >5 else None
         
         if not(attention_mask_col0 is None):
             model_kwargs["attention_mask_col0"] = attention_mask_col0
@@ -389,6 +401,10 @@ class Data2TextGenerator(GenerationMixin):
             model_kwargs["attention_mask_col2"] = attention_mask_col2
             model_kwargs["attention_mask_col2"] = model_kwargs["attention_mask_col2"].to(device)
 
+        if not(attention_mask_col3 is None):
+            model_kwargs["attention_mask_col3"] = attention_mask_col3
+            model_kwargs["attention_mask_col3"] = model_kwargs["attention_mask_col3"].to(device)
+
 
         #print(model_kwargs)
         return model_kwargs
@@ -397,6 +413,7 @@ class Data2TextGenerator(GenerationMixin):
         self, input_ids_col0: torch.LongTensor,
         input_ids_col1: torch.LongTensor,
         input_ids_col2: torch.LongTensor,
+        input_ids_col3: torch.LongTensor,
         device,
         model_kwargs
     ) -> Dict[str, Any]:
@@ -432,12 +449,22 @@ class Data2TextGenerator(GenerationMixin):
                     #encoder_outputs = encoder_kwargs.get('encoder_outputs_col2', None)
 
                     model_kwargs["encoder_outputs_col2"]: ModelOutput = self.model.model.get_encoder()(input_ids_col2, return_dict=True, **encoder_kwargs)
+            
+            if not(input_ids_col3 is None):
+                    encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if "col" not in argument}
+                    attention_mask_col3 = model_kwargs.get("attention_mask_col3", None)
+                    encoder_kwargs["attention_mask"] = attention_mask_col3
+                    #print(encoder_kwargs)
+                    #encoder_outputs = encoder_kwargs.get('encoder_outputs_col2', None)
+
+                    model_kwargs["encoder_outputs_col3"]: ModelOutput = self.model.model.get_encoder()(input_ids_col3, return_dict=True, **encoder_kwargs)
                      
 
 
             model_kwargs["attention_mask_col0"] = attention_mask_col0
             model_kwargs["attention_mask_col1"] = attention_mask_col1
             model_kwargs["attention_mask_col2"] = attention_mask_col2
+            model_kwargs["attention_mask_col3"] = attention_mask_col3
 
         return model_kwargs
         
@@ -498,6 +525,11 @@ class Data2TextGenerator(GenerationMixin):
         input_ids_col2 = input_ids_col2.to(device)
         attention_mask_col2 = batch[5] if len(batch) >5 else None
         attention_mask_col2 = attention_mask_col2.to(device)
+
+        input_ids_col3 = batch[6] if len(batch) >5 else None
+        input_ids_col3 = input_ids_col2.to(device)
+        attention_mask_col3 = batch[7] if len(batch) >5 else None
+        attention_mask_col3 = attention_mask_col3.to(device)
     
         #max_length = max_length if max_length is not None else self.config.max_length
         # set init values
@@ -550,6 +582,7 @@ class Data2TextGenerator(GenerationMixin):
             model_kwargs = self._prepare_encoder_decoder_kwargs_for_generation(input_ids_col0, 
                                                                                 input_ids_col1,
                                                                                 input_ids_col2,
+                                                                                input_ids_col3,
                                                                                 device,
                                                                                 model_kwargs,
                                                                                 )
