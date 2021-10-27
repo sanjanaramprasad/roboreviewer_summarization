@@ -414,7 +414,7 @@ class Data2TextGenerator(GenerationMixin):
                 input_ids, expand_size=num_beams, is_encoder_decoder=self.config.is_encoder_decoder, **model_kwargs
             )
             ##print("BEAM SEARCH KWARGS", model_kwargs)
-            return self.model.beam_searcher(
+            return self._beam_searcher(
                 input_ids,
                 beam_scorer,
                 logits_processor=logits_processor,
@@ -538,7 +538,7 @@ class Data2TextGenerator(GenerationMixin):
                 **model_kwargs,
             )
 
-    def beam_searcher(
+    def _beam_searcher(
         self,
         input_ids: torch.LongTensor,
         beam_scorer: BeamScorer,
@@ -697,9 +697,9 @@ class Data2TextGenerator(GenerationMixin):
                 if this_peer_finished_flag.item() == 0.0:
                     break
 
-            model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
-
-            outputs = self(
+            model_inputs = self.model.prepare_inputs_for_generation(input_ids, **model_kwargs)
+            #print(model_inputs)
+            outputs = self.model(
                 **model_inputs,
                 return_dict=True,
                 output_attentions=output_attentions,
@@ -768,7 +768,7 @@ class Data2TextGenerator(GenerationMixin):
                 outputs, model_kwargs, is_encoder_decoder=self.config.is_encoder_decoder
             )
             if model_kwargs["past"] is not None:
-                model_kwargs["past"] = self._reorder_cache(model_kwargs["past"], beam_idx)
+                model_kwargs["past"] = self.model._reorder_cache(model_kwargs["past"], beam_idx)
 
             # increase cur_len
             cur_len = cur_len + 1
