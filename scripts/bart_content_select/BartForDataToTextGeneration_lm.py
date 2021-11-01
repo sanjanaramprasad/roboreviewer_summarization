@@ -1,4 +1,5 @@
 import torch
+from dataclasses import dataclass
 from torch import nn
 from transformers.models.bart.modeling_bart import BartEncoder, BartModel, BartPretrainedModel, shift_tokens_right, BartDecoderLayer, BartLearnedPositionalEmbedding,  _make_causal_mask, _expand_mask
 from transformers.models.bart.configuration_bart import BartConfig
