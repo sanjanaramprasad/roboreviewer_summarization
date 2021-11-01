@@ -279,20 +279,20 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         if not return_dict:
             output = (lm_logits0,) + outputs0[1:]
             return ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
-
+        
+        lm_logits_list = [(alphas[batch_id][0][0] *  lm_logits0[batch_id].unsqueeze(0) , alphas[batch_id][0][1] *  lm_logits1[batch_id].unsqueeze(0)\
+                  , alphas[batch_id][0][2] *  lm_logits2[batch_id].unsqueeze(0), alphas[batch_id][0][3] *  lm_logits3[batch_id].unsqueeze(0)) \
+                for batch_id in range(0, lm_logits0.shape[0])]
         return Seq2SeqLMOutput(
             loss=masked_lm_loss,
             logits=lm_logits,
-            past_key_values=[outputs0.past_key_values, outputs1.past_key_values, outputs2.past_key_values, outputs3.past_key_values],
+            past_key_values=[outputs0.past_key_values, outputs1.past_key_values, outputs2.past_key_values, outputs3.past_key_values, lm_logits_list],
             decoder_hidden_states=outputs0.decoder_hidden_states,
             decoder_attentions=outputs0.decoder_attentions,
             cross_attentions=outputs0.cross_attentions,
             encoder_last_hidden_state=outputs0.encoder_last_hidden_state,
             encoder_hidden_states=outputs0.encoder_hidden_states,
             encoder_attentions=outputs0.encoder_attentions,
-            logits_individual = [(alphas[batch_id][0][0] *  lm_logits0[batch_id].unsqueeze(0) , alphas[batch_id][0][1] *  lm_logits1[batch_id].unsqueeze(0)\
-                  , alphas[batch_id][0][2] *  lm_logits2[batch_id].unsqueeze(0), alphas[batch_id][0][3] *  lm_logits3[batch_id].unsqueeze(0)) \
-                for batch_id in range(0, lm_logits0.shape[0])]
         )
 
     def prepare_inputs_for_generation(
