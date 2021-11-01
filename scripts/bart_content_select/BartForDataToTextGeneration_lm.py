@@ -290,6 +290,9 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             encoder_last_hidden_state=outputs0.encoder_last_hidden_state,
             encoder_hidden_states=outputs0.encoder_hidden_states,
             encoder_attentions=outputs0.encoder_attentions,
+            logits_individual = [(alphas[batch_id][0][0] *  lm_logits0[batch_id].unsqueeze(0) , alphas[batch_id][0][1] *  lm_logits1[batch_id].unsqueeze(0)\
+                  , alphas[batch_id][0][2] *  lm_logits2[batch_id].unsqueeze(0), alphas[batch_id][0][3] *  lm_logits3[batch_id].unsqueeze(0)) \
+                for batch_id in range(0, lm_logits0.shape[0])]
         )
 
     def prepare_inputs_for_generation(
