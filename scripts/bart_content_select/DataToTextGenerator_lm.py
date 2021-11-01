@@ -711,12 +711,14 @@ class Data2TextGenerator(GenerationMixin):
                 continue  # don't waste resources running the code we don't need
 
             next_token_logits = outputs.logits[:, -1, :]
-            print("NEXT TOKEN LOGITS", next_token_logits)
+            
             # hack: adjust tokens for Marian. For Marian we have to make sure that the `pad_token_id`
             # cannot be generated both before and after the `F.log_softmax` operation.
             next_token_logits = self.adjust_logits_during_generation(next_token_logits, cur_len=cur_len)
             next_token_scores = F.log_softmax(next_token_logits, dim=-1)  # (batch_size * num_beams, vocab_size)
 
+            indices = [ (beam_idx_scores==max(beam_idx_scores)).nonzero().item() for batch in next_token_scores for beam_idx_scores in batch]
+            print(indices)
             next_token_scores = logits_processor(input_ids, next_token_scores)
             next_token_scores = next_token_scores + beam_scores[:, None].expand_as(next_token_scores)
 
