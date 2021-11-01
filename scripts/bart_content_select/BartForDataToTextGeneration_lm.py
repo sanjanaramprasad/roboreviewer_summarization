@@ -21,6 +21,19 @@ from transformers.modeling_outputs import (
     Seq2SeqSequenceClassifierOutput,
 )
 
+@dataclass
+class BARTSeq2SeqLMOutput(Seq2SeqLMOutput):
+    loss: Optional[torch.FloatTensor] = None
+    logits: torch.FloatTensor = None
+    past_key_values: Optional[Tuple[Tuple[torch.FloatTensor]]] = None
+    decoder_hidden_states: Optional[Tuple[torch.FloatTensor]] = None
+    decoder_attentions: Optional[Tuple[torch.FloatTensor]] = None
+    cross_attentions: Optional[Tuple[torch.FloatTensor]] = None
+    encoder_last_hidden_state: Optional[torch.FloatTensor] = None
+    encoder_hidden_states: Optional[Tuple[torch.FloatTensor]] = None
+    encoder_attentions: Optional[Tuple[torch.FloatTensor]] = None
+    lm_logits_individual : Optional[Tuple[Tuple[torch.FloatTensor]]] = None
+
 class Mixture(nn.Module):
     def __init__(self, num_inputs):
         super(Mixture, self).__init__()
@@ -283,16 +296,17 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         lm_logits_list = [(alphas[batch_id][0][0] *  lm_logits0[batch_id].unsqueeze(0) , alphas[batch_id][0][1] *  lm_logits1[batch_id].unsqueeze(0)\
                   , alphas[batch_id][0][2] *  lm_logits2[batch_id].unsqueeze(0), alphas[batch_id][0][3] *  lm_logits3[batch_id].unsqueeze(0)) \
                 for batch_id in range(0, lm_logits0.shape[0])]
-        return Seq2SeqLMOutput(
+        return BARTSeq2SeqLMOutput(
             loss=masked_lm_loss,
             logits=lm_logits,
-            past_key_values=[outputs0.past_key_values, outputs1.past_key_values, outputs2.past_key_values, outputs3.past_key_values, lm_logits_list],
+            past_key_values=[outputs0.past_key_values, outputs1.past_key_values, outputs2.past_key_values, outputs3.past_key_values],
             decoder_hidden_states=outputs0.decoder_hidden_states,
             decoder_attentions=outputs0.decoder_attentions,
             cross_attentions=outputs0.cross_attentions,
             encoder_last_hidden_state=outputs0.encoder_last_hidden_state,
             encoder_hidden_states=outputs0.encoder_hidden_states,
             encoder_attentions=outputs0.encoder_attentions,
+            lm_logits_individual = lm_logits_list
         )
 
     def prepare_inputs_for_generation(
