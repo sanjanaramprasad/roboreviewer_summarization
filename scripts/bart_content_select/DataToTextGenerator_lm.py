@@ -431,7 +431,6 @@ class Data2TextGenerator(GenerationMixin):
         elif is_group_beam_gen_mode:
             #print("GROUP BEAM SEARCHING")
             batch_size = input_ids.shape[0]
-
             length_penalty = length_penalty if length_penalty is not None else self.config.length_penalty
             early_stopping = early_stopping if early_stopping is not None else self.config.early_stopping
 
@@ -685,6 +684,7 @@ class Data2TextGenerator(GenerationMixin):
         beam_scores = beam_scores.view((batch_size * num_beams,))
 
         this_peer_finished = False  # used by synced_gpus only
+        #lm_peaks = torch.zeros(input_ids.shape)
         while True:
 
             if synced_gpus:
@@ -697,8 +697,8 @@ class Data2TextGenerator(GenerationMixin):
                 if this_peer_finished_flag.item() == 0.0:
                     break
 
+        
             model_inputs = self.model.prepare_inputs_for_generation(input_ids, **model_kwargs)
-            #print(model_inputs)
             outputs = self.model(
                 **model_inputs,
                 return_dict=True,
@@ -711,18 +711,17 @@ class Data2TextGenerator(GenerationMixin):
                 continue  # don't waste resources running the code we don't need
 
             next_token_logits = outputs.logits[:, -1, :]
-            
-            # hack: adjust tokens for Marian. For Marian we have to make sure that the `pad_token_id`
-            # cannot be generated both before and after the `F.log_softmax` operation.
             next_token_logits = self.adjust_logits_during_generation(next_token_logits, cur_len=cur_len)
             next_token_scores = F.log_softmax(next_token_logits, dim=-1)  # (batch_size * num_beams, vocab_size)
-
-            indices = [ (beam_idx_scores==max(beam_idx_scores)).nonzero().item() for batch in next_token_scores for beam_idx_scores in batch]
-            print(indices)
             next_token_scores = logits_processor(input_ids, next_token_scores)
             next_token_scores = next_token_scores + beam_scores[:, None].expand_as(next_token_scores)
+            logits_list = outputs.lm_logits_individual 
+            #print("LOGITS SHAPE", logits_list.shape)
+            logits_list = logits_list[:, : ,-1, :]
+            logits_list = logits_list.transpose(0, 1)
+            #logits_list = logits_list.reshape(logits_list.shape[0], num_beams * logits_list.shape[-1])
+            print("LOGITS SHAPE", logits_list.shape, input_ids.shape)
 
-            # Store scores, attentions and hidden_states when required
             if return_dict_in_generate:
                 if output_scores:
                     scores += (next_token_scores,)
@@ -743,15 +742,14 @@ class Data2TextGenerator(GenerationMixin):
             # reshape for beam search
             vocab_size = next_token_scores.shape[-1]
             next_token_scores = next_token_scores.view(batch_size, num_beams * vocab_size)
-
+            next_token_scores_og = next_token_scores
             next_token_scores, next_tokens = torch.topk(
                 next_token_scores, 2 * num_beams, dim=1, largest=True, sorted=True
             )
-
+            logit_indices = next_tokens
             next_indices = next_tokens // vocab_size
             next_tokens = next_tokens % vocab_size
-
-            # stateless
+            print("NEXT INDICES, TOKENS", next_indices, next_tokens, input_ids)
             beam_outputs = beam_scorer.process(
                 input_ids,
                 next_token_scores,
@@ -760,12 +758,11 @@ class Data2TextGenerator(GenerationMixin):
                 pad_token_id=pad_token_id,
                 eos_token_id=eos_token_id,
             )
+            #print("INPUT IDS", input_ids)
             beam_scores = beam_outputs["next_beam_scores"]
             beam_next_tokens = beam_outputs["next_beam_tokens"]
             beam_idx = beam_outputs["next_beam_indices"]
-
             input_ids = torch.cat([input_ids[beam_idx, :], beam_next_tokens.unsqueeze(-1)], dim=-1)
-
             model_kwargs = self._update_model_kwargs_for_generation(
                 outputs, model_kwargs, is_encoder_decoder=self.config.is_encoder_decoder
             )
@@ -774,13 +771,13 @@ class Data2TextGenerator(GenerationMixin):
 
             # increase cur_len
             cur_len = cur_len + 1
-
             if beam_scorer.is_done or stopping_criteria(input_ids, scores):
                 if not synced_gpus:
                     break
                 else:
                     this_peer_finished = True
 
+        #print("INPUT IDS", input_ids)
         sequence_outputs = beam_scorer.finalize(
             input_ids,
             beam_scores,
@@ -790,7 +787,26 @@ class Data2TextGenerator(GenerationMixin):
             eos_token_id=eos_token_id,
             max_length=stopping_criteria.max_length,
         )
+        cut = 1
+        print("SEQUENCE OUTPUTS", sequence_outputs["sequences"])
+        #indices = []
+        seq_outputs = sequence_outputs["sequences"][0][:-1]
+        seq_len = len(seq_outputs)
+       
+        '''for i, iid in enumerate(input_ids):
+         iid = iid[:seq_len]
+         print("COMPARE", seq_outputs, iid)
+         print(iid.eq(seq_outputs))
+         print('-' * 13)
+         if torch.all(iid.eq(seq_outputs)):
+            indices.append(i)
+            break''' 
 
+
+
+        #found_index = indices[0]
+        #if not indices:
+        #print("REVIEW", "***" * 13)
         if return_dict_in_generate:
             if not output_scores:
                 sequence_outputs["sequence_scores"] = None
@@ -815,7 +831,3 @@ class Data2TextGenerator(GenerationMixin):
                 )
         else:
             return sequence_outputs["sequences"]
-
-
-
-
