@@ -44,8 +44,21 @@ BeamSearchOutput = Union[BeamSearchEncoderDecoderOutput, BeamSearchDecoderOnlyOu
 class LogitsRecorder():
     def __init__(self, size):
         self.beam_ids = []
-        self.update_logits = torch.zeros(size)
-        self.beam_logits = torch.zeros(size)
+        self.beam_logits = []
+
+    def _get_max_logits(self, logits_list_idx, next_tokens):
+        logits_list_idx_tokens = []
+
+        for i, logits in enumerate(logits_list_idx):
+            token = next_tokens[i]
+            token_logits = []
+            for lm_head in logits:
+                lm_head_score = lm_head[token].item()
+                token_logits.append(lm_head_score)
+            logits_list_idx_tokens.append(token_logits)
+
+        return logits_list_idx_tokens
+
 
     def process(self,
                 input_ids, 
@@ -53,16 +66,16 @@ class LogitsRecorder():
                 next_indices, 
                 logits_list):
 
+        
         add_indices = (next_tokens == 2).nonzero(as_tuple=True)[1]
         if add_indices.numel():
-            print("next_tokens check", next_tokens, add_indices)
-            print("check next indices", next_indices)
-            print("check", next_indices[0][add_indices], )
-            print("input ids check", input_ids)
-            print("iid", input_ids[next_indices[0][add_indices]])
             beam_idx = next_indices[0][add_indices]
             self.beam_ids += input_ids[beam_idx].clone()
-        return {'beam_ids' : self.beam_ids}
+            logits_list_idx = logits_list[beam_idx]
+            logits_list_idx = self._get_max_logits(logits_list_idx, next_tokens[0][add_indices])
+            self.beam_logits += logits_list_idx
+            print("checker", self.beam_logits)
+        return {'beam_ids' : self.beam_ids, 'beam_logits' : self.beam_logits}
 
             
 
@@ -780,7 +793,7 @@ class Data2TextGenerator(GenerationMixin):
             next_indices = next_tokens // vocab_size
             next_tokens = next_tokens % vocab_size
             ##print("NEXT INDICES, TOKENS", next_indices, next_tokens, input_ids)
-
+            
             logits_recorder_outputs = logits_recorder.process(
                 input_ids, 
                 next_tokens,
