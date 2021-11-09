@@ -225,6 +225,13 @@ if __name__ == '__main__':
         print(population_attention_masks)
         print('=' * 13)
 
+        population_input_ids = batch[2] if len(batch) >1 else None
+        population_attention_masks = batch[3] if len(batch) >1 else None
+        print("INTERVENTION")
+        print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in population_input_ids]))
+        print(population_attention_masks)
+        print('=' * 13)
+
         punchline_text_input_ids = batch[4] if len(batch) >1 else None
         punchline_text_attention_masks = batch[5] if len(batch) >1 else None
         print("OUTCOMES")

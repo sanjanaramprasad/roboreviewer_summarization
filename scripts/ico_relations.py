@@ -55,8 +55,8 @@ def get_file_relations(filename):
 #return_val = ret.json()
 #print(return_val)
 
-model_output_file = "/home/sanjana/roboreviewer_summarization/scripts/bart_loop_outputs.txt"
-reference_file = '/home/sanjana/roboreviewer_summarization/scripts/bart_loop_ref.txt'
+model_output_file = "/home/ramprasad.sa/roboreviewer_summarization/scripts/trial_output.txt"
+reference_file = '/home/ramprasad.sa/roboreviewer_summarization/scripts/trial_ref.txt'
 
 
 data_relations = get_file_relations(model_output_file)
@@ -70,4 +70,4 @@ dataf = {'model_outputs' : model_outputs, 'targets': targets, 'model_output_rela
 
 df = pd.DataFrame(dataf)
 print(df)
-df.to_csv('bart_loop_relations.csv')
+df.to_csv('bart_context_lm_relations.csv')

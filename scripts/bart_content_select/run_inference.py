@@ -80,9 +80,9 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
  
     print("Sample scoring")
     for each in sample:
-        outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length = min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, return_dict_in_generate = True, device = device)
-        print(outputs)
-        model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs[0]])
+        outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length = min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, return_dict_in_generate = False, device = device)
+        #print(outputs[1])
+        model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
         population = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[4]])
         #population = ' '.join([w for w in population.split(' ') if w not in additional_special_tokens])
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[-1]])

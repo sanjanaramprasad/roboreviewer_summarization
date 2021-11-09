@@ -55,7 +55,8 @@ class LogitsRecorder():
             for lm_head in logits:
                 lm_head_score = lm_head[token].item()
                 token_logits.append(lm_head_score)
-            logits_list_idx_tokens.append(token_logits)
+            source_idx = token_logits.index(max(token_logits))
+            logits_list_idx_tokens.append(source_idx)
 
         return logits_list_idx_tokens
 
@@ -66,15 +67,14 @@ class LogitsRecorder():
                 next_indices, 
                 logits_list):
 
-        
         add_indices = (next_tokens == 2).nonzero(as_tuple=True)[1]
         if add_indices.numel():
             beam_idx = next_indices[0][add_indices]
             self.beam_ids += input_ids[beam_idx].clone()
             logits_list_idx = logits_list[beam_idx]
             logits_list_idx = self._get_max_logits(logits_list_idx, next_tokens[0][add_indices])
-            self.beam_logits += logits_list_idx
-            print("checker", self.beam_logits)
+            self.beam_logits.append(logits_list_idx)
+            print("checker", self.beam_logits, self.beam_ids)
         return {'beam_ids' : self.beam_ids, 'beam_logits' : self.beam_logits}
 
             
@@ -794,6 +794,8 @@ class Data2TextGenerator(GenerationMixin):
             next_tokens = next_tokens % vocab_size
             ##print("NEXT INDICES, TOKENS", next_indices, next_tokens, input_ids)
             
+            print("NEXT INDICES, TOKENS", next_indices, next_tokens)
+
             logits_recorder_outputs = logits_recorder.process(
                 input_ids, 
                 next_tokens,

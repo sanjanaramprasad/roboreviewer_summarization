@@ -84,7 +84,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         #self.lm_head1 = nn.Linear(config.d_model, self.model1.shared.num_embeddings, bias=False)
         #self.lm_head2 = nn.Linear(config.d_model, self.model2.shared.num_embeddings, bias=False)
         #self.lm_combine = Mixture(num_inputs=1)
-        self.weigh_context = nn.Linear(config.d_model * 4, 4)
+        self.weigh_context = nn.Linear(config.d_model*4 , 4)
         self.soft_weigh = nn.Softmax(dim =2)
         self.init_weights()
 
@@ -265,21 +265,27 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
        
         #print(outputs0[0].shape) 
         #print(torch.cat([outputs0[0], outputs1[0], outputs2[0]], dim = -1).shape) 
-        alphas = self.soft_weigh(self.weigh_context(torch.cat([outputs0[0], outputs1[0], outputs2[0], outputs3[0]], dim = -1)))
-        #print("ALPHAS", alphas.shape)
+        alphas = self.weigh_context(torch.cat([outputs0[0], outputs1[0], outputs2[0], outputs3[0]], dim = -1))
+        
+        #outputs = torch.stack([outputs0[0].squeeze(0), outputs1[0].squeeze(0), outputs2[0].squeeze(0), outputs3[0].squeeze(0)], dim = 1)
+        #print("OUTPUTS SHAPE", outputs.shape)
+        ##alphas = self.weigh_context(outputs)
+        ##print("ALPHAS", alphas)
+        alphas = self.soft_weigh(alphas)
+        
         #alphas = alphas[0]
-        #print('WEIGHTS', alphas.shape)
+        #print('WEIGHTS', alphas, alphas.shape)
         #print(input_ids)
         lm_logits0 = self.lm_head(outputs0[0]) + self.final_logits_bias0
         lm_logits1 = self.lm_head1(outputs1[0]) + self.final_logits_bias1
         lm_logits2 = self.lm_head2(outputs2[0]) + self.final_logits_bias2
-        lm_logits3 = self.lm_head2(outputs3[0]) + self.final_logits_bias3
+        lm_logits3 = self.lm_head3(outputs3[0]) + self.final_logits_bias3
         lm_logits0 = self.softmax_logits(lm_logits0)
         lm_logits1 = self.softmax_logits(lm_logits1)
         lm_logits2 = self.softmax_logits(lm_logits2)
         lm_logits3 = self.softmax_logits(lm_logits3)
 
-        #print(lm_logits0.shape, alphas)
+        #print(lm_logits0.shape)
         lm_logits = [ alphas[batch_id][0][0] *  lm_logits0[batch_id].unsqueeze(0) + alphas[batch_id][0][1] *  lm_logits1[batch_id].unsqueeze(0)  + alphas[batch_id][0][2] *  lm_logits2[batch_id].unsqueeze(0) + alphas[batch_id][0][3] *  lm_logits3[batch_id].unsqueeze(0) \
                 for batch_id in range(0, lm_logits0.shape[0])]
         lm_logits = torch.cat(lm_logits)
@@ -293,10 +299,11 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         if not return_dict:
             output = (lm_logits0,) + outputs0[1:]
             return ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
-        
-        lm_logits_list = [(alphas[batch_id][0][0] *  lm_logits0[batch_id].unsqueeze(0) , alphas[batch_id][0][1] *  lm_logits1[batch_id].unsqueeze(0)\
-                  , alphas[batch_id][0][2] *  lm_logits2[batch_id].unsqueeze(0), alphas[batch_id][0][3] *  lm_logits3[batch_id].unsqueeze(0)) \
+        #print(lm_logits0[0].unsqueeze(0).shape)        
+        lm_logits_list = [torch.cat([alphas[batch_id][0][0] *  lm_logits0[batch_id].unsqueeze(0) , alphas[batch_id][0][1] *  lm_logits1[batch_id].unsqueeze(0)\
+                  , alphas[batch_id][0][2] *  lm_logits2[batch_id].unsqueeze(0), alphas[batch_id][0][3] *  lm_logits3[batch_id].unsqueeze(0)]) \
                 for batch_id in range(0, lm_logits0.shape[0])]
+        lm_logits_list = torch.stack(lm_logits_list)
         return BARTSeq2SeqLMOutput(
             loss=masked_lm_loss,
             logits=lm_logits,
