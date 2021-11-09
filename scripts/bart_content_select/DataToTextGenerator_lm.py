@@ -40,6 +40,29 @@ from transformers.generation_stopping_criteria import (
 )
 
 BeamSearchOutput = Union[BeamSearchEncoderDecoderOutput, BeamSearchDecoderOnlyOutput]
+
+class LogitsRecorder():
+    def __init__(self, size):
+        self.beam_ids = []
+        self.update_logits = torch.zeros(size)
+        self.beam_logits = torch.zeros(size)
+
+    def process(self,
+                input_ids, 
+                next_tokens,
+                next_indices, 
+                logits_list):
+
+        add_indices = (next_tokens == 2).nonzero(as_tuple=True)[0]
+        if add_indices:
+            beam_idx = next_indices[add_indices]
+            self.beam_ids.append(input_ids[beam_idx].clone())
+        return {'beam_ids' : self.beam_ids}
+
+            
+
+
+
 class Data2TextGenerator(GenerationMixin):
 
     def __init__(self, model, tokenizer):
@@ -636,6 +659,7 @@ class Data2TextGenerator(GenerationMixin):
             >>> print("Generated:", tokenizer.batch_decode(outputs, skip_special_tokens=True))
         """
         # init values
+        
         logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList()
         stopping_criteria = stopping_criteria if stopping_criteria is not None else StoppingCriteriaList()
         if max_length is not None:
@@ -684,6 +708,7 @@ class Data2TextGenerator(GenerationMixin):
         beam_scores = beam_scores.view((batch_size * num_beams,))
 
         this_peer_finished = False  # used by synced_gpus only
+        logits_recorder = LogitsRecorder(size = input_ids.shape)
         #lm_peaks = torch.zeros(input_ids.shape)
         while True:
 
@@ -749,7 +774,15 @@ class Data2TextGenerator(GenerationMixin):
             logit_indices = next_tokens
             next_indices = next_tokens // vocab_size
             next_tokens = next_tokens % vocab_size
-            print("NEXT INDICES, TOKENS", next_indices, next_tokens, input_ids)
+            ##print("NEXT INDICES, TOKENS", next_indices, next_tokens, input_ids)
+
+            logits_recorder_outputs = logits_recorder.process(
+                input_ids, 
+                next_tokens,
+                next_indices, 
+                logits_list
+            )
+            
             beam_outputs = beam_scorer.process(
                 input_ids,
                 next_token_scores,
@@ -789,22 +822,22 @@ class Data2TextGenerator(GenerationMixin):
         )
         cut = 1
         print("SEQUENCE OUTPUTS", sequence_outputs["sequences"])
-        #indices = []
+        indices = []
         seq_outputs = sequence_outputs["sequences"][0][:-1]
         seq_len = len(seq_outputs)
        
-        '''for i, iid in enumerate(input_ids):
+        for i, iid in enumerate(logits_recorder_outputs['beam_ids']):
          iid = iid[:seq_len]
          print("COMPARE", seq_outputs, iid)
          print(iid.eq(seq_outputs))
          print('-' * 13)
          if torch.all(iid.eq(seq_outputs)):
             indices.append(i)
-            break''' 
+            break 
 
 
 
-        #found_index = indices[0]
+        found_index = indices[0]
         #if not indices:
         #print("REVIEW", "***" * 13)
         if return_dict_in_generate:
