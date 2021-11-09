@@ -53,10 +53,15 @@ class LogitsRecorder():
                 next_indices, 
                 logits_list):
 
-        add_indices = (next_tokens == 2).nonzero(as_tuple=True)[0]
-        if add_indices:
-            beam_idx = next_indices[add_indices]
-            self.beam_ids.append(input_ids[beam_idx].clone())
+        add_indices = (next_tokens == 2).nonzero(as_tuple=True)[1]
+        if add_indices.numel():
+            print("next_tokens check", next_tokens, add_indices)
+            print("check next indices", next_indices)
+            print("check", next_indices[0][add_indices], )
+            print("input ids check", input_ids)
+            print("iid", input_ids[next_indices[0][add_indices]])
+            beam_idx = next_indices[0][add_indices]
+            self.beam_ids += input_ids[beam_idx].clone()
         return {'beam_ids' : self.beam_ids}
 
             
@@ -825,15 +830,16 @@ class Data2TextGenerator(GenerationMixin):
         indices = []
         seq_outputs = sequence_outputs["sequences"][0][:-1]
         seq_len = len(seq_outputs)
-       
+        #print(logits_recorder_outputs['beam_ids'])       
         for i, iid in enumerate(logits_recorder_outputs['beam_ids']):
          iid = iid[:seq_len]
-         print("COMPARE", seq_outputs, iid)
-         print(iid.eq(seq_outputs))
-         print('-' * 13)
-         if torch.all(iid.eq(seq_outputs)):
-            indices.append(i)
-            break 
+         if iid.shape == seq_outputs.shape:
+             print("COMPARE", seq_outputs, iid)
+             print(iid.eq(seq_outputs))
+             print('-' * 13)
+             if torch.all(iid.eq(seq_outputs)):
+                indices.append(i)
+                break 
 
 
 
