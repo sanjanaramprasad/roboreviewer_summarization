@@ -269,11 +269,11 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         ##alphas = self.weigh_context(torch.cat([outputs0[0], outputs1[0], outputs2[0], outputs3[0]], dim = -1))
 
         ## TRIAL 2 
-        context_vect = torch.cat([outputs0[0], outputs1[0], outputs2[0], outputs3[0]])
+        context_vect = torch.stack([outputs0[0], outputs1[0], outputs2[0], outputs3[0]], dim = 0)
         context_vect = torch.max(context_vect, dim = 0)[0]
         print('CVECT', context_vect.shape)
 
-        alphas = self.weigh_context(torch.max(context_vect, dim = 0)[0])
+        alphas = self.weigh_context(context_vect)
         
         #outputs = torch.stack([outputs0[0].squeeze(0), outputs1[0].squeeze(0), outputs2[0].squeeze(0), outputs3[0].squeeze(0)], dim = 1)
         #print("OUTPUTS SHAPE", outputs.shape)
