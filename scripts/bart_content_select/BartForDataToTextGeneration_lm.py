@@ -265,16 +265,23 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
        
         #print(outputs0[0].shape) 
         #print(torch.cat([outputs0[0], outputs1[0], outputs2[0]], dim = -1).shape) 
-        alphas = self.weigh_context(torch.cat([outputs0[0], outputs1[0], outputs2[0], outputs3[0]], dim = -1))
+        ## TRIAL 1 
+        ##alphas = self.weigh_context(torch.cat([outputs0[0], outputs1[0], outputs2[0], outputs3[0]], dim = -1))
+
+        ## TRIAL 2 
+        context_vect = torch.cat([outputs0[0], outputs1[0], outputs2[0], outputs3[0]])
+        print('CVECT', context_vect.shape)
+
+        alphas = self.weigh_context(torch.max(context_vect, dim = 0)[0])
         
         #outputs = torch.stack([outputs0[0].squeeze(0), outputs1[0].squeeze(0), outputs2[0].squeeze(0), outputs3[0].squeeze(0)], dim = 1)
         #print("OUTPUTS SHAPE", outputs.shape)
         ##alphas = self.weigh_context(outputs)
-        ##print("ALPHAS", alphas)
+        print("ALPHAS", alphas)
         alphas = self.soft_weigh(alphas)
         
         #alphas = alphas[0]
-        #print('WEIGHTS', alphas, alphas.shape)
+        print('WEIGHTS', alphas, alphas.shape)
         #print(input_ids)
         lm_logits0 = self.lm_head(outputs0[0]) + self.final_logits_bias0
         lm_logits1 = self.lm_head1(outputs1[0]) + self.final_logits_bias1
