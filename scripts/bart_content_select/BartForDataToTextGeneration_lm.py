@@ -84,7 +84,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         #self.lm_head1 = nn.Linear(config.d_model, self.model1.shared.num_embeddings, bias=False)
         #self.lm_head2 = nn.Linear(config.d_model, self.model2.shared.num_embeddings, bias=False)
         #self.lm_combine = Mixture(num_inputs=1)
-        self.weigh_context = nn.Linear(config.d_model*4 , 4)
+        self.weigh_context = nn.Linear(config.d_model , 4)
         self.soft_weigh = nn.Softmax(dim =2)
         self.init_weights()
 
@@ -270,6 +270,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
 
         ## TRIAL 2 
         context_vect = torch.cat([outputs0[0], outputs1[0], outputs2[0], outputs3[0]])
+        context_vect = torch.max(context_vect, dim = 0)[0]
         print('CVECT', context_vect.shape)
 
         alphas = self.weigh_context(torch.max(context_vect, dim = 0)[0])
@@ -287,6 +288,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         lm_logits1 = self.lm_head1(outputs1[0]) + self.final_logits_bias1
         lm_logits2 = self.lm_head2(outputs2[0]) + self.final_logits_bias2
         lm_logits3 = self.lm_head3(outputs3[0]) + self.final_logits_bias3
+
         lm_logits0 = self.softmax_logits(lm_logits0)
         lm_logits1 = self.softmax_logits(lm_logits1)
         lm_logits2 = self.softmax_logits(lm_logits2)
