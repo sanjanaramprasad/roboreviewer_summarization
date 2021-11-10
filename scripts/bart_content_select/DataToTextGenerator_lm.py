@@ -58,7 +58,7 @@ class LogitsRecorder():
                 token_logits.append(lm_head_score)
             source_idx = token_logits.index(max(token_logits))
             logits_list_idx_tokens.append(source_idx)
-
+        logits_list_idx_tokens = torch.tensor([logits_list_idx_tokens])
         return logits_list_idx_tokens
 
 
@@ -85,11 +85,12 @@ class LogitsRecorder():
         unfinished_tokens = next_tokens[0][unfinished_idx]
         logits_list_idx = logits_list[unfinished_idx]
         logits_list_idx = self._get_max_logits(logits_list_idx, unfinished_tokens)
-
-        print("check", logits_list_idx, next_tokens, next_indices)
-        print(logits_list)
+        print(logits_list_idx)
+        self.input_logits = torch.cat([self.input_logits[unfinished_idx], logits_list_idx.transpose(0,1)], dim = -1)
+        print("check", self.input_logits)
+        #print(logits_list)
         print('----')
-        print(logits_list[unfinished_idx])
+        #print(logits_list[unfinished_idx])
         return {'beam_ids' : self.beam_ids, 'beam_logits' : self.beam_logits}
 
             
