@@ -88,6 +88,7 @@ class LogitsRecorder():
 
         print("check", logits_list_idx, next_tokens, next_indices)
         print(logits_list)
+        print(logits_list_idx)
         return {'beam_ids' : self.beam_ids, 'beam_logits' : self.beam_logits}
 
             
