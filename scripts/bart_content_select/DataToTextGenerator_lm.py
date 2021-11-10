@@ -74,7 +74,7 @@ class LogitsRecorder():
             logits_list_idx = logits_list[beam_idx]
             logits_list_idx = self._get_max_logits(logits_list_idx, next_tokens[0][add_indices])
             self.beam_logits.append(logits_list_idx)
-            print("checker", self.beam_logits, self.beam_ids)
+            #print("checker", self.beam_logits, self.beam_ids)
         return {'beam_ids' : self.beam_ids, 'beam_logits' : self.beam_logits}
 
             
@@ -816,6 +816,7 @@ class Data2TextGenerator(GenerationMixin):
             beam_next_tokens = beam_outputs["next_beam_tokens"]
             beam_idx = beam_outputs["next_beam_indices"]
             input_ids = torch.cat([input_ids[beam_idx, :], beam_next_tokens.unsqueeze(-1)], dim=-1)
+            print("INPUT IDS", input_ids)
             model_kwargs = self._update_model_kwargs_for_generation(
                 outputs, model_kwargs, is_encoder_decoder=self.config.is_encoder_decoder
             )
