@@ -45,6 +45,7 @@ class LogitsRecorder():
     def __init__(self, size):
         self.beam_ids = []
         self.beam_logits = []
+        self.input_logits = torch.zeros(size)
 
     def _get_max_logits(self, logits_list_idx, next_tokens):
         logits_list_idx_tokens = []
@@ -67,6 +68,9 @@ class LogitsRecorder():
                 next_indices, 
                 logits_list):
 
+        
+        
+
         add_indices = (next_tokens == 2).nonzero(as_tuple=True)[1]
         if add_indices.numel():
             beam_idx = next_indices[0][add_indices]
@@ -74,7 +78,16 @@ class LogitsRecorder():
             logits_list_idx = logits_list[beam_idx]
             logits_list_idx = self._get_max_logits(logits_list_idx, next_tokens[0][add_indices])
             self.beam_logits.append(logits_list_idx)
-            print("checker", self.beam_logits, self.beam_ids)
+            #print("checker", self.beam_logits, self.beam_ids)
+
+        unfinished_idx = (next_tokens != 2).nonzero(as_tuple=True)[1]
+        unfinished_idx = next_indices[0][unfinished_idx]
+        unfinished_tokens = next_tokens[0][unfinished_idx]
+        logits_list_idx = logits_list[unfinished_idx]
+        logits_list_idx = self._get_max_logits(logits_list_idx, unfinished_tokens)
+
+        print("check", logits_list_idx, next_tokens, next_indices)
+        print(logits_list)
         return {'beam_ids' : self.beam_ids, 'beam_logits' : self.beam_logits}
 
             
