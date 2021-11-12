@@ -49,16 +49,19 @@ class LogitsRecorder():
 
     def _get_max_logits(self, logits_list_idx, next_tokens):
         logits_list_idx_tokens = []
-
+        #print("token and logits", next_tokens, logits_list_idx)
         for i, logits in enumerate(logits_list_idx):
             token = next_tokens[i]
             token_logits = []
+            #print(logits)
             for lm_head in logits:
-                lm_head_score = lm_head[token].item()
+                lm_head_score = lm_head[0].item()
                 token_logits.append(lm_head_score)
             source_idx = token_logits.index(max(token_logits))
+            #print(token_logits)   
             logits_list_idx_tokens.append(source_idx)
         logits_list_idx_tokens = torch.tensor([logits_list_idx_tokens])
+       
         return logits_list_idx_tokens
 
 
@@ -85,11 +88,11 @@ class LogitsRecorder():
         unfinished_tokens = next_tokens[0][unfinished_idx]
         logits_list_idx = logits_list[unfinished_idx]
         logits_list_idx = self._get_max_logits(logits_list_idx, unfinished_tokens)
-        print(logits_list_idx)
+        #print(logits_list_idx.shape, self.input_logits[unfinished_idx].shape)
         self.input_logits = torch.cat([self.input_logits[unfinished_idx], logits_list_idx.transpose(0,1)], dim = -1)
-        print("check", self.input_logits)
+        #print("check", self.input_logits)
         #print(logits_list)
-        print('----')
+        #print('----')
         #print(logits_list[unfinished_idx])
         return {'beam_ids' : self.beam_ids, 'beam_logits' : self.beam_logits}
 
@@ -776,10 +779,10 @@ class Data2TextGenerator(GenerationMixin):
             next_token_scores = next_token_scores + beam_scores[:, None].expand_as(next_token_scores)
             logits_list = outputs.lm_logits_individual 
             #print("LOGITS SHAPE", logits_list.shape)
-            logits_list = logits_list[:, : ,-1, :]
-            logits_list = logits_list.transpose(0, 1)
+            #logits_list = logits_list[:, : ,-1, :]
+            #logits_list = logits_list.transpose(0, 1)
             #logits_list = logits_list.reshape(logits_list.shape[0], num_beams * logits_list.shape[-1])
-            print("LOGITS SHAPE", logits_list.shape, input_ids.shape)
+            #print("LOGITS SHAPE", logits_list.shape, input_ids.shape)
 
             if return_dict_in_generate:
                 if output_scores:
@@ -810,7 +813,7 @@ class Data2TextGenerator(GenerationMixin):
             next_tokens = next_tokens % vocab_size
             ##print("NEXT INDICES, TOKENS", next_indices, next_tokens, input_ids)
             
-            print("NEXT INDICES, TOKENS", next_indices, next_tokens)
+            #print("NEXT INDICES, TOKENS", next_indices, next_tokens)
 
             logits_recorder_outputs = logits_recorder.process(
                 input_ids, 
@@ -832,7 +835,7 @@ class Data2TextGenerator(GenerationMixin):
             beam_next_tokens = beam_outputs["next_beam_tokens"]
             beam_idx = beam_outputs["next_beam_indices"]
             input_ids = torch.cat([input_ids[beam_idx, :], beam_next_tokens.unsqueeze(-1)], dim=-1)
-            print("INPUT IDS", input_ids)
+            #print("INPUT IDS", input_ids)
             model_kwargs = self._update_model_kwargs_for_generation(
                 outputs, model_kwargs, is_encoder_decoder=self.config.is_encoder_decoder
             )
@@ -858,7 +861,7 @@ class Data2TextGenerator(GenerationMixin):
             max_length=stopping_criteria.max_length,
         )
         cut = 1
-        print("SEQUENCE OUTPUTS", sequence_outputs["sequences"])
+        #print("SEQUENCE OUTPUTS", sequence_outputs["sequences"])
         indices = []
         seq_outputs = sequence_outputs["sequences"][0][:-1]
         seq_len = len(seq_outputs)
@@ -866,9 +869,9 @@ class Data2TextGenerator(GenerationMixin):
         for i, iid in enumerate(logits_recorder_outputs['beam_ids']):
          iid = iid[:seq_len]
          if iid.shape == seq_outputs.shape:
-             print("COMPARE", seq_outputs, iid)
-             print(iid.eq(seq_outputs))
-             print('-' * 13)
+             #print("COMPARE", seq_outputs, iid)
+             #print(iid.eq(seq_outputs))
+             #print('-' * 13)
              if torch.all(iid.eq(seq_outputs)):
                 indices.append(i)
                 break 
@@ -901,4 +904,4 @@ class Data2TextGenerator(GenerationMixin):
                     hidden_states=decoder_hidden_states,
                 )
         else:
-            return sequence_outputs["sequences"]
+            return sequence_outputs["sequences"], logits_recorder_outputs['beam_logits'][found_index]
