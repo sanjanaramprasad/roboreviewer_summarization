@@ -43,6 +43,7 @@ def encode_sentences(tokenizer, df, source_keys, targets, max_length=1024, pad_t
 
 
         sentence = " ".join(all_sents)
+        sentence = "ncbi_ner: " + sentence
         #print(sentence)
         encoded_dict = tokenizer(
           sentence,
