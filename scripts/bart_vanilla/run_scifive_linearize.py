@@ -224,15 +224,30 @@ def main():
     ##trainer.save_checkpoint("robo_model_epoch%s_adam_%s_bartconditional.ckpt"%(str(learning_rate), str(max_epochs)))
 
 def inference(checkpoint_file):
-    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
+    device = torch.device('cuda')
+    additional_special_tokens = ["<sep>", "<study>", "</study>",
+            "<outcomes>", "</outcomes>",
+            "<punchline_text>", "</punchline_text>",
+            "<population>", "</population>",
+            "<interventions>", "</interventions>",
+            "<punchline_effect>", "</punchline_effect>"]
+    tokenizer = tokenizer = AutoTokenizer.from_pretrained("razent/SciFive-base-Pubmed_PMC")
+    tokenizer.add_tokens(additional_special_tokens)
+    scifive_model = AutoModelForSeq2SeqLM.from_pretrained("razent/SciFive-base-Pubmed_PMC")
+    scifive_model.resize_token_embeddings(len(tokenizer))
+    scifive_model.to('cuda')
     hparams = argparse.Namespace()
     rouge = Rouge()
     hparams.freeze_encoder = True
     hparams.freeze_embeds = True
     hparams.eval_beams = 4
-    model = LitModel.load_from_checkpoint(checkpoint_path=checkpoint_file)
-
-    summary_data = make_data(tokenizer, path = '/home/sanjana')
+    freeze_encoder = True
+    freeze_embeds = False
+    eval_beams = 3
+    model = LitModel.load_from_checkpoint(checkpoint_path=checkpoint_file, learning_rate = learning_rate, tokenizer = tokenizer, model = t5_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
+    data_files = ['train_rr_data.csv', 'dev_rr_data.csv' , 'test_rr_data.csv']
+    #summary_data = make_data(tokenizer, path = '/home/ramprasad.sa')
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/ramprasad.sa', files = data_files, max_len = 1024)
     summary_data.setup("stage")
     val_data = summary_data.val_dataloader(data_type = 'robo')
 
@@ -247,16 +262,17 @@ def inference(checkpoint_file):
     meteor_scores = []
     bleu_scores =[]
     
-    for text in it:
+    for text in list(it)[:5]:
         generated_ids = model.model.generate(
-                text[0],
-                attention_mask=text[1],
+                text[0].to(device),
+                attention_mask=text[1].to(device),
                 use_cache=True,
                 decoder_start_token_id = tokenizer.pad_token_id,
                 num_beams= 3,
                 min_length = 70,
                 max_length = 300,
-                early_stopping = True
+                early_stopping = True,
+                
         )
     
         model_output = " ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in generated_ids])
@@ -271,7 +287,10 @@ def inference(checkpoint_file):
     print("ROGUE", rouge.get_scores(model_out, references, avg=True))
     print("METEOR", sum(meteor_scores)/len(meteor_scores))
     print("BLEU", sum(bleu_scores)/len(bleu_scores))
+    df_write = pd.DataFrame(list(zip(references, model_out)), columns=["Reference Summary", "Generated Summary"])
+    file_name = "run_inference_output_scifive"
+    df_write.to_csv("%s.csv"%file_name)
 if __name__ == '__main__': 
-    main()
-    #inference('/home/sanjana/roboreviewer_summarization/scripts/bart_vanilla/checkpoint_files/checkpoint_best_model/epoch=4-val_loss=0.25.ckpt')
+    #main()
+    inference('/home/sanjana/roboreviewer_summarization/scripts/bart_vanilla/checkpoint_files/scifive/epoch=4-val_loss=0.23.ckpt')
    
