@@ -88,7 +88,7 @@ class LitModel(pl.LightningModule):
 
         if freeze_embeds:
             self.freeze_embeds()
-        self.save_hyperparameters()
+        #self.save_hyperparameters()
   
     def freeze_embeds(self):
         ''' freeze the positional embedding parameters of the model; adapted from finetune.py '''
@@ -179,7 +179,7 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/
 
     print(train_file)
     data_files = [train_file, dev_file, test_file]
-    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1, max_len = max_len, flatten_studies = True)
+    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 2, max_len = max_len, flatten_studies = True)
     summary_data.prepare_data()
     assert(len(summary_data.train) > 10)
     return summary_data
@@ -192,13 +192,9 @@ def main():
             "<population>", "</population>", 
             "<interventions>", "</interventions>", 
             "<punchline_effect>", "</punchline_effect>"]
-    tokenizer = AutoTokenizer.from_pretrained("razent/SciFive-large-Pubmed",
-                                                     unk_token="<unk>",
-                                                    bos_token="<s>", 
-                                                    eos_token="</s>", 
-                                                    pad_token = "<pad>")
+    tokenizer = AutoTokenizer.from_pretrained("razent/SciFive-base-Pubmed_PMC")
     tokenizer.add_tokens(additional_special_tokens)
-    scifive_model = AutoModelForSeq2SeqLM.from_pretrained("razent/SciFive-large-Pubmed")
+    scifive_model = AutoModelForSeq2SeqLM.from_pretrained("razent/SciFive-base-Pubmed_PMC")
     scifive_model.resize_token_embeddings(len(tokenizer))
 
     data_files = ['train_rr_data.csv', 'dev_rr_data.csv' , 'test_rr_data.csv']
@@ -211,12 +207,12 @@ def main():
     freeze_embeds = False
     eval_beams = 4
 
-    model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
-    checkpoint = ModelCheckpoint('checkpoint_files/',
+    model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = scifive_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
+    checkpoint = ModelCheckpoint('checkpoint_files/scifive',
                                 filename = '{epoch}-{val_loss:.2f}',
                                 save_top_k=13,
                                 monitor = 'val_loss')
-    trainer = pl.Trainer(gpus=2, accelerator='dp', 
+    trainer = pl.Trainer(gpus=1, accelerator='dp', 
 			max_epochs = max_epochs,
                         min_epochs = 1,
                         auto_lr_find = False,

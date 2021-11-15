@@ -23,6 +23,7 @@ from transformers.generation_logits_process import (
     TopKLogitsWarper,
     TopPLogitsWarper,
 )
+from transformers import T5Tokenizer, T5ForConditionalGeneration
 from transformers.generation_utils import GenerationMixin
 from transformers.generation_stopping_criteria import (
     MaxLengthCriteria,
@@ -87,12 +88,12 @@ class LitModel(pl.LightningModule):
 
         if freeze_embeds:
             self.freeze_embeds()
-        self.save_hyperparameters()
+        #self.save_hyperparameters()
   
     def freeze_embeds(self):
         ''' freeze the positional embedding parameters of the model; adapted from finetune.py '''
-        freeze_params(self.model.model.shared)
-        for d in [self.model.model.encoder, self.model.model.decoder]:
+        freeze_params(self.model.shared)
+        for d in [self.model.encoder, self.model.decoder]:
             freeze_params(d.embed_positions)
             freeze_params(d.embed_tokens)
 
@@ -191,17 +192,17 @@ def main():
             "<population>", "</population>", 
             "<interventions>", "</interventions>", 
             "<punchline_effect>", "</punchline_effect>"]
-    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', unk_token="<unk>",
+    tokenizer = T5Tokenizer.from_pretrained('t5-base', unk_token="<unk>",
                                                     bos_token="<s>", 
                                                     eos_token="</s>", 
                                                     pad_token = "<pad>")
     tokenizer.add_tokens(additional_special_tokens)
-    bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
-    bart_model.resize_token_embeddings(len(tokenizer))
+    t5_model = T5ForConditionalGeneration.from_pretrained('t5-base')    
+    t5_model.resize_token_embeddings(len(tokenizer))
 
     data_files = ['train_rr_data.csv', 'dev_rr_data.csv' , 'test_rr_data.csv']
     
-    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/ramprasad.sa', files = data_files, max_len = 1024)
     print(summary_data.train)
 
     #hparams = argparse.Namespace()
@@ -209,12 +210,12 @@ def main():
     freeze_embeds = False
     eval_beams = 4
 
-    model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
-    checkpoint = ModelCheckpoint('checkpoint_files/',
+    model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = t5_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
+    checkpoint = ModelCheckpoint('checkpoint_files/t5_base',
                                 filename = '{epoch}-{val_loss:.2f}',
                                 save_top_k=13,
                                 monitor = 'val_loss')
-    trainer = pl.Trainer(gpus=2, accelerator='dp', 
+    trainer = pl.Trainer(gpus=1, accelerator='dp', 
 			max_epochs = max_epochs,
                         min_epochs = 1,
                         auto_lr_find = False,
@@ -226,15 +227,32 @@ def main():
     ##trainer.save_checkpoint("robo_model_epoch%s_adam_%s_bartconditional.ckpt"%(str(learning_rate), str(max_epochs)))
 
 def inference(checkpoint_file):
-    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
+    #tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
+    device = torch.device('cuda')
+    additional_special_tokens = ["<sep>", "<study>", "</study>",
+            "<outcomes>", "</outcomes>",
+            "<punchline_text>", "</punchline_text>",
+            "<population>", "</population>",
+            "<interventions>", "</interventions>",
+            "<punchline_effect>", "</punchline_effect>"]
+    tokenizer = T5Tokenizer.from_pretrained('t5-base', unk_token="<unk>",
+                                                    bos_token="<s>",
+                                                    eos_token="</s>",
+                                                    pad_token = "<pad>")
+    tokenizer.add_tokens(additional_special_tokens)
+    t5_model = T5ForConditionalGeneration.from_pretrained('t5-base')
+    t5_model.resize_token_embeddings(len(tokenizer))
+    t5_model.to('cuda')
+    #tokenizer.to()
     hparams = argparse.Namespace()
     rouge = Rouge()
-    hparams.freeze_encoder = True
-    hparams.freeze_embeds = True
-    hparams.eval_beams = 4
-    model = LitModel.load_from_checkpoint(checkpoint_path=checkpoint_file)
-
-    summary_data = make_data(tokenizer, path = '/home/sanjana')
+    freeze_encoder = True
+    freeze_embeds = False
+    eval_beams = 3
+    model = LitModel.load_from_checkpoint(checkpoint_path=checkpoint_file, learning_rate = learning_rate, tokenizer = tokenizer, model = t5_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
+    data_files = ['train_rr_data.csv', 'dev_rr_data.csv' , 'test_rr_data.csv']
+    #summary_data = make_data(tokenizer, path = '/home/ramprasad.sa')
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/ramprasad.sa', files = data_files, max_len = 1024)
     summary_data.setup("stage")
     val_data = summary_data.val_dataloader(data_type = 'robo')
 
@@ -248,22 +266,23 @@ def inference(checkpoint_file):
     rouge = Rouge()
     meteor_scores = []
     bleu_scores =[]
-    
-    for text in it:
+    #device = torch.device('cuda')
+    for text in list(it):
         generated_ids = model.model.generate(
-                text[0],
-                attention_mask=text[1],
+                text[0].to(device),
+                attention_mask=text[1].to(device),
                 use_cache=True,
                 decoder_start_token_id = tokenizer.pad_token_id,
                 num_beams= 3,
                 min_length = 70,
                 max_length = 300,
-                early_stopping = True
+                early_stopping = True,
+                
         )
     
         model_output = " ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in generated_ids])
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in text[-1]])
-        print(target, model_output)
+        #print(target, "/n", model_output)
         references.append(target)
         model_out.append(model_output)
         met_score = round(meteor_score.meteor_score([target], model_output), 4)
@@ -273,7 +292,11 @@ def inference(checkpoint_file):
     print("ROGUE", rouge.get_scores(model_out, references, avg=True))
     print("METEOR", sum(meteor_scores)/len(meteor_scores))
     print("BLEU", sum(bleu_scores)/len(bleu_scores))
+    df_write = pd.DataFrame(list(zip(references, model_out)), columns=["Reference Summary", "Generated Summary"])
+    file_name = "run_inference_output_t5"
+    df_write.to_csv("%s.csv"%file_name)
+
 if __name__ == '__main__': 
-    main()
-    #inference('/home/sanjana/roboreviewer_summarization/scripts/bart_vanilla/checkpoint_files/checkpoint_best_model/epoch=4-val_loss=0.25.ckpt')
+    #main()
+    inference('/home/ramprasad.sa/roboreviewer_summarization/scripts/bart_vanilla/checkpoint_files/t5_base/epoch=4-val_loss=0.25.ckpt')
    
