@@ -172,7 +172,7 @@ class BartDecoderLayerMulti(nn.Module):
         residual_hidden_states_2 = hidden_states_2
 
         cross_attn_past_key_value = past_key_value[8:10] if past_key_value is not None else None
-        hidden_states_3, cross_attn_present_key_value_3 = cross_attn_block(self.encoder_attn_2, encoder_hidden_states3, encoder_attention_mask3, hidden_states, residual, cross_attn_past_key_value)
+        hidden_states_3, cross_attn_present_key_value_3 = cross_attn_block(self.encoder_attn_3, encoder_hidden_states3, encoder_attention_mask3, hidden_states, residual, cross_attn_past_key_value)
         hidden_states_3 = hidden_states_3 + residual
         hidden_states_3 = self.encoder_attn_layer_norm3(hidden_states_3)
         residual_hidden_states_3 = hidden_states_3
@@ -401,6 +401,10 @@ class BartDecoderMulti(BartPretrainedModel):
         if encoder_hidden_states2 is not None and encoder_attention_mask2 is not None:
             # [bsz, seq_len] -> [bsz, 1, tgt_seq_len, src_seq_len]
             encoder_attention_mask2 = _expand_mask(encoder_attention_mask2, inputs_embeds.dtype, tgt_len=input_shape[-1])
+
+        if encoder_hidden_states3 is not None and encoder_attention_mask2 is not None:
+            # [bsz, seq_len] -> [bsz, 1, tgt_seq_len, src_seq_len]
+            encoder_attention_mask3 = _expand_mask(encoder_attention_mask3, inputs_embeds.dtype, tgt_len=input_shape[-1])
 
 
         # embed positions
