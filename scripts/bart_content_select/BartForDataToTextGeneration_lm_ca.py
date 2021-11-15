@@ -140,6 +140,7 @@ class BartDecoderLayerMulti(nn.Module):
             # Cross-Attention Block
             
             if encoder_hidden_states is not None:
+                print(encoder_hidden_states.shape, encoder_attention_mask.shape)
                 enc_hidden_states, cross_attn_weights, cross_attn_present_key_value = encoder_attn(
                     hidden_states=hidden_states,
                     key_value_states=encoder_hidden_states,
