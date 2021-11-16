@@ -78,13 +78,15 @@ class LogitsRecorder():
         if add_indices.numel():
             beam_idx = next_indices[0][add_indices]
             self.beam_ids += input_ids[beam_idx].clone()
-            logits_list_idx = logits_list[beam_idx]
-            logits_list_idx = self._get_max_logits(logits_list_idx, next_tokens[0][add_indices])
-            self.beam_logits.append(logits_list_idx)
-            #print("checker", self.beam_logits, self.beam_ids)
+            #logits_list_idx = logits_list[beam_idx]
+            #logits_list_idx = self._get_max_logits(logits_list_idx, next_tokens[0][add_indices])
+            #self.input_logits[beam_idx] = torch.cat([self.input_logits[beam_idx], logits_list_idx.transpose(0,1)], dim = -1)
+            #print(self.input_logits)
+            self.beam_logits += self.input_logits[beam_idx]
+            print("checker", self.beam_logits, self.beam_ids)
 
         unfinished_idx = (next_tokens != 2).nonzero(as_tuple=True)[1]
-        unfinished_idx = next_indices[0][unfinished_idx]
+        unfinished_idx = next_indices[0][unfinished_idx][:3]
         unfinished_tokens = next_tokens[0][unfinished_idx]
         logits_list_idx = logits_list[unfinished_idx]
         logits_list_idx = self._get_max_logits(logits_list_idx, unfinished_tokens)
@@ -880,7 +882,8 @@ class Data2TextGenerator(GenerationMixin):
 
         found_index = indices[0]
         #if not indices:
-        #print("REVIEW", "***" * 13)
+        print("REVIEW", "***" * 13)
+        print(found_index, sequence_outputs["sequences"], logits_recorder_outputs['beam_logits'])
         if return_dict_in_generate:
             if not output_scores:
                 sequence_outputs["sequence_scores"] = None

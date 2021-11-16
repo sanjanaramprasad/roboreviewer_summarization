@@ -208,7 +208,7 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/
 
     print(train_file)
     data_files = [train_file, dev_file, test_file]
-    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1, max_len = max_len, flatten_studies = True)
+    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 2, max_len = max_len, flatten_studies = True)
     summary_data.prepare_data()
     
     assert(len(summary_data.train) > 10)
@@ -247,7 +247,7 @@ def main():
     eval_beams = 4
 
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
-    checkpoint = ModelCheckpoint(dirpath = 'checkpoint_files_final/token_mixture_lm_timed_multibart',
+    checkpoint = ModelCheckpoint(dirpath = 'checkpoint_files_final/token_mixture_lm_maxpool',
                                 filename = '{epoch}-{val_loss:.2f}',
                                 save_top_k=10,
                                 monitor = 'val_loss')

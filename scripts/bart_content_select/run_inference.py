@@ -70,6 +70,10 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     targets = []
     model_outputs = []
     populations = []
+    logits_recordings = []
+    interventions = []
+    outcomes = []
+    punchline_texts = []
     rouge = Rouge()
     additional_special_tokens = [ "<study>", "</study>",
             "<outcomes_mesh>", "</outcomes_mesh>",
@@ -82,14 +86,25 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     for each in sample:
         outputs, logits = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length = min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, return_dict_in_generate = False, device = device)
         #print(outputs[1])
-        model_outputs = [tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs[0][0]]
+        model_output_tokens = [tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs[0]]
         model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs[0]])
-        population = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[4]])
+        population = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[0]])
+        intervention = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[2]])
+        outcome = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[4]])
+        punchline_text = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[6]])
+        populations.append(population)
+        interventions.append(intervention)
+        outcomes.append(outcome)
+        punchline_texts.append(punchline_text)
         #population = ' '.join([w for w in population.split(' ') if w not in additional_special_tokens])
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[-1]])
         print("TGT", target)
         #print('=' * 13)
-        print("MO", model_outputs, logits)
+        logits_zipped = list(zip(model_output_tokens[2:-1], logits[2:]))
+        logits_zipped = ['%'.join([each[0], str(each[1].item())]) for each in logits_zipped]
+        logits_zipped = ' '.join(logits_zipped)
+        logits_recordings.append(logits_zipped)
+        print("MO", logits_zipped)
         print('=' * 13)
         if model_output.strip():
             model_outputs.append(model_output)
@@ -108,7 +123,9 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     print("Bleu : ", bleuScores)
     print("Meteor : ", meteorScores)
     print('=' * 13)
-    return model_outputs, populations, targets,  rougeScores, meteorScores, bleuScores
+    with open('inference_logits_scores', 'w') as fp:
+     fp.write('\n'.join(logits_recordings))
+    return model_outputs, populations, interventions, outcomes, punchline_texts, targets,  rougeScores, meteorScores, bleuScores
 
 
 def parameter_searca(sample,  model, tokenizer, device):
@@ -180,8 +197,8 @@ def run_inference( checkpoint_file, parameter_look = False, write_results = True
         length_penalty = config.length_penalty
     generator = Data2TextGenerator(model, tokenizer)
 
-    model_outputs, populations, targets,  rougeScores, meteorScores, bleuScores = sample_scorer(sample = list(it), model = model, tokenizer = tokenizer, nbeams = num_beams, min_len = min_len, r_penalty = repetition_penalty, l_penalty = length_penalty, generator = generator, device = device) 
-    return model_outputs, populations, targets,  rougeScores, meteorScores, bleuScores
+    model_outputs, populations, interventions, outcomes, punchline_texts,  targets,  rougeScores, meteorScores, bleuScores = sample_scorer(sample = list(it)[:10], model = model, tokenizer = tokenizer, nbeams = num_beams, min_len = min_len, r_penalty = repetition_penalty, l_penalty = length_penalty, generator = generator, device = device) 
+    return model_outputs, populations, interventions, outcomes, punchline_texts,  targets,  rougeScores, meteorScores, bleuScores
 
 
 
@@ -193,8 +210,8 @@ if __name__ =='__main__':
 
     if not output_file:
         with torch.no_grad():
-            model_outputs, populations, targets,  rougeScore, meteorScore, bleuScore = run_inference(checkpoint_file)
-        df_write = pd.DataFrame(list(zip(targets, model_outputs)), columns=["Reference Summary", "Generated Summary"])
+            model_outputs, populations, interventions, outcomes, punchline_texts, targets,  rougeScore, meteorScore, bleuScore = run_inference(checkpoint_file)
+        df_write = pd.DataFrame(list(zip(targets, model_outputs, populations, interventions, outcomes, punchline_texts)), columns=["Reference Summary", "Generated Summary", "Population", "Interventions", "Outcomes", "Punchline Texts"])
         file_name = "run_inference_output_lm_global"
         df_write.to_csv("%s.csv"%file_name)
 
