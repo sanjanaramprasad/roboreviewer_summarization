@@ -222,6 +222,6 @@ class BartForDataToTextGenerationTester():
  
         
 obj = BartForDataToTextGenerationTester()
-#obj.test_model_forward_bart_multiLM()
-obj.test_model_forward_bart_multiLM_multiCA()
+obj.test_model_forward_bart_multiLM()
+#obj.test_model_forward_bart_multiLM_multiCA()
 #obj.test_model_forward_bart_encoder_loop_per_study()

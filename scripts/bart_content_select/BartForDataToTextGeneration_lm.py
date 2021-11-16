@@ -80,12 +80,17 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         self.register_buffer("final_logits_bias3", torch.zeros((1, self.model.shared.num_embeddings)))
         self.softmax_logits = nn.LogSoftmax(dim = 2)
         self.lm_head = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
-        
+
+
+        self.weight_vect0 = nn.Linear(config.d_model, 1, bias = False)
+        self.weight_vect1 = nn.Linear(config.d_model, 1, bias = False)
+        self.weight_vect2 = nn.Linear(config.d_model, 1, bias = False)
+        self.weight_vect3 = nn.Linear(config.d_model, 1, bias = False)
         #self.lm_head1 = nn.Linear(config.d_model, self.model1.shared.num_embeddings, bias=False)
         #self.lm_head2 = nn.Linear(config.d_model, self.model2.shared.num_embeddings, bias=False)
         #self.lm_combine = Mixture(num_inputs=1)
-        self.weigh_context = nn.Linear(config.d_model , 4)
-        self.soft_weigh = nn.Softmax(dim =2)
+        ##self.weigh_context = nn.Linear(config.d_model , 4)
+        ##self.soft_weigh = nn.Softmax(dim =2)
         self.init_weights()
 
     def _make_multiple_lm_heads(self):
@@ -269,20 +274,44 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         ##alphas = self.weigh_context(torch.cat([outputs0[0], outputs1[0], outputs2[0], outputs3[0]], dim = -1))
 
         ## TRIAL 2 
+<<<<<<< Updated upstream
         context_vect = torch.stack([outputs0[0], outputs1[0], outputs2[0], outputs3[0]], dim = 0)
         context_vect = torch.max(context_vect, dim = 0)[0]
         #print('CVECT', context_vect.shape)
+=======
+        #context_vect = torch.stack([outputs0[0], outputs1[0], outputs2[0], outputs3[0]], dim = 0)
+        #context_vect = torch.max(context_vect, dim = 0)[0]
+        print('CVECT', context_vect.shape)
+>>>>>>> Stashed changes
 
-        alphas = self.weigh_context(context_vect)
+        #alphas = self.weigh_context(context_vect)
         
         #outputs = torch.stack([outputs0[0].squeeze(0), outputs1[0].squeeze(0), outputs2[0].squeeze(0), outputs3[0].squeeze(0)], dim = 1)
         #print("OUTPUTS SHAPE", outputs.shape)
         ##alphas = self.weigh_context(outputs)
+<<<<<<< Updated upstream
         #print("ALPHAS", alphas)
+=======
+
+        #### ATTN MECHANISM
+        alphas0 = self.weight_vect0(outputs0[0])
+        alphas1 = self.weight_vect1(outputs1[0])
+        alphas2 = self.weight_vect2(outputs2[0])
+        alphas3 = self.weight_vect3(outputs3[0])
+
+        alphas = torch.cat([alphas0, alphas1, alphas2, alphas3])
+
+>>>>>>> Stashed changes
         alphas = self.soft_weigh(alphas)
+
+        print("ALPHAS", alphas.shape)
         
         #alphas = alphas[0]
+<<<<<<< Updated upstream
         #print('WEIGHTS', alphas, alphas.shape)
+=======
+        print('WEIGHTS', alphas)
+>>>>>>> Stashed changes
         #print(input_ids)
         lm_logits0 = self.lm_head(outputs0[0]) + self.final_logits_bias0
         lm_logits1 = self.lm_head1(outputs1[0]) + self.final_logits_bias1

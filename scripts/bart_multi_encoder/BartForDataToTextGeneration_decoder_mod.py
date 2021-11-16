@@ -187,7 +187,14 @@ class BartDecoderLayerMulti(nn.Module):
         hidden_states_4, cross_attn_present_key_value_4 = cross_attn_block(self.encoder_attn_4, encoder_hidden_states4, encoder_attention_mask4, hidden_states, residual, cross_attn_past_key_value)
         # add cross-attn to positions 3,4 of present_key_value tuple
         if decoder_combination == 'addition':
-               hidden_states_all = hidden_states_0 + hidden_states_1 + hidden_states_2 + hidden_states_3 + hidden_states_4
+            hidden_states_0 = hidden_states_0 * torch.sigmoid(self.w0(hidden_states_0))
+            hidden_states_1 = hidden_states_1 * torch.sigmoid(self.w1(hidden_states_1))
+            hidden_states_2 = hidden_states_2 * torch.sigmoid(self.w2(hidden_states_2))
+            hidden_states_2 = hidden_states_2 * torch.sigmoid(self.w2(hidden_states_2))
+            hidden_states_2 = hidden_states_2 * torch.sigmoid(self.w2(hidden_states_2))
+
+            hidden_states_all = hidden_states_0 + hidden_states_1 + hidden_states_2 + hidden_states_3 + hidden_states_4
+            '''hidden_states_all = hidden_states_0 + hidden_states_1 + hidden_states_2 + hidden_states_3 + hidden_states_4
                self_attn2_past_key_value = past_key_value[10:12] if past_key_value is not None else None
                hidden_states_all, self_attn2_weights, self_attn2_present_key_value = self.self_attn2(
                hidden_states = hidden_states_all,
@@ -195,7 +202,7 @@ class BartDecoderLayerMulti(nn.Module):
                 attention_mask = None,
                 layer_head_mask=layer_head_mask,
                 output_attentions=output_attentions,
-               )              
+               ) '''             
 
 
 
