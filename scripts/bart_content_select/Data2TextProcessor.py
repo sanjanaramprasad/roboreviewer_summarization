@@ -18,7 +18,7 @@ def preprocess_df(df, keys):
     return df
 
 
-def encode_sentences(tokenizer, df, surface_keys, content_keys, targets, max_length=1024, pad_to_max_length=True, return_tensors="pt"):
+def encode_sentences(tokenizer, df, surface_keys, content_keys, targets, targets_tags, max_length=1024, pad_to_max_length=True, return_tensors="pt"):
 
     
     encoded_sentences = {}
@@ -68,8 +68,9 @@ def encode_sentences(tokenizer, df, surface_keys, content_keys, targets, max_len
             
             encoded_sentences[id_key].append(sentence_encoding['input_ids'])
             encoded_sentences[attention_mask_key].append(sentence_encoding['attention_mask'])
-            
-    for tgt_sentence in targets:
+    target_tags_sentences = []
+
+    for i, tgt_sentence in enumerate(targets):
         encoded_dict = tokenizer(
               tgt_sentence,
               max_length=max_length,
@@ -81,15 +82,16 @@ def encode_sentences(tokenizer, df, surface_keys, content_keys, targets, max_len
         # Shift the target ids to the right
         #shifted_target_ids = shift_tokens_right(encoded_dict['input_ids'], tokenizer.pad_token_id)
         target_ids.append(encoded_dict['input_ids'])
+        ##print(i, len(targets_tags))
+        target_tags_sentences.append(torch.tensor(eval(targets_tags[i])))
         
     for key in list(encoded_sentences.keys()):
         encoded_sentences[key] = torch.cat(encoded_sentences[key], dim = 0)
         
     target_ids = torch.cat(target_ids, dim = 0)
+    target_tags_sentences = torch.stack(target_tags_sentences, dim = 0)
     encoded_sentences['labels'] = target_ids
-        
-        
-
+    encoded_sentences['labels_tags'] = target_tags_sentences
     return encoded_sentences
 
     
@@ -119,12 +121,13 @@ class SummaryDataModule(pl.LightningDataModule):
         self.validate = preprocess_df(self.validate, preprocess_keys)
         self.test = preprocess_df(self.test, preprocess_keys)
 
-    def setup(self, stage):
+    def setup(self):
         self.train = encode_sentences(self.tokenizer, 
                                       self.train,
                                         ['population', 'interventions', 'outcomes'],
                                         ['punchline_text', 'punchline_effect'],
                                         self.train['SummaryConclusions'],
+                                        list(self.train['SummaryConclusion_tagged'].values),
                                         max_length = self.max_len)
         
         self.validate = encode_sentences(self.tokenizer, 
@@ -132,41 +135,63 @@ class SummaryDataModule(pl.LightningDataModule):
                                         ['population', 'interventions', 'outcomes'],
                                         ['punchline_text', 'punchline_effect'],
                                         self.validate['SummaryConclusions'],
+                                        list(self.validate['SummaryConclusion_tagged'].values),
                                         max_length = self.max_len)
         self.test = encode_sentences(self.tokenizer, 
                                       self.test,
                                         ['population', 'interventions', 'outcomes'],
                                         ['punchline_text', 'punchline_effect'],
                                         self.test['SummaryConclusions'],
+                                        list(self.test['SummaryConclusion_tagged'].values),
                                         max_length = self.max_len)
         
-    def train_dataloader(self, data_type = 'robo'):
+    def train_dataloader(self, data_type = 'robo', label_tags = False):
         #dataset = TensorDataset
         dataset = TensorDataset(self.train['population_ids'], self.train['population_attention_masks'],
                                 self.train['interventions_ids'], self.train['interventions_attention_masks'],
                                 self.train['outcomes_ids'], self.train['outcomes_attention_masks'],
                                 self.train['content_ids'], self.train['content_attention_masks'],
                                     self.train['labels'])
+
+        if label_tags:
+            dataset = TensorDataset(self.train['population_ids'], self.train['population_attention_masks'],
+                                self.train['interventions_ids'], self.train['interventions_attention_masks'],
+                                self.train['outcomes_ids'], self.train['outcomes_attention_masks'],
+                                self.train['content_ids'], self.train['content_attention_masks'],
+                                    self.train['labels'], self.train['labels_tags'])
         #dataset = TensorDataset(self.train['input_ids'], self.train['attention_mask'], self.train['labels'])                          
         train_data = DataLoader(dataset, sampler = RandomSampler(dataset), batch_size = self.batch_size)
         return train_data
 
-    def val_dataloader(self, data_type = 'robo'):
+    def val_dataloader(self, data_type = 'robo', label_tags = False):
         dataset = TensorDataset(self.validate['population_ids'], self.validate['population_attention_masks'],
                                 self.validate['interventions_ids'], self.validate['interventions_attention_masks'],
                                 self.validate['outcomes_ids'], self.validate['outcomes_attention_masks'],
                                 self.validate['content_ids'], self.validate['content_attention_masks'],
                                     self.validate['labels'])
+        if label_tags:
+            dataset = TensorDataset(self.validate['population_ids'], self.validate['population_attention_masks'],
+                                self.validate['interventions_ids'], self.validate['interventions_attention_masks'],
+                                self.validate['outcomes_ids'], self.validate['outcomes_attention_masks'],
+                                self.validate['content_ids'], self.validate['content_attention_masks'],
+                                    self.validate['labels'], self.validate['labels_tags'])
         val_data = DataLoader(dataset, batch_size = self.batch_size)                       
         return val_data
 
-    def test_dataloader(self, data_type = 'robo'):
+    def test_dataloader(self, data_type = 'robo', label_tags = False):
         #print(self.test['punchline_text_ids'])
         dataset = TensorDataset(self.test['population_ids'], self.test['population_attention_masks'],
                                 self.test['interventions_ids'], self.test['interventions_attention_masks'],
                                 self.test['outcomes_ids'], self.test['outcomes_attention_masks'],
                                 self.test['content_ids'], self.test['content_attention_masks'],
                                     self.test['labels'])
+
+        if label_tags:
+            dataset = TensorDataset(self.test['population_ids'], self.test['population_attention_masks'],
+                                self.test['interventions_ids'], self.test['interventions_attention_masks'],
+                                self.test['outcomes_ids'], self.test['outcomes_attention_masks'],
+                                self.test['content_ids'], self.test['content_attention_masks'],
+                                    self.test['labels'], self.test['labels_tags'])
         test_data = DataLoader(dataset, batch_size = self.batch_size)                   
         return test_data
 
@@ -198,22 +223,29 @@ if __name__ == '__main__':
 
     tokenizer.add_tokens(additional_special_tokens)
     #bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
-    data_files = ['train_rr_data.csv', 'dev_rr_data.csv' , 'test_rr_data.csv']
+    data_files = ['train_rr_data_tagged.csv', 'dev_rr_data_tagged.csv' , 'test_rr_data_tagged.csv']
 
     
                                     
     
-    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/ramprasad.sa', files = data_files, max_len = 1024)
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/Users/sanjana', files = data_files, max_len = 1024)
     print(summary_data.train)
-    summary_data.setup("stage")
-    it = summary_data.val_dataloader()
+    summary_data.setup()
+    it = summary_data.val_dataloader(label_tags=True)
     batches = iter(it)
     batch = next(batches)
 
     def print_pico(batch):
         content_input_ids = batch[6] if len(batch) >1 else None
         content_attention_masks = batch[7] if len(batch) >1 else None
-        print("CONTENT")
+
+        targets = batch[8]
+        print([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in targets[0]])
+        print(batch[9])
+        target_tags = batch[9][0]
+        words = [tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in targets[0]]
+        print(list(zip(words, target_tags)))
+        '''print("CONTENT")
         print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in content_input_ids]))
         print(content_attention_masks)
         print('=' * 13)
@@ -237,7 +269,7 @@ if __name__ == '__main__':
         print("OUTCOMES")
         print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in punchline_text_input_ids]))
         print(punchline_text_attention_masks)
-        print('=' * 13)
+        print('=' * 13)'''
 
     print_pico(batch)
 
