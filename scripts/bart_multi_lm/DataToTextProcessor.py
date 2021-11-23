@@ -71,6 +71,7 @@ def encode_sentences(tokenizer, df, source_keys, target_key, max_length=1024, pa
     target_ids = []
 
     for key in source_keys:
+        key = key[0] if type(key) is list else key
         id_key = '%s_ids'%key
         attention_mask_key = '%s_attention_masks'%key
         bos_key = "%s_bos_ids"%key
@@ -86,19 +87,24 @@ def encode_sentences(tokenizer, df, source_keys, target_key, max_length=1024, pa
         all_present = True
 
         for key in source_keys:
-            id_key = '%s_ids'%key
-            attention_mask_key = '%s_attention_masks'%key
+            key_name = key[0] if type(key) is list else key
+            id_key = '%s_ids'%key_name
+            attention_mask_key = '%s_attention_masks'%key_name
             bos_key = "%s_bos_ids"%key
-            if key not in row_dict:
+            if id_key not in row_dict:
                 row_dict[id_key] = []
                 row_dict[attention_mask_key] = []
                 row_dict[bos_key] = []
 
-
-            sentences_key = row[key]
-            sentences_key = eval(sentences_key)
-            sentences_key = [each for each in sentences_key if each.strip()]
-            #sentences_key = ["<%s> "%key +each + " </%s>"%key for each in sentences_key ]
+            row_keys = key if type(key) is list else [key]
+            sentences_key = []
+            for k in row_keys:
+                data_key = row[k]
+                data_key = eval(data_key)
+                data_key = [each for each in data_key if each.strip()]
+                data_key = ["<%s> "%key +each + " </%s>"%key for each in data_key ]
+                sentences_key += data_key
+            
             if sentences_key:
                 sentence_encoding, bos_ids = get_encoding(sentences_key)
 
@@ -162,8 +168,8 @@ class SummaryDataModule(pl.LightningDataModule):
                                         ['population', 
                                         'interventions',
                                         'outcomes',
-                                        'punchline_text',
-                                        'punchline_effect'], 
+                                        ['punchline_text',
+                                        'punchline_effect']], 
                                         'SummaryConclusions',
                                         max_length = self.max_len)
         self.validate = encode_sentences(self.tokenizer, 
@@ -171,8 +177,8 @@ class SummaryDataModule(pl.LightningDataModule):
                                         ['population', 
                                         'interventions',
                                         'outcomes',
-                                        'punchline_text',
-                                        'punchline_effect'], 
+                                        ['punchline_text',
+                                        'punchline_effect']], 
                                         'SummaryConclusions',
                                         max_length = self.max_len)
         self.test = encode_sentences(self.tokenizer, 
@@ -180,8 +186,8 @@ class SummaryDataModule(pl.LightningDataModule):
                                         ['population', 
                                         'interventions',
                                         'outcomes',
-                                        'punchline_text',
-                                        'punchline_effect'], 
+                                        ['punchline_text',
+                                        'punchline_effect']], 
                                         'SummaryConclusions',
                                         max_length = self.max_len)
 
@@ -196,8 +202,6 @@ class SummaryDataModule(pl.LightningDataModule):
                                     self.train['outcomes_bos_ids'],
                                     self.train['punchline_text_ids'], self.train['punchline_text_attention_masks'],
                                     self.train['punchline_text_bos_ids'],
-                                    self.train['punchline_effect_ids'], self.train['punchline_effect_attention_masks'],
-                                    self.train['punchline_effect_bos_ids'],
                                     self.train['labels'])
                     
                     
@@ -216,8 +220,6 @@ class SummaryDataModule(pl.LightningDataModule):
                                     self.validate['outcomes_bos_ids'],
                                     self.validate['punchline_text_ids'], self.validate['punchline_text_attention_masks'],
                                     self.validate['punchline_text_bos_ids'],
-                                    self.validate['punchline_effect_ids'], self.validate['punchline_effect_attention_masks'],
-                                    self.validate['punchline_effect_bos_ids'],
                                     self.validate['labels'])
         
         val_data = DataLoader(dataset, batch_size = self.batch_size)                       
@@ -234,8 +236,6 @@ class SummaryDataModule(pl.LightningDataModule):
                                     self.test['outcomes_bos_ids'],
                                     self.test['punchline_text_ids'], self.test['punchline_text_attention_masks'],
                                     self.test['punchline_text_bos_ids'],
-                                    self.test['punchline_effect_ids'], self.test['punchline_effect_attention_masks'],
-                                    self.test['punchline_effect_bos_ids'],
                                     self.test['labels'])
         test_data = DataLoader(dataset, batch_size = self.batch_size)                   
         return test_data
