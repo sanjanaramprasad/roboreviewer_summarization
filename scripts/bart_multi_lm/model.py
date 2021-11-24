@@ -147,11 +147,11 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
     def _get_sentence_vectors(self, encoder_output_list, bos_id_list):
         vector_list = []
         vector_attention = []
-        max_len = encoder_output_list[0][0][0].shape[0]
-        embed_dim = encoder_output_list[0][0][0].shape[1]
+        max_len = encoder_output_list[0][0].shape[0]
+        embed_dim = encoder_output_list[0][0].shape[1]
 
-        #print("MAX LEN", max_len)
-        #print("EMB DIM", embed_dim)
+        print("MAX LEN", max_len)
+        print("EMB DIM", embed_dim)
 
         for enc_last_hidden_state, bos_ids in list(zip(encoder_output_list, bos_id_list)):
             enc_last_hs_vectors = enc_last_hidden_state[0]
@@ -163,19 +163,20 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
                 if i != -2:
                     #print(i)
                     sentence_output.append(enc_last_hs_vectors[i].tolist())
+                    #print(enc_last_hs_vectors[i].tolist())
             vector_list += sentence_output
-        
+        print("VECTOR LIST", len(vector_list))
         vector_list_pad = [0] * embed_dim
         vector_attn_pad = [0] * (max_len - len(vector_list))
         vector_attention = [1] * len(vector_list)
 
         vector_list += [vector_list_pad] * (max_len - len(vector_list))
         vector_attention += vector_attn_pad
-
+        print(len(vector_attn_pad), len(vector_list))
         vector_list = torch.as_tensor([vector_list], device = encoder_output_list[0][0].device)
         #vector_attention = [1] * len(vector_list)
-        #vector_attention = torch.as_tensor([vector_attention])
-        #print("SENT VECT,  SENT ATTN", vector_list.shape, vector_attention.shape)
+        vector_attention = torch.as_tensor([vector_attention], device = torch.device('cuda'))
+        print("SENT VECT,  SENT ATTN", vector_list.shape, vector_attention.shape)
         return vector_list, vector_attention
 
     def forward(
@@ -306,10 +307,10 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
 
         encoder_outputs_list = [outputs0.encoder_last_hidden_state, outputs1.encoder_last_hidden_state,\
                                 outputs2.encoder_last_hidden_state, outputs3.encoder_last_hidden_state]
-        bos_id_list = [bos_ids_col0, bos_ids_col1, bos_ids_col2, bos_ids_col3, bos_ids_col4]
+        bos_id_list = [bos_ids_col0, bos_ids_col1, bos_ids_col2, bos_ids_col3]
         
         sentence_representations, sentence_attention_mask = self._get_sentence_vectors(encoder_outputs_list, bos_id_list)
-        sentence_attention_mask = torch.as_tensor([sentence_attention_mask], device = attention_mask_col0.device)
+        #sentence_attention_mask = torch.as_tensor([sentence_attention_mask], device = attention_mask_col0.device)
                 
        
         #print(outputs0[0].shape) 
