@@ -10,7 +10,6 @@ import copy
 import torch.nn.functional as F
 from typing import Optional, Tuple
 from transformers.activations import ACT2FN
-from BartForDataToTextGeneration_encoder_combination import BartForDataToText
 import random
 from transformers.modeling_outputs import (
     BaseModelOutput,
@@ -307,6 +306,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
 
         encoder_outputs_list = [outputs0.encoder_last_hidden_state, outputs1.encoder_last_hidden_state,\
                                 outputs2.encoder_last_hidden_state, outputs3.encoder_last_hidden_state]
+        bos_id_list = [bos_ids_col0, bos_ids_col1, bos_ids_col2, bos_ids_col3, bos_ids_col4]
         
         sentence_representations, sentence_attention_mask = self._get_sentence_vectors(encoder_outputs_list, bos_id_list)
         sentence_attention_mask = torch.as_tensor([sentence_attention_mask], device = attention_mask_col0.device)
