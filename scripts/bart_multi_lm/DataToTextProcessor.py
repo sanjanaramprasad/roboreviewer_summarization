@@ -28,6 +28,9 @@ def encode_sentences(tokenizer, df, source_keys, target_key, max_length=1024, pa
         )
         return encoded_dict
 
+    #bos_token_id = run_bart('<bos>')['input_ids'][1]
+    #print("BOS TOKEN ID", bos_token_id)
+
     def get_encoding(snippet):
         all_input_ids = []
         all_attention_masks = []
@@ -38,19 +41,25 @@ def encode_sentences(tokenizer, df, source_keys, target_key, max_length=1024, pa
             batch_ids = enc['input_ids']
             
             for each_list in batch_ids:
+                #print(each_list)
+                #each_list.remove(0)
+                #each_list.remove(2)
                 all_input_ids += each_list
 
             for each_list in enc['attention_mask']:
                 all_attention_masks += each_list
 
-            if len(all_input_ids) > max_length:
-                all_input_ids = all_input_ids[:1023] + [2]
-                all_attention_masks = all_attention_masks[:1024]
-
+            #print(all_input_ids)
+            #if len(all_input_ids) > max_length:
+            all_input_ids = all_input_ids[:1023] + [2] 
+            #print(all_input_ids, len(all_input_ids))
+            all_attention_masks = all_attention_masks[:1023] + [1]
+            #print(list(zip(all_attention_masks , all_input_ids)))
             pad_len = max_length - len(all_input_ids)
             pad_list = [1] * pad_len
             attention_mask = [0] * pad_len
             all_input_ids += pad_list
+            #print(len(all_input_ids), len(pad_list))
             all_attention_masks += attention_mask
             
             input_ids = torch.as_tensor([all_input_ids])
@@ -90,20 +99,27 @@ def encode_sentences(tokenizer, df, source_keys, target_key, max_length=1024, pa
             key_name = key[0] if type(key) is list else key
             id_key = '%s_ids'%key_name
             attention_mask_key = '%s_attention_masks'%key_name
-            bos_key = "%s_bos_ids"%key
+            bos_key = "%s_bos_ids"%key_name
             if id_key not in row_dict:
                 row_dict[id_key] = []
                 row_dict[attention_mask_key] = []
                 row_dict[bos_key] = []
-
+            #print(id_key)
             row_keys = key if type(key) is list else [key]
-            sentences_key = []
+            sentences = {}
             for k in row_keys:
                 data_key = row[k]
                 data_key = eval(data_key)
-                data_key = [each for each in data_key if each.strip()]
-                data_key = ["<%s> "%key +each + " </%s>"%key for each in data_key ]
-                sentences_key += data_key
+                sentences[k] = [each for each in data_key if each.strip()]
+                #sentences[k] =  ["<%s> "%k +each + " </%s>"%k for each in data_key ]
+            
+            #sentences_key = list(zip([sentences[k] for k in row_keys]))
+            all_keys = list(sentences.keys())
+            zipped_sentences = [' <sep> '.join([sentences[k][i] for k in all_keys]) for i in range(0, len(sentences[all_keys[0]]))]
+            sentences_key = zipped_sentences
+            #print(sentences_key)
+            #print(sentences_key)
+           
             
             if sentences_key:
                 sentence_encoding, bos_ids = get_encoding(sentences_key)
@@ -113,7 +129,8 @@ def encode_sentences(tokenizer, df, source_keys, target_key, max_length=1024, pa
                 row_dict[bos_key].append(bos_ids)
             else:
                 all_present = False
-
+       
+        #print(row_dict.keys()) 
         if all_present:
             for k , v in row_dict.items():
                 encoded_sentences[k] += v
@@ -243,7 +260,7 @@ class SummaryDataModule(pl.LightningDataModule):
 
 
 
-def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
+def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/ramprasad.sa', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
     if data_type == 'robo':
         train_file = path + '/summarization/datasets/%s'%(files[0])
         dev_file = path + '/summarization/datasets/%s'%(files[1])
@@ -257,12 +274,12 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/
     return summary_data
 
 if __name__ == '__main__':
-    additional_special_tokens = [ "<sep>"]
-    '''additional_special_tokens = ['<population>', '</population>',
+    #additional_special_tokens = [ "<sep>"]
+    additional_special_tokens = ['<population>', '</population>',
                                         '<interventions>', '</interventions>',
                                         '<outcomes>', '</outcomes>',
                                         '<punchline_text>', '</punchline_text>',
-                                        '<punchline_effect>', '</punchline_effect>', "<sep>"]'''
+                                        '<punchline_effect>', '</punchline_effect>', "<sep>", "<bos>"]
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
                                                     eos_token="</s>", 
                                                     pad_token = "<pad>")
@@ -274,7 +291,7 @@ if __name__ == '__main__':
     
                                     
     
-    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/Users/sanjana', files = data_files, max_len = 1024)
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/ramprasad.sa', files = data_files, max_len = 1024)
     print(summary_data.train)
     summary_data.setup()
     it = summary_data.val_dataloader()
@@ -282,13 +299,13 @@ if __name__ == '__main__':
     batch = next(batches)
 
     def print_pico(batch):
-        population_input_ids = batch[0] if len(batch) >1 else None
-        population_attention_masks = batch[1] if len(batch) >1 else None
-        print("POPULATION")
+        population_input_ids = batch[9] if len(batch) >1 else None
+        population_attention_masks = batch[10] if len(batch) >1 else None
+        print("PUNCHLINE TEXT")
         print(population_input_ids)
         print(" ".join([tokenizer.decode(w, skip_special_tokens=False, clean_up_tokenization_spaces=True) for w in population_input_ids]))
         print(population_attention_masks)
-        print(batch[2])
+        print(batch[11])
 
 
         interventions_input_ids = batch[3] if len(batch) >3 else None
