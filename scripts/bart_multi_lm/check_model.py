@@ -60,7 +60,6 @@ class BartMultiEncHATTester():
         from model import BartForDataToTextGeneration_MultiLM
         
         model = BartForDataToTextGeneration_MultiLM.from_pretrained('facebook/bart-base')
-        model._make_duplicate_encoders(layer_share = False)
         model.resize_token_embeddings(len(tokenizer))
         print("Loading Data ...")
         summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/sanjana', files = ['train_rr_data.csv', 
