@@ -175,7 +175,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         print(len(vector_attn_pad), len(vector_list))
         vector_list = torch.as_tensor([vector_list], device = encoder_output_list[0][0].device)
         #vector_attention = [1] * len(vector_list)
-        vector_attention = torch.as_tensor([vector_attention], device = torch.device('cuda'))
+        vector_attention = torch.as_tensor([vector_attention], device = encoder_output_list[0][0].device)
         print("SENT VECT,  SENT ATTN", vector_list.shape, vector_attention.shape)
         return vector_list, vector_attention
 
@@ -316,6 +316,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         outputs4 = self.model.decoder(
             encoder_hidden_states=sentence_representations,
             encoder_attention_mask=sentence_attention_mask,
+            input_ids=decoder_input_ids,
             head_mask=decoder_head_mask,
             cross_attn_head_mask=None,
             past_key_values=past_key_values,
@@ -325,7 +326,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
-        print(outputs3.shape, outputs4.shape)
+        print(outputs3[0].shape, outputs4[0].shape)
         #print(outputs0[0].shape) 
         #print(torch.cat([outputs0[0], outputs1[0], outputs2[0]], dim = -1).shape) 
         ## TRIAL 1 

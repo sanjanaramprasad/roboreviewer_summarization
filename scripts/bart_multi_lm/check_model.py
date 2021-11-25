@@ -9,7 +9,7 @@ from torch import nn
 import torch
 
 
-def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv']):
+def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/ramprasad.sa', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv']):
     if data_type == 'robo':
         train_file = path + '/summarization/datasets/%s'%(files[0])
         dev_file = path + '/summarization/datasets/%s'%(files[1])
@@ -62,7 +62,7 @@ class BartMultiEncHATTester():
         model = BartForDataToTextGeneration_MultiLM.from_pretrained('facebook/bart-base')
         model.resize_token_embeddings(len(tokenizer))
         print("Loading Data ...")
-        summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/sanjana', files = ['train_rr_data.csv', 
+        summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/ramprasad.sa', files = ['train_rr_data.csv', 
                             'dev_rr_data.csv', 'test_rr_data.csv'])
         summary_data.setup("stage")
         val_data = summary_data.val_dataloader(data_type = 'robo')
@@ -91,7 +91,6 @@ class BartMultiEncHATTester():
             bos_ids_col2 = outcomes_bos_ids,
             bos_ids_col3 = punchline_text_bos_ids,
             labels = tgt_ids,
-            encoder_combination_type = encoder_combination_type,
             use_cache = False,
         )
 

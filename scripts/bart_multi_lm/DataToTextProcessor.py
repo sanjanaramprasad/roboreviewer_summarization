@@ -179,7 +179,7 @@ class SummaryDataModule(pl.LightningDataModule):
         self.validate = preprocess_df(self.validate, preprocess_keys)
         self.test = preprocess_df(self.test, preprocess_keys)
 
-    def setup(self):
+    def setup(self, stage):
         self.train = encode_sentences(self.tokenizer, 
                                       self.train,
                                         ['population', 
@@ -299,11 +299,12 @@ if __name__ == '__main__':
     batch = next(batches)
 
     def print_pico(batch):
-        population_input_ids = batch[9] if len(batch) >1 else None
+        population_input_ids = batch[0][0]
+        population_bos_ids = batch[2] if len(batch) >1 else None
         population_attention_masks = batch[10] if len(batch) >1 else None
         print("PUNCHLINE TEXT")
-        print(population_input_ids)
-        print(" ".join([tokenizer.decode(w, skip_special_tokens=False, clean_up_tokenization_spaces=True) for w in population_input_ids]))
+        print(population_bos_ids)
+        print(" ".join([tokenizer.decode(population_input_ids[w], skip_special_tokens=False, clean_up_tokenization_spaces=True) for w in population_bos_ids[0] if w != -2]))
         print(population_attention_masks)
         print(batch[11])
 
