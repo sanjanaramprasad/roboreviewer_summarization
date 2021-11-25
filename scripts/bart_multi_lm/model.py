@@ -243,7 +243,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             cross_attn_head_mask=cross_attn_head_mask,
             past_key_values=past_key_values[0] if past_key_values else None,
             inputs_embeds=inputs_embeds,
-            decoder_inputs_embeds=decoder_inputs_embeds,
+            decoder_inputs_embeds=None,
             use_cache=use_cache,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
@@ -261,7 +261,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             cross_attn_head_mask=cross_attn_head_mask,
             past_key_values=past_key_values[1] if past_key_values else None,
             inputs_embeds=inputs_embeds,
-            decoder_inputs_embeds=decoder_inputs_embeds,
+            decoder_inputs_embeds=None,
             use_cache=use_cache,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
@@ -279,7 +279,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             cross_attn_head_mask=cross_attn_head_mask,
             past_key_values=past_key_values[2] if past_key_values else None,
             inputs_embeds=inputs_embeds,
-            decoder_inputs_embeds=decoder_inputs_embeds,
+            decoder_inputs_embeds=None,
             use_cache=use_cache,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
@@ -297,13 +297,14 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             cross_attn_head_mask=cross_attn_head_mask,
             past_key_values=past_key_values[3] if past_key_values else None,
             inputs_embeds=inputs_embeds,
-            decoder_inputs_embeds=decoder_inputs_embeds,
+            decoder_inputs_embeds=None,
             use_cache=use_cache,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
 
+        
 
         encoder_outputs_list = [outputs0.encoder_last_hidden_state, outputs1.encoder_last_hidden_state,\
                                 outputs2.encoder_last_hidden_state, outputs3.encoder_last_hidden_state]
@@ -311,8 +312,20 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         
         sentence_representations, sentence_attention_mask = self._get_sentence_vectors(encoder_outputs_list, bos_id_list)
         #sentence_attention_mask = torch.as_tensor([sentence_attention_mask], device = attention_mask_col0.device)
-                
-       
+        
+        outputs4 = self.model.decoder(
+            encoder_hidden_states=sentence_representations,
+            encoder_attention_mask=sentence_attention_mask,
+            head_mask=decoder_head_mask,
+            cross_attn_head_mask=None,
+            past_key_values=past_key_values,
+            inputs_embeds=decoder_inputs_embeds,
+            use_cache=use_cache,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+        print(outputs3.shape, outputs4.shape)
         #print(outputs0[0].shape) 
         #print(torch.cat([outputs0[0], outputs1[0], outputs2[0]], dim = -1).shape) 
         ## TRIAL 1 
