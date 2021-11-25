@@ -150,23 +150,27 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         vector_attention = []
         max_len = encoder_output_list[0][0].shape[0]
         embed_dim = encoder_output_list[0][0].shape[1]
-
+        batch_size = encoder_output_list[0].shape
         print("MAX LEN", max_len)
         print("EMB DIM", embed_dim)
+        print('BATCH SIZE', batch_size)
 
-        for enc_last_hidden_state, bos_ids in list(zip(encoder_output_list, bos_id_list)):
-            print(enc_last_hidden_state.shape, bos_id_list[0].shape)
-            enc_last_hs_vectors = enc_last_hidden_state[0]
-            #sentence_output = [enc_output[i] for i in bos_id_list[0] if i != -2]
-            sentence_output = []
-            print("ENC LAST HS", enc_last_hs_vectors.shape)
-            for i in bos_ids[0].tolist():
-                #print(i)
-                if i != -2:
+        for batch_id in range(0, batch_size):
+            batch_vector_list = []
+            for enc_last_hidden_state, bos_ids in list(zip(encoder_output_list, bos_id_list)):
+                print(enc_last_hidden_state.shape, bos_id_list[batch_id].shape)
+                enc_last_hs_vectors = enc_last_hidden_state[batch_id]
+                #sentence_output = [enc_output[i] for i in bos_id_list[0] if i != -2]
+                sentence_output = []
+                print("ENC LAST HS", enc_last_hs_vectors.shape)
+                for i in bos_ids[batch_id].tolist():
                     #print(i)
-                    sentence_output.append(enc_last_hs_vectors[i].tolist())
-                    #print(enc_last_hs_vectors[i].tolist())
-            vector_list += sentence_output
+                    if i != -2:
+                        #print(i)
+                        sentence_output.append(enc_last_hs_vectors[i].tolist())
+                        #print(enc_last_hs_vectors[i].tolist())
+                batch_vector_list += sentence_output
+            vector_list.append(batch_vector_list)
         print("VECTOR LIST", len(vector_list))
         vector_list_pad = [0] * embed_dim
         vector_attn_pad = [0] * (max_len - len(vector_list))
