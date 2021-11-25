@@ -81,15 +81,15 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         self.lm_head = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
 
 
-        self.weight_vect0 = nn.Linear(config.d_model, 1, bias = False)
+        '''self.weight_vect0 = nn.Linear(config.d_model, 1, bias = False)
         self.weight_vect1 = nn.Linear(config.d_model, 1, bias = False)
         self.weight_vect2 = nn.Linear(config.d_model, 1, bias = False)
-        self.weight_vect3 = nn.Linear(config.d_model, 1, bias = False)
+        self.weight_vect3 = nn.Linear(config.d_model, 1, bias = False)'''
         #self.lm_head1 = nn.Linear(config.d_model, self.model1.shared.num_embeddings, bias=False)
         #self.lm_head2 = nn.Linear(config.d_model, self.model2.shared.num_embeddings, bias=False)
         #self.lm_combine = Mixture(num_inputs=1)
-        ##self.weigh_context = nn.Linear(config.d_model , 4)
-        ##self.soft_weigh = nn.Softmax(dim =2)
+        self.weigh_context = nn.Linear(config.d_model * 5 , 5)
+        self.soft_weigh = nn.Softmax(dim =2)
         self.init_weights()
 
     def _make_multiple_lm_heads(self):
@@ -330,7 +330,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         #print(outputs0[0].shape) 
         #print(torch.cat([outputs0[0], outputs1[0], outputs2[0]], dim = -1).shape) 
         ## TRIAL 1 
-        ##alphas = self.weigh_context(torch.cat([outputs0[0], outputs1[0], outputs2[0], outputs3[0]], dim = -1))
+        alphas = self.weigh_context(torch.cat([outputs0[0], outputs1[0], outputs2[0], outputs3[0], outputs4[0]], dim = -1))
 
         ## TRIAL 2 
         #context_vect = torch.stack([outputs0[0], outputs1[0], outputs2[0], outputs3[0]], dim = 0)
@@ -344,12 +344,12 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         ##alphas = self.weigh_context(outputs)
 
         #### ATTN MECHANISM
-        alphas0 = self.weight_vect0(outputs0[0])
+        '''alphas0 = self.weight_vect0(outputs0[0])
         alphas1 = self.weight_vect1(outputs1[0])
         alphas2 = self.weight_vect2(outputs2[0])
-        alphas3 = self.weight_vect3(outputs3[0])
+        alphas3 = self.weight_vect3(outputs3[0])'''
 
-        alphas = torch.cat([alphas0, alphas1, alphas2, alphas3])
+        #alphas = torch.cat([alphas0, alphas1, alphas2, alphas3])
 
         alphas = self.soft_weigh(alphas)
 
