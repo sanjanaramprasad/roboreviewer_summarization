@@ -155,10 +155,11 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         print("EMB DIM", embed_dim)
 
         for enc_last_hidden_state, bos_ids in list(zip(encoder_output_list, bos_id_list)):
+            print(enc_last_hidden_state.shape, bos_id_list[0].shape)
             enc_last_hs_vectors = enc_last_hidden_state[0]
             #sentence_output = [enc_output[i] for i in bos_id_list[0] if i != -2]
             sentence_output = []
-            #print(bos_ids, enc_last_hs_vectors.shape)
+            print("ENC LAST HS", enc_last_hs_vectors.shape)
             for i in bos_ids[0].tolist():
                 #print(i)
                 if i != -2:
@@ -305,7 +306,8 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             return_dict=return_dict,
         )
 
-        
+       
+        print(outputs0.encoder_last_hidden_state.shape) 
 
         encoder_outputs_list = [outputs0.encoder_last_hidden_state, outputs1.encoder_last_hidden_state,\
                                 outputs2.encoder_last_hidden_state, outputs3.encoder_last_hidden_state]
