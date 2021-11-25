@@ -85,8 +85,9 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         self.weight_vect1 = nn.Linear(config.d_model, 1, bias = False)
         self.weight_vect2 = nn.Linear(config.d_model, 1, bias = False)
         self.weight_vect3 = nn.Linear(config.d_model, 1, bias = False)'''
-        #self.lm_head1 = nn.Linear(config.d_model, self.model1.shared.num_embeddings, bias=False)
-        #self.lm_head2 = nn.Linear(config.d_model, self.model2.shared.num_embeddings, bias=False)
+        #self.lm_head1 = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
+        #self.lm_head2 = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
+        #self.lm_head3 = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
         #self.lm_combine = Mixture(num_inputs=1)
         self.weigh_context = nn.Linear(config.d_model * 5 , 5)
         self.soft_weigh = nn.Softmax(dim =2)
@@ -353,7 +354,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
 
         alphas = self.soft_weigh(alphas)
 
-        print("ALPHAS", alphas.shape)
+        print("ALPHAS", alphas.shape, alphas[0][:, 0][:, None])
         
         #alphas = alphas[0]
         print('WEIGHTS', alphas)

@@ -16,7 +16,7 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/r
         test_file = path + '/summarization/datasets/%s'%(files[2])
 
     data_files = [train_file, dev_file, test_file]
-    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1, max_len = 1024)
+    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 3, max_len = 1024)
     summary_data.prepare_data()
     return summary_data
 
@@ -46,7 +46,12 @@ def get_data(data):
                 outcomes_input_ids, outcomes_attention_masks, outcomes_bos_ids,\
                 punchline_text_input_ids, punchline_text_attention_masks, punchline_text_bos_ids,
 
-additional_special_tokens = ["<sep>"]
+#additional_special_tokens = ["<sep>"]
+additional_special_tokens = ['<population>', '</population>',
+                                        '<interventions>', '</interventions>',
+                                        '<outcomes>', '</outcomes>',
+                                        '<punchline_text>', '</punchline_text>',
+                                        '<punchline_effect>', '</punchline_effect>', "<sep>", "<bos>"]
 tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>",
                                                     eos_token="</s>",
                                                     pad_token = "<pad>")
@@ -59,8 +64,9 @@ class BartMultiEncHATTester():
     def test_model_forward_bart_encoder(self, encoder_combination_type):
         from model import BartForDataToTextGeneration_MultiLM
         
-        model = BartForDataToTextGeneration_MultiLM.from_pretrained('facebook/bart-base')
-        model.resize_token_embeddings(len(tokenizer))
+        self.model = BartForDataToTextGeneration_MultiLM.from_pretrained('facebook/bart-base')
+        self.model.resize_token_embeddings(len(tokenizer))
+        self.model._make_multiple_lm_heads()
         print("Loading Data ...")
         summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/ramprasad.sa', files = ['train_rr_data.csv', 
                             'dev_rr_data.csv', 'test_rr_data.csv'])
@@ -77,7 +83,7 @@ class BartMultiEncHATTester():
 
         print("forward...") 
         tgt_ids = data[-1]
-        outputs = model(
+        outputs = self.model(
             input_ids_col0 = population_input_ids,
             input_ids_col1 = interventions_input_ids,
             input_ids_col2 = outcomes_input_ids, 
@@ -95,7 +101,7 @@ class BartMultiEncHATTester():
         )
 
         #tgt_ids = data[-1]
-        optimizer = optim.Adam(model.parameters())
+        optimizer = optim.Adam(self.model.parameters())
         loss = outputs[0]
         #ce_loss_fct = torch.nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
         #loss = ce_loss_fct(lm_logits.view(-1, lm_logits.shape[-1]), tgt_ids.view(-1))
