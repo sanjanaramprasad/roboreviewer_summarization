@@ -151,9 +151,9 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         max_len = encoder_output_list[0][0].shape[0]
         embed_dim = encoder_output_list[0][0].shape[1]
         batch_size = encoder_output_list[0].shape[0]
-        print("MAX LEN", max_len)
+        '''print("MAX LEN", max_len)
         print("EMB DIM", embed_dim)
-        print('BATCH SIZE', batch_size)
+        print('BATCH SIZE', batch_size)'''
 
         for batch_id in range(0, batch_size):
             batch_vector_list = []
@@ -165,6 +165,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
                 print("ENC LAST HS", enc_last_hs_vectors.shape)
                 for i in bos_ids[batch_id].tolist():
                     #print(i)
+                    print('BOS',batch_id, bos_ids[batch_id].tolist())
                     if i != -2:
                         #print(i)
                         sentence_output.append(enc_last_hs_vectors[i].tolist())
@@ -175,7 +176,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         vector_list_padded= []
         vector_attentions = []
         for vect_list in vector_list:
-            print("VECTOR LIST", len(vect_list))
+            ##print("VECTOR LIST", len(vect_list))
             vect_list_pad = [0] * embed_dim
             vector_attn_pad = [0] * (max_len - len(vect_list))
             vector_attention = [1] * len(vect_list)
@@ -185,12 +186,12 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
 
             vector_list_padded.append(vect_list)
             vector_attentions.append(vector_attention)
-            print(len(vector_attn_pad), len(vect_list))
+            ##print(len(vector_attn_pad), len(vect_list))
 
         vector_list = torch.as_tensor(vector_list_padded, device = encoder_output_list[0][0].device)
         #vector_attention = [1] * len(vector_list)
         vector_attentions = torch.as_tensor(vector_attentions, device = encoder_output_list[0][0].device)
-        print("SENT VECT,  SENT ATTN", vector_list.shape, vector_attentions.shape)
+        ##print("SENT VECT,  SENT ATTN", vector_list.shape, vector_attentions.shape)
         return vector_list, vector_attentions
 
     def forward(
@@ -245,6 +246,10 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
                 decoder_input_ids = shift_tokens_right(
                     labels, self.config.pad_token_id, self.config.decoder_start_token_id
                 )
+        print('INPUT0', input_ids_col0)
+        print('INPUT1', input_ids_col1)
+        print('INPUT2', input_ids_col2)
+        print('INPUT3', input_ids_col3)
 
         outputs0 = self.model(
             input_ids_col0,
