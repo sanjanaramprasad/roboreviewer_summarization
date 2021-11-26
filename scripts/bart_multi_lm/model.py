@@ -162,7 +162,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         '''print("MAX LEN", max_len)
         print("EMB DIM", embed_dim)
         print('BATCH SIZE', batch_size)'''
-        print('ENC OUT LIST', len(encoder_output_list, encoder_output_list[0].shape))
+        print('ENC OUT LIST', len(encoder_output_list), len(encoder_output_list[0].shape))
         print('BOS LIST', len(bos_id_list), bos_id_list[0].shape)
 
         for batch_id in range(0, batch_size):
