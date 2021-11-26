@@ -189,7 +189,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
 
         vector_list = torch.as_tensor(vector_list_padded, device = encoder_output_list[0][0].device)
         #vector_attention = [1] * len(vector_list)
-        vector_attentions = torch.as_tensor([vector_attentions], device = encoder_output_list[0][0].device)
+        vector_attentions = torch.as_tensor(vector_attentions, device = encoder_output_list[0][0].device)
         print("SENT VECT,  SENT ATTN", vector_list.shape, vector_attentions.shape)
         return vector_list, vector_attentions
 
