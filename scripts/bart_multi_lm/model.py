@@ -165,6 +165,9 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         print('ENC OUT LIST', len(encoder_output_list), encoder_output_list[0].shape)
         print('BOS LIST', len(bos_id_list), bos_id_list[0].shape)
 
+        print(encoder_output_list[0], bos_id_list[0])
+        print(list(zip(encoder_output_list, bos_id_list))[0])
+
         for batch_id in range(0, batch_size):
             batch_vector_list = []
 
