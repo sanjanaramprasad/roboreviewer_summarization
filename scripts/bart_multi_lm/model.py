@@ -77,6 +77,8 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         self.register_buffer("final_logits_bias1", torch.zeros((1, self.model.shared.num_embeddings)))
         self.register_buffer("final_logits_bias2", torch.zeros((1, self.model.shared.num_embeddings)))
         self.register_buffer("final_logits_bias3", torch.zeros((1, self.model.shared.num_embeddings)))
+        self.register_buffer("final_logits_bias4", torch.zeros((1, self.model.shared.num_embeddings)))
+
         self.softmax_logits = nn.LogSoftmax(dim = 2)
         self.lm_head = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
 
@@ -97,6 +99,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         self.lm_head1 = copy.deepcopy(self.lm_head)
         self.lm_head2 = copy.deepcopy(self.lm_head)
         self.lm_head3 = copy.deepcopy(self.lm_head)
+        self.lm_head4 = copy.deepcopy(self.lm_head)
         return
 
     def get_encoder(self):
@@ -136,6 +139,10 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         new_bias = self._resize_func(self.final_logits_bias3, new_num_tokens, old_num_tokens)
         self.register_buffer("final_logits_bias3", new_bias)
 
+        old_num_tokens = self.final_logits_bias4.shape[-1]
+        new_bias = self._resize_func(self.final_logits_bias4, new_num_tokens, old_num_tokens)
+        self.register_buffer("final_logits_bias4", new_bias)
+
     def get_output_embeddings(self):
         return self.lm_head
 
@@ -144,6 +151,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         self.lm_head1 = new_embeddings
         self.lm_head2 = new_embeddings
         self.lm_head3 = new_embeddings
+        self.lm_head4 = new_embeddings
 
     def _get_sentence_vectors(self, encoder_output_list, bos_id_list):
         vector_list = []
@@ -346,7 +354,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
-        print(outputs3[0].shape, outputs4[0].shape)
+        #print(outputs3[0].shape, outputs4[0].shape)
         #print(outputs0[0].shape) 
         #print(torch.cat([outputs0[0], outputs1[0], outputs2[0]], dim = -1).shape) 
         ## TRIAL 1 
