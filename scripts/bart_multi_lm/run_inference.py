@@ -7,7 +7,7 @@ import torch
 import torch.distributed as dist
 from torch.nn import functional as F
 #from BartForDataToTextGeneration import BartForDataToTextDecoderMod
-from BartForDataToTextGeneration_lm import BartForDataToTextGeneration_MultiLM
+from model import BartForDataToTextGeneration_MultiLM
 from transformers.generation_utils import GenerationMixin
 from run_experiment import LitModel
 from transformers import BartTokenizer
