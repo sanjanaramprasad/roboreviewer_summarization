@@ -165,41 +165,30 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
 
         for batch_id in range(0, batch_size):
             batch_vector_list = []
+
             for enc_last_hidden_state, bos_ids in list(zip(encoder_output_list, bos_id_list)):
-                print(enc_last_hidden_state.shape, bos_id_list[batch_id].shape)
                 enc_last_hs_vectors = enc_last_hidden_state[batch_id]
-                #sentence_output = [enc_output[i] for i in bos_id_list[0] if i != -2]
                 sentence_output = []
-                print("ENC LAST HS", enc_last_hs_vectors.shape)
+
                 for i in bos_ids[batch_id].tolist():
-                    #print(i)
-                    print('BOS',batch_id, bos_ids[batch_id].tolist())
                     if i != -2:
-                        #print(i)
                         sentence_output.append(enc_last_hs_vectors[i].tolist())
-                        #print(enc_last_hs_vectors[i].tolist())
+
                 batch_vector_list += sentence_output
             vector_list.append(batch_vector_list)
 
         vector_list_padded= []
         vector_attentions = []
-        for vect_list in vector_list:
-            ##print("VECTOR LIST", len(vect_list))
-            vect_list_pad = [0] * embed_dim
-            vector_attn_pad = [0] * (max_len - len(vect_list))
-            vector_attention = [1] * len(vect_list)
 
-            vector_attention += vector_attn_pad
-            vect_list += [vect_list_pad] * (max_len - len(vect_list))
+        for vect_list in vector_list:
+            vector_attention = [1] * len(vect_list) + [0] * (max_len - len(vect_list))
+            vect_list += [[0] * embed_dim] * (max_len - len(vect_list))
 
             vector_list_padded.append(vect_list)
             vector_attentions.append(vector_attention)
-            ##print(len(vector_attn_pad), len(vect_list))
 
         vector_list = torch.as_tensor(vector_list_padded, device = encoder_output_list[0][0].device)
-        #vector_attention = [1] * len(vector_list)
         vector_attentions = torch.as_tensor(vector_attentions, device = encoder_output_list[0][0].device)
-        ##print("SENT VECT,  SENT ATTN", vector_list.shape, vector_attentions.shape)
         return vector_list, vector_attentions
 
     def forward(
@@ -254,10 +243,6 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
                 decoder_input_ids = shift_tokens_right(
                     labels, self.config.pad_token_id, self.config.decoder_start_token_id
                 )
-        print('INPUT0', input_ids_col0)
-        print('INPUT1', input_ids_col1)
-        print('INPUT2', input_ids_col2)
-        print('INPUT3', input_ids_col3)
 
         outputs0 = self.model(
             input_ids_col0,
@@ -337,6 +322,11 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         encoder_outputs_list = [outputs0.encoder_last_hidden_state, outputs1.encoder_last_hidden_state,\
                                 outputs2.encoder_last_hidden_state, outputs3.encoder_last_hidden_state]
         bos_id_list = [bos_ids_col0, bos_ids_col1, bos_ids_col2, bos_ids_col3]
+        input_ids_list = [input_ids_col0, input_ids_col1, input_ids_col2, input_ids_col3]
+
+        zipped = list(zip(input_ids_list, bos_id_list))
+        print(len(zipped), len(zipped[0]))
+        print('ZIPPED', zipped[0][0].tolist(), zipped[0][1].tolist())
         
         sentence_representations, sentence_attention_mask = self._get_sentence_vectors(encoder_outputs_list, bos_id_list)
         #sentence_attention_mask = torch.as_tensor([sentence_attention_mask], device = attention_mask_col0.device)
@@ -390,14 +380,18 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         lm_logits1 = self.lm_head1(outputs1[0]) + self.final_logits_bias1
         lm_logits2 = self.lm_head2(outputs2[0]) + self.final_logits_bias2
         lm_logits3 = self.lm_head3(outputs3[0]) + self.final_logits_bias3
+        lm_logits4 = self.lm_head4(outputs4[0]) + self.final_logits_bias4
 
         lm_logits0 = self.softmax_logits(lm_logits0)
         lm_logits1 = self.softmax_logits(lm_logits1)
         lm_logits2 = self.softmax_logits(lm_logits2)
         lm_logits3 = self.softmax_logits(lm_logits3)
+        lm_logits4 = self.softmax_logits(lm_logits4)
 
         #print("LOGITS SINGLE", lm_logits0.shape)
-        lm_logits = [ alphas[batch_id][:, 0][:, None] *  lm_logits0[batch_id].unsqueeze(0) + alphas[batch_id][:, 1][:, None] *  lm_logits1[batch_id].unsqueeze(0)  + alphas[batch_id][:, 2][:, None] *  lm_logits2[batch_id].unsqueeze(0) + alphas[batch_id][:, 3][:, None] *  lm_logits3[batch_id].unsqueeze(0) \
+        lm_logits = [ alphas[batch_id][:, 0][:, None] *  lm_logits0[batch_id].unsqueeze(0) + alphas[batch_id][:, 1][:, None] *  lm_logits1[batch_id].unsqueeze(0)  + \
+            alphas[batch_id][:, 2][:, None] *  lm_logits2[batch_id].unsqueeze(0) \
+                + alphas[batch_id][:, 3][:, None] *  lm_logits3[batch_id].unsqueeze(0) + alphas[batch_id][:, 4][:, None] * lm_logits4[batch_id].unsqueeze(0) \
                 for batch_id in range(0, lm_logits0.shape[0])]
         lm_logits = torch.cat(lm_logits)
         #print('lm combined', lm_logits.shape)
@@ -408,7 +402,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             masked_lm_loss = loss_fct(lm_logits0.view(-1, self.config.vocab_size), labels.view(-1))
 
         if not return_dict:
-            output = (lm_logits0,) + outputs0[1:]
+            output = (lm_logits) + outputs4[1:]
             return ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
         #print(lm_logits0[0].unsqueeze(0).shape)        
         lm_logits_list = [torch.stack([alphas[batch_id][:,0]  , alphas[batch_id][:,1] \
