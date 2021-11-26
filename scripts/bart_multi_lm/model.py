@@ -150,7 +150,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         vector_attention = []
         max_len = encoder_output_list[0][0].shape[0]
         embed_dim = encoder_output_list[0][0].shape[1]
-        batch_size = encoder_output_list[0].shape
+        batch_size = encoder_output_list[0].shape[0]
         print("MAX LEN", max_len)
         print("EMB DIM", embed_dim)
         print('BATCH SIZE', batch_size)
