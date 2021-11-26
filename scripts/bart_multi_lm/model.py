@@ -172,19 +172,19 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
                 batch_vector_list += sentence_output
             vector_list.append(batch_vector_list)
 
-        vector_list_padded = []
+        vector_list_padded= []
         vector_attentions = []
         for vect_list in vector_list:
             print("VECTOR LIST", len(vect_list))
-            vector_list_pad = [0] * embed_dim
+            vect_list_pad = [0] * embed_dim
             vector_attn_pad = [0] * (max_len - len(vect_list))
             vector_attention = [1] * len(vect_list)
-
-            vector_list_padded.append([vector_list_pad] * (max_len - len(vect_list)))
             vector_attention += vector_attn_pad
-            print(len(vector_attn_pad), len(vector_list))
-            vector_list_pad.append(vect_list)
+            vect_list += [vect_list_pad] * (max_len - len(vect_list)) 
+            vector_list_padded.append(vect_list)
             vector_attentions.append(vector_attention)
+            print(len(vector_attn_pad), len(vect_list))
+
         vector_list = torch.as_tensor([vector_list_padded], device = encoder_output_list[0][0].device)
         #vector_attention = [1] * len(vector_list)
         vector_attentions = torch.as_tensor([vector_attentions], device = encoder_output_list[0][0].device)
