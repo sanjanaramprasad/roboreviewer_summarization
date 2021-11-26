@@ -163,7 +163,7 @@ def parameter_searca(sample,  model, tokenizer, device):
 
 
 def run_inference( checkpoint_file, parameter_look = False, write_results = True):
-    config = config_content_select_lm
+    config = config_multi_lm_background
 
     tokenizer = config.tokenizer
     special_tokens = config.additional_special_tokens
