@@ -216,6 +216,7 @@ class LitModel(pl.LightningModule):
 
 
 
+
 def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/ramprasad.sa', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv']):
     if data_type == 'robo':
         train_file = path + '/summarization/datasets/%s'%(files[0])
@@ -226,7 +227,6 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/r
     summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 3, max_len = 1024)
     summary_data.prepare_data()
     return summary_data
-
 
 
 def main():
@@ -247,8 +247,10 @@ def main():
     
                                     
     
-    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/ramprasad.sa', files = data_files, max_len = 1024)
     
+    summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/ramprasad.sa', files = ['train_rr_data.csv', 
+                            'dev_rr_data.csv', 'test_rr_data.csv'])
+
     bart_model = BartForDataToTextGeneration_MultiLM.from_pretrained('facebook/bart-base') 
 
     #hparams = argparse.Namespace()
