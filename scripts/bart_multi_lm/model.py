@@ -162,6 +162,8 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         '''print("MAX LEN", max_len)
         print("EMB DIM", embed_dim)
         print('BATCH SIZE', batch_size)'''
+        print('ENC OUT LIST', len(encoder_output_list, encoder_output_list[0].shape))
+        print('BOS LIST', len(bos_id_list), bos_id_list[0].shape)
 
         for batch_id in range(0, batch_size):
             batch_vector_list = []
@@ -322,14 +324,9 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         encoder_outputs_list = [outputs0.encoder_last_hidden_state, outputs1.encoder_last_hidden_state,\
                                 outputs2.encoder_last_hidden_state, outputs3.encoder_last_hidden_state]
         bos_id_list = [bos_ids_col0, bos_ids_col1, bos_ids_col2, bos_ids_col3]
-        input_ids_list = [input_ids_col0, input_ids_col1, input_ids_col2, input_ids_col3]
 
-        zipped = list(zip(input_ids_list, bos_id_list))
-        print(len(zipped), len(zipped[0]))
-        print('ZIPPED', zipped[0][0].tolist(), zipped[0][1].tolist())
         
         sentence_representations, sentence_attention_mask = self._get_sentence_vectors(encoder_outputs_list, bos_id_list)
-        #sentence_attention_mask = torch.as_tensor([sentence_attention_mask], device = attention_mask_col0.device)
         
         outputs4 = self.model.decoder(
             encoder_hidden_states=sentence_representations,
@@ -344,30 +341,9 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
-        #print(outputs3[0].shape, outputs4[0].shape)
-        #print(outputs0[0].shape) 
-        #print(torch.cat([outputs0[0], outputs1[0], outputs2[0]], dim = -1).shape) 
-        ## TRIAL 1 
+
         alphas = self.weigh_context(torch.cat([outputs0[0], outputs1[0], outputs2[0], outputs3[0], outputs4[0]], dim = -1))
 
-        ## TRIAL 2 
-        #context_vect = torch.stack([outputs0[0], outputs1[0], outputs2[0], outputs3[0]], dim = 0)
-        #context_vect = torch.max(context_vect, dim = 0)[0]
-        #print('CVECT', context_vect.shape)
-
-        #alphas = self.weigh_context(context_vect)
-        
-        #outputs = torch.stack([outputs0[0].squeeze(0), outputs1[0].squeeze(0), outputs2[0].squeeze(0), outputs3[0].squeeze(0)], dim = 1)
-        #print("OUTPUTS SHAPE", outputs.shape)
-        ##alphas = self.weigh_context(outputs)
-
-        #### ATTN MECHANISM
-        '''alphas0 = self.weight_vect0(outputs0[0])
-        alphas1 = self.weight_vect1(outputs1[0])
-        alphas2 = self.weight_vect2(outputs2[0])
-        alphas3 = self.weight_vect3(outputs3[0])'''
-
-        #alphas = torch.cat([alphas0, alphas1, alphas2, alphas3])
 
         alphas = self.soft_weigh(alphas)
 
