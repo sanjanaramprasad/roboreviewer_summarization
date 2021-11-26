@@ -19,7 +19,7 @@ from transformers.file_utils import ModelOutput
 import pandas as pd
 import nltk
 from nltk.translate import meteor_score
-from DataToTextGenerator_lm import Data2TextGenerator
+from DataToTextGenerator import Data2TextGenerator
 import numpy as np
 import subprocess, os, sys 
 #import config_single_addition as config_single_addition
