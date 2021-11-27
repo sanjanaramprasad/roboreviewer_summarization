@@ -83,7 +83,7 @@ class LogitsRecorder():
             #self.input_logits[beam_idx] = torch.cat([self.input_logits[beam_idx], logits_list_idx.transpose(0,1)], dim = -1)
             #print(self.input_logits)
             self.beam_logits += self.input_logits[beam_idx]
-            print("checker", self.beam_logits, self.beam_ids)
+            #print("checker", self.beam_logits, self.beam_ids)
 
         unfinished_idx = (next_tokens != 2).nonzero(as_tuple=True)[1]
         unfinished_idx = next_indices[0][unfinished_idx][:3]
@@ -381,7 +381,7 @@ class Data2TextGenerator(GenerationMixin):
         if input_ids is None and "inputs_embeds" not in model_kwargs:
             # init `input_ids` with bos_token_id
             input_ids = self._prepare_input_ids_for_generation(bos_token_id, model_kwargs.get("encoder_outputs"))
-            print("INPUT IDS", input_ids)
+            #print("INPUT IDS", input_ids)
         if model_kwargs.get("attention_mask", None) is None:
             # init `attention_mask` depending on `pad_token_id`
             model_kwargs =  self._prepare_attention_mask_for_generation(
@@ -414,7 +414,7 @@ class Data2TextGenerator(GenerationMixin):
 
 
 
-        print(model_kwargs)    
+        #print(model_kwargs)    
         is_greedy_gen_mode = (num_beams == 1) and (num_beam_groups == 1) and do_sample is False
         
         is_sample_gen_mode = (num_beams == 1) and (num_beam_groups == 1) and do_sample is True
@@ -905,8 +905,8 @@ class Data2TextGenerator(GenerationMixin):
 
         found_index = indices[0]
         #if not indices:
-        print("REVIEW", "***" * 13)
-        print(found_index, sequence_outputs["sequences"], logits_recorder_outputs['beam_logits'])
+        #print("REVIEW", "***" * 13)
+        #print(found_index, sequence_outputs["sequences"], logits_recorder_outputs['beam_logits'])
         if return_dict_in_generate:
             if not output_scores:
                 sequence_outputs["sequence_scores"] = None
