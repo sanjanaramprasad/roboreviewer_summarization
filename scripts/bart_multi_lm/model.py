@@ -416,6 +416,10 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         encoder_outputs_col1 = None,
         encoder_outputs_col2 = None,
         encoder_outputs_col3 = None,
+        bos_ids_col0 = None,
+        bos_ids_col1 = None,
+        bos_ids_col2 = None,
+        bos_ids_col3 = None,
         **kwargs
     ):
         decoder_time_step =  decoder_input_ids.shape[1] - 1
@@ -439,6 +443,10 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             "attention_mask_col1": attention_mask_col1,
             "attention_mask_col2": attention_mask_col2,
             "attention_mask_col3": attention_mask_col3,
+            "bos_ids_col0": bos_ids_col0,
+            "bos_ids_col1": bos_ids_col1,
+            "bos_ids_col2": bos_ids_col2,
+            "bos_ids_col3": bos_ids_col3,
             "head_mask": head_mask,
             "use_cache": use_cache,  # change this to avoid caching (presumably for debugging)
 
