@@ -162,11 +162,11 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         '''print("MAX LEN", max_len)
         print("EMB DIM", embed_dim)
         print('BATCH SIZE', batch_size)'''
-        print('ENC OUT LIST', len(encoder_output_list), encoder_output_list[0].shape)
-        print('BOS LIST', len(bos_id_list), bos_id_list[0].shape)
+        #print('ENC OUT LIST', len(encoder_output_list), encoder_output_list[0].shape)
+        #print('BOS LIST', len(bos_id_list), bos_id_list[0].shape)
 
-        print(encoder_output_list[0], bos_id_list[0])
-        print(list(zip(encoder_output_list, bos_id_list))[0])
+        #print(encoder_output_list[0], bos_id_list[0])
+        #print(list(zip(encoder_output_list, bos_id_list))[0])
 
         for batch_id in range(0, batch_size):
             batch_vector_list = []
@@ -350,10 +350,10 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
 
         alphas = self.soft_weigh(alphas)
 
-        print("ALPHAS", alphas.shape, alphas[0][:, 0][:, None])
+        #print("ALPHAS", alphas.shape, alphas[0][:, 0][:, None])
         
         #alphas = alphas[0]
-        print('WEIGHTS', alphas)
+        #print('WEIGHTS', alphas)
         #print(input_ids)
         lm_logits0 = self.lm_head(outputs0[0]) + self.final_logits_bias0
         lm_logits1 = self.lm_head1(outputs1[0]) + self.final_logits_bias1

@@ -369,10 +369,10 @@ class Data2TextGenerator(GenerationMixin):
         model_kwargs["output_attentions"] = output_attentions
         model_kwargs["output_hidden_states"] = output_hidden_states
 
-        if input_ids_col0 is None and "inputs_embeds" not in model_kwargs:
+        if input_ids is None and "inputs_embeds" not in model_kwargs:
             # init `input_ids` with bos_token_id
             input_ids = self._prepare_input_ids_for_generation(bos_token_id, model_kwargs.get("encoder_outputs"))
-
+            print("INPUT IDS", input_ids)
         if model_kwargs.get("attention_mask", None) is None:
             # init `attention_mask` depending on `pad_token_id`
             model_kwargs =  self._prepare_attention_mask_for_generation(
