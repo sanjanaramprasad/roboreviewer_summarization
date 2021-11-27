@@ -125,6 +125,10 @@ class Data2TextGenerator(GenerationMixin):
         encoder_outputs_col1: ModelOutput = None,
         encoder_outputs_col2: ModelOutput = None,
         encoder_outputs_col3: ModelOutput = None,
+        bos_ids_col0: torch.LongTensor = None,
+        bos_ids_col1: torch.LongTensor = None,
+        bos_ids_col2: torch.LongTensor = None,
+        bos_ids_col3: torch.LongTensor = None,
         **model_kwargs,
     ) -> Tuple[torch.LongTensor, Dict[str, Any]]:
 
@@ -145,6 +149,15 @@ class Data2TextGenerator(GenerationMixin):
             model_kwargs["attention_mask_col2"] = attention_mask_col2.index_select(0, expanded_return_idx)
         if attention_mask_col3 is not None:
             model_kwargs["attention_mask_col3"] = attention_mask_col3.index_select(0, expanded_return_idx)
+
+        if bos_ids_col0 is not None:
+            model_kwargs["bos_ids_col0"] = bos_ids_col0.index_select(0, expanded_return_idx)
+        if bos_ids_col1 is not None:
+            model_kwargs["bos_ids_col1"] = bos_ids_col1.index_select(0, expanded_return_idx)
+        if bos_ids_col2 is not None:
+            model_kwargs["bos_ids_col2"] = bos_ids_col2.index_select(0, expanded_return_idx)
+        if bos_ids_col3 is not None:
+            model_kwargs["bos_ids_col3"] = bos_ids_col3.index_select(0, expanded_return_idx)
 
         if is_encoder_decoder:
             if encoder_outputs_col0 is not None:
