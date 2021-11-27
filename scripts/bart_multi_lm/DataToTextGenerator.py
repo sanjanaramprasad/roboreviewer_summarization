@@ -261,6 +261,11 @@ class Data2TextGenerator(GenerationMixin):
             model_kwargs["attention_mask_col2"] = attention_mask_col2
             model_kwargs["attention_mask_col3"] = attention_mask_col3
 
+            model_kwargs['bos_ids_col0'] = bos_ids_col0
+            model_kwargs['bos_ids_col1'] = bos_ids_col1
+            model_kwargs['bos_ids_col2'] = bos_ids_col2
+            model_kwargs['bos_ids_col3'] = bos_ids_col3
+
         return model_kwargs
         
     def generate(self,
@@ -388,6 +393,10 @@ class Data2TextGenerator(GenerationMixin):
                                                                                 input_ids_col1,
                                                                                 input_ids_col2,
                                                                                 input_ids_col3,
+                                                                                bos_ids_col0,
+                                                                                bos_ids_col1,
+                                                                                bos_ids_col2,
+                                                                                bos_ids_col3,
                                                                                 device,
                                                                                 model_kwargs,
                                                                                 )
