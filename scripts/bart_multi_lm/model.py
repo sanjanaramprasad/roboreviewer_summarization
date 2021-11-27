@@ -337,7 +337,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             input_ids=decoder_input_ids,
             head_mask=decoder_head_mask,
             cross_attn_head_mask=None,
-            past_key_values=past_key_values,
+            past_key_values=past_key_values[4] if past_key_values else None,
             inputs_embeds=decoder_inputs_embeds,
             use_cache=use_cache,
             output_attentions=output_attentions,
@@ -392,7 +392,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         return BARTSeq2SeqLMOutput(
             loss=masked_lm_loss,
             logits=lm_logits,
-            past_key_values=[outputs0.past_key_values, outputs1.past_key_values, outputs2.past_key_values, outputs3.past_key_values],
+            past_key_values=[outputs0.past_key_values, outputs1.past_key_values, outputs2.past_key_values, outputs3.past_key_values, outputs4.past_key_values],
             decoder_hidden_states=outputs0.decoder_hidden_states,
             decoder_attentions=outputs0.decoder_attentions,
             cross_attentions=outputs0.cross_attentions,
