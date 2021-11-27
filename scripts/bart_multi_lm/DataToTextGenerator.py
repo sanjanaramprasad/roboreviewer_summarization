@@ -209,6 +209,10 @@ class Data2TextGenerator(GenerationMixin):
         input_ids_col1: torch.LongTensor,
         input_ids_col2: torch.LongTensor,
         input_ids_col3: torch.LongTensor,
+        bos_ids_col0,
+        bos_ids_col1,
+        bos_ids_col2,
+        bos_ids_col3,
         device,
         model_kwargs
     ) -> Dict[str, Any]:
