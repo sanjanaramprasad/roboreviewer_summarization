@@ -91,7 +91,8 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         #self.lm_head2 = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
         #self.lm_head3 = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
         #self.lm_combine = Mixture(num_inputs=1)
-        self.weigh_context = nn.Linear(config.d_model * 5 , 5)
+        self.weigh_context = nn.Linear(config.d_model , 5)
+        
         self.soft_weigh = nn.Softmax(dim =2)
         self.init_weights()
 
@@ -345,12 +346,16 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             return_dict=return_dict,
         )
 
-        alphas = self.weigh_context(torch.cat([outputs0[0], outputs1[0], outputs2[0], outputs3[0], outputs4[0]], dim = -1))
+        context_vect = torch.stack([outputs0[0], outputs1[0], outputs2[0], outputs3[0]], dim = 0)
+        #context_vect = torch.max(context_vect, dim = 0)[0]
+        print('CVECT', context_vect.shape)
+        alphas = self.weigh_context(context_vect)
+        ##alphas = self.weigh_context(torch.cat([outputs0[0], outputs1[0], outputs2[0], outputs3[0], outputs4[0]], dim = -1))
 
 
         alphas = self.soft_weigh(alphas)
 
-        #print("ALPHAS", alphas.shape, alphas[0][:, 0][:, None])
+        print("ALPHAS", alphas.shape, alphas[0][:, 0][:, None])
         
         #alphas = alphas[0]
         #print('WEIGHTS', alphas)
