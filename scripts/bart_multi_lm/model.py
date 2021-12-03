@@ -91,7 +91,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         #self.lm_head2 = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
         #self.lm_head3 = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
         #self.lm_combine = Mixture(num_inputs=1)
-        self.weigh_context = nn.Linear(config.d_model , 5)
+        self.weigh_context = nn.Linear(config.d_model , 4)
         
         self.soft_weigh = nn.Softmax(dim =2)
         self.init_weights()
@@ -100,7 +100,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         self.lm_head1 = copy.deepcopy(self.lm_head)
         self.lm_head2 = copy.deepcopy(self.lm_head)
         self.lm_head3 = copy.deepcopy(self.lm_head)
-        self.lm_head4 = copy.deepcopy(self.lm_head)
+        #self.lm_head4 = copy.deepcopy(self.lm_head)
         return
 
     def get_encoder(self):
@@ -140,9 +140,9 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         new_bias = self._resize_func(self.final_logits_bias3, new_num_tokens, old_num_tokens)
         self.register_buffer("final_logits_bias3", new_bias)
 
-        old_num_tokens = self.final_logits_bias4.shape[-1]
+        '''old_num_tokens = self.final_logits_bias4.shape[-1]
         new_bias = self._resize_func(self.final_logits_bias4, new_num_tokens, old_num_tokens)
-        self.register_buffer("final_logits_bias4", new_bias)
+        self.register_buffer("final_logits_bias4", new_bias)'''
 
     def get_output_embeddings(self):
         return self.lm_head
@@ -152,7 +152,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         self.lm_head1 = new_embeddings
         self.lm_head2 = new_embeddings
         self.lm_head3 = new_embeddings
-        self.lm_head4 = new_embeddings
+        #self.lm_head4 = new_embeddings
 
     def _get_sentence_vectors(self, encoder_output_list, bos_id_list):
         vector_list = []
@@ -323,7 +323,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         )
 
        
-        print(outputs0.encoder_last_hidden_state.shape) 
+        #print(outputs0.encoder_last_hidden_state.shape) 
 
         encoder_outputs_list = [outputs0.encoder_last_hidden_state, outputs1.encoder_last_hidden_state,\
                                 outputs2.encoder_last_hidden_state, outputs3.encoder_last_hidden_state]
@@ -346,17 +346,24 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             return_dict=return_dict,
         )
 
-        context_vect = torch.stack([outputs0[0], outputs1[0], outputs2[0], outputs3[0]], dim = 0)
+        #context_vect = torch.stack([outputs0[0], outputs1[0], outputs2[0], outputs3[0]], dim = 0)
         #context_vect = torch.max(context_vect, dim = 0)[0]
-        print('CVECT', context_vect.shape)
-        alphas = self.weigh_context(context_vect)
+        #print('CVECT', context_vect.shape)
+        alphas = self.weigh_context(outputs4[0])
         ##alphas = self.weigh_context(torch.cat([outputs0[0], outputs1[0], outputs2[0], outputs3[0], outputs4[0]], dim = -1))
-
+        
 
         alphas = self.soft_weigh(alphas)
+        '''alphas_ind = torch.argmax(alphas, 2, keepdim=True)
+        one_hot = torch.FloatTensor(alphas.shape)
+        alphas_ind = alphas_ind.to(device = one_hot.device)
+        one_hot.zero_()
+        one_hot.scatter_(2, alphas_ind, 1)
+        alphas = one_hot
+        alphas = alphas.to(device = outputs3[0].device)
+        #print('ONE HOT', one_hot)
+        #print("ALPHAS", alphas.shape, alphas[0][:, 0][:, None])'''
 
-        print("ALPHAS", alphas.shape, alphas[0][:, 0][:, None])
-        
         #alphas = alphas[0]
         #print('WEIGHTS', alphas)
         #print(input_ids)
@@ -364,18 +371,18 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         lm_logits1 = self.lm_head1(outputs1[0]) + self.final_logits_bias1
         lm_logits2 = self.lm_head2(outputs2[0]) + self.final_logits_bias2
         lm_logits3 = self.lm_head3(outputs3[0]) + self.final_logits_bias3
-        lm_logits4 = self.lm_head4(outputs4[0]) + self.final_logits_bias4
+        #lm_logits4 = self.lm_head4(outputs4[0]) + self.final_logits_bias4
 
         lm_logits0 = self.softmax_logits(lm_logits0)
         lm_logits1 = self.softmax_logits(lm_logits1)
         lm_logits2 = self.softmax_logits(lm_logits2)
         lm_logits3 = self.softmax_logits(lm_logits3)
-        lm_logits4 = self.softmax_logits(lm_logits4)
+        #lm_logits4 = self.softmax_logits(lm_logits4)
 
         #print("LOGITS SINGLE", lm_logits0.shape)
         lm_logits = [ alphas[batch_id][:, 0][:, None] *  lm_logits0[batch_id].unsqueeze(0) + alphas[batch_id][:, 1][:, None] *  lm_logits1[batch_id].unsqueeze(0)  + \
             alphas[batch_id][:, 2][:, None] *  lm_logits2[batch_id].unsqueeze(0) \
-                + alphas[batch_id][:, 3][:, None] *  lm_logits3[batch_id].unsqueeze(0) + alphas[batch_id][:, 4][:, None] * lm_logits4[batch_id].unsqueeze(0) \
+                + alphas[batch_id][:, 3][:, None] *  lm_logits3[batch_id].unsqueeze(0) \
                 for batch_id in range(0, lm_logits0.shape[0])]
         lm_logits = torch.cat(lm_logits)
         #print('lm combined', lm_logits.shape)
