@@ -28,7 +28,7 @@ import subprocess, os, sys
 #import config_single_addition
 import config_multi_lm_background
 parent_dir_name = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-
+torch.cuda.empty_cache()
 
 def show_gpu(msg):
     """
@@ -83,33 +83,36 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
             "<punchline_effect>", "</punchline_effect>"]
  
     print("Sample scoring")
+    inc = 0
     for each in sample:
         outputs, logits = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length = min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, return_dict_in_generate = False, device = device)
         #print(outputs[1])
+        print(inc)
+        inc += 1
         model_output_tokens = [tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs[0]]
-        model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs[0]])
+        model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
         population = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[0]])
-        intervention = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[2]])
-        outcome = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[4]])
-        punchline_text = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[6]])
+        intervention = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[3]])
+        outcome = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[6]])
+        punchline_text = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[9]])
         populations.append(population)
         interventions.append(intervention)
         outcomes.append(outcome)
         punchline_texts.append(punchline_text)
         #population = ' '.join([w for w in population.split(' ') if w not in additional_special_tokens])
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[-1]])
-        print("TGT", target)
-        #print('=' * 13)
+        #print("TGT", target)
+        #print('-' * 13)
         logits_zipped = list(zip(model_output_tokens[2:-1], logits[2:]))
         logits_zipped = ['%'.join([each[0], str(each[1].item())]) for each in logits_zipped]
         logits_zipped = ' '.join(logits_zipped)
         logits_recordings.append(logits_zipped)
-        print("MO", logits_zipped)
-        print('=' * 13)
+        #print("MO", model_output)
+        #print('=' * 20)
         if model_output.strip():
             model_outputs.append(model_output)
             targets.append(target)
-            populations.append(population)
+            #populations.append(population)
     print('='*13)
     print("Values: num_beam:%s || min_len:%s || r_penalty:%s || l_penalty:%s"%( nbeams, min_len, r_penalty, l_penalty))
     show_gpu('GPU memory usage after sample:')
@@ -123,7 +126,7 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     print("Bleu : ", bleuScores)
     print("Meteor : ", meteorScores)
     print('=' * 13)
-    with open('inference_logits_scores', 'w') as fp:
+    with open('inference_logits_scores_o4', 'w') as fp:
      fp.write('\n'.join(logits_recordings))
     return model_outputs, populations, interventions, outcomes, punchline_texts, targets,  rougeScores, meteorScores, bleuScores
 
@@ -177,7 +180,7 @@ def run_inference( checkpoint_file, parameter_look = False, write_results = True
     model.to(device)
 
     summary_data = config.summary_data
-    summary_data.setup("stage")
+    summary_data.setup()
     val_data = summary_data.val_dataloader()
 
     num_val = 50
@@ -197,7 +200,7 @@ def run_inference( checkpoint_file, parameter_look = False, write_results = True
         length_penalty = config.length_penalty
     generator = Data2TextGenerator(model, tokenizer)
 
-    model_outputs, populations, interventions, outcomes, punchline_texts,  targets,  rougeScores, meteorScores, bleuScores = sample_scorer(sample = list(it)[:10], model = model, tokenizer = tokenizer, nbeams = num_beams, min_len = min_len, r_penalty = repetition_penalty, l_penalty = length_penalty, generator = generator, device = device) 
+    model_outputs, populations, interventions, outcomes, punchline_texts,  targets,  rougeScores, meteorScores, bleuScores = sample_scorer(sample = list(it), model = model, tokenizer = tokenizer, nbeams = num_beams, min_len = min_len, r_penalty = repetition_penalty, l_penalty = length_penalty, generator = generator, device = device) 
     return model_outputs, populations, interventions, outcomes, punchline_texts,  targets,  rougeScores, meteorScores, bleuScores
 
 
@@ -212,7 +215,7 @@ if __name__ =='__main__':
         with torch.no_grad():
             model_outputs, populations, interventions, outcomes, punchline_texts, targets,  rougeScore, meteorScore, bleuScore = run_inference(checkpoint_file)
         df_write = pd.DataFrame(list(zip(targets, model_outputs, populations, interventions, outcomes, punchline_texts)), columns=["Reference Summary", "Generated Summary", "Population", "Interventions", "Outcomes", "Punchline Texts"])
-        file_name = "run_inference_output_lm_background"
+        file_name = "run_inference_output_lm_background_04"
         df_write.to_csv("%s.csv"%file_name)
 
 

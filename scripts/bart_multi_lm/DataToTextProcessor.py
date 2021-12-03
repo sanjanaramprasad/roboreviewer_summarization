@@ -94,7 +94,7 @@ def encode_sentences(tokenizer, df, source_keys, target_key, max_length=1024, pa
     for idx, row in df.iterrows():
         row_dict = {}
         all_present = True
-
+        #print(row)
         for key in source_keys:
             key_name = key[0] if type(key) is list else key
             id_key = '%s_ids'%key_name
@@ -121,14 +121,14 @@ def encode_sentences(tokenizer, df, source_keys, target_key, max_length=1024, pa
             #print(sentences_key)
            
             
-            if sentences_key:
-                sentence_encoding, bos_ids = get_encoding(sentences_key)
+            #if sentences_key:
+            sentence_encoding, bos_ids = get_encoding(sentences_key)
 
-                row_dict[id_key].append(sentence_encoding['input_ids'])
-                row_dict[attention_mask_key].append(sentence_encoding['attention_mask'])
-                row_dict[bos_key].append(bos_ids)
-            else:
-                all_present = False
+            row_dict[id_key].append(sentence_encoding['input_ids'])
+            row_dict[attention_mask_key].append(sentence_encoding['attention_mask'])
+            row_dict[bos_key].append(bos_ids)
+            #else:
+            #all_present = False
        
         #print(row_dict.keys()) 
         if all_present:
@@ -145,18 +145,22 @@ def encode_sentences(tokenizer, df, source_keys, target_key, max_length=1024, pa
                 add_prefix_space = True
             )
             target_ids.append(encoded_dict['input_ids'])
-
+            #print(encoded_dict['input_ids'])
+        #else:
+        #print(row[target_key])
+    #print('=' * 13)
     for key in list(encoded_sentences.keys()):
         encoded_sentences[key] = torch.cat(encoded_sentences[key], dim = 0)
         
     target_ids = torch.cat(target_ids, dim = 0)
+    #print("TGT IDS" , target_ids)
     encoded_sentences['labels'] = target_ids
-    print(encoded_sentences[key].shape)
+    #print(encoded_sentences['labels'])
     return encoded_sentences
 
 def preprocess_df(df, keys):
     for key in keys:
-        df = df[df[key] != "['']"]
+        df = df[(df[key] != "['']") & (df[key] != "['', '']") & (df[key] != "['', '', '']") & (df[key] != "['', '', '', '', '', '', '', '']") & (df[key] != "['', '', '', '', '']")]
     return df
 
 class SummaryDataModule(pl.LightningDataModule):
@@ -179,7 +183,7 @@ class SummaryDataModule(pl.LightningDataModule):
         self.validate = preprocess_df(self.validate, preprocess_keys)
         self.test = preprocess_df(self.test, preprocess_keys)
 
-    def setup(self, stage):
+    def setup(self):
         self.train = encode_sentences(self.tokenizer, 
                                       self.train,
                                         ['population', 
@@ -207,11 +211,10 @@ class SummaryDataModule(pl.LightningDataModule):
                                         'punchline_effect']], 
                                         'SummaryConclusions',
                                         max_length = self.max_len)
-
     def train_dataloader(self, data_type = 'robo'):
         #dataset = TensorDataset
-        if data_type == 'robo':
-            dataset = TensorDataset(self.train['population_ids'], self.train['population_attention_masks'],
+        #if data_type == 'robo':
+        train_dataset = TensorDataset(self.train['population_ids'], self.train['population_attention_masks'],
                                     self.train['population_bos_ids'],
                                     self.train['interventions_ids'], self.train['interventions_attention_masks'],
                                     self.train['interventions_bos_ids'],
@@ -223,13 +226,13 @@ class SummaryDataModule(pl.LightningDataModule):
                     
                     
         #dataset = TensorDataset(self.train['input_ids'], self.train['attention_mask'], self.train['labels'])                          
-        train_data = DataLoader(dataset, sampler = RandomSampler(dataset), batch_size = self.batch_size)
+        train_data = DataLoader(train_dataset , sampler = RandomSampler(train_dataset), batch_size = self.batch_size)
         return train_data
 
     def val_dataloader(self, data_type = 'robo'):
 
-        if data_type == 'robo':
-            dataset = TensorDataset(self.validate['population_ids'], self.validate['population_attention_masks'],
+        #if data_type == 'robo':
+        val_dataset = TensorDataset(self.validate['population_ids'], self.validate['population_attention_masks'],
                                     self.validate['population_bos_ids'],
                                     self.validate['interventions_ids'], self.validate['interventions_attention_masks'],
                                     self.validate['interventions_bos_ids'],
@@ -239,13 +242,13 @@ class SummaryDataModule(pl.LightningDataModule):
                                     self.validate['punchline_text_bos_ids'],
                                     self.validate['labels'])
         
-        val_data = DataLoader(dataset, batch_size = self.batch_size)                       
+        val_data = DataLoader(val_dataset, batch_size = self.batch_size)                       
         return val_data
     
     def test_dataloader(self, data_type = 'robo'):
 
-        if data_type == 'robo':
-            dataset = TensorDataset(self.test['population_ids'], self.test['population_attention_masks'],
+        #if data_type == 'robo':
+        test_dataset = TensorDataset(self.test['population_ids'], self.test['population_attention_masks'],
                                     self.test['population_bos_ids'],
                                     self.test['interventions_ids'], self.test['interventions_attention_masks'],
                                     self.test['interventions_bos_ids'],
@@ -254,7 +257,7 @@ class SummaryDataModule(pl.LightningDataModule):
                                     self.test['punchline_text_ids'], self.test['punchline_text_attention_masks'],
                                     self.test['punchline_text_bos_ids'],
                                     self.test['labels'])
-        test_data = DataLoader(dataset, batch_size = self.batch_size)                   
+        test_data = DataLoader(test_dataset, batch_size = self.batch_size)                   
         return test_data
     
 
@@ -270,7 +273,7 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/r
     data_files = [train_file, dev_file, test_file]
     summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1, max_len = max_len, flatten_studies = True)
     summary_data.prepare_data()
-    assert(len(summary_data.train) > 10)
+    #assert(len(summary_data.train) > 10)
     return summary_data
 
 if __name__ == '__main__':
@@ -291,29 +294,28 @@ if __name__ == '__main__':
     
                                     
     
-    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/ramprasad.sa', files = data_files, max_len = 1024)
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)
     print(summary_data.train)
     summary_data.setup()
-    it = summary_data.val_dataloader()
+    it = summary_data.test_dataloader()
     batches = iter(it)
     batch = next(batches)
 
     def print_pico(batch):
-        population_input_ids = batch[0][0]
+        '''population_input_ids = batch[0][0]
         population_bos_ids = batch[2] if len(batch) >1 else None
         population_attention_masks = batch[10] if len(batch) >1 else None
         print("PUNCHLINE TEXT")
         print(population_bos_ids)
         print(" ".join([tokenizer.decode(population_input_ids[w], skip_special_tokens=False, clean_up_tokenization_spaces=True) for w in population_bos_ids[0] if w != -2]))
         print(population_attention_masks)
-        print(batch[11])
+        print(batch[11])'''
 
 
-        interventions_input_ids = batch[3] if len(batch) >3 else None
-        interventions_attention_masks = batch[4] if len(batch) >3 else None
-        print("INTERVENTIONS")
+        interventions_input_ids = batch[-1]  #interventions_attention_masks = batch[4] if len(batch) >3 else None
+        print("TGT")
         print(" ".join([tokenizer.decode(w, skip_special_tokens=False, clean_up_tokenization_spaces=True) for w in interventions_input_ids]))
-        print(interventions_attention_masks)
+        #print(interventions_attention_masks)
 
 
         '''outcomes_input_ids = batch[4] if len(batch) >5 else None
@@ -336,7 +338,11 @@ if __name__ == '__main__':
         print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in punchline_effect_input_ids]))
         print(punchline_effect_attention_masks)'''
 
-    for batch in list(batches)[:5]:
-        print('||=||' * 100)
-        print_pico(batch)
+    #print(list(batches))
+    for batch in list(batches):
+        print('||=||' * 10)
+        print(batch[-1])
+        #print(batch[-2])
+        #print_pico(batch)
+        print('||=||' * 10)
 
