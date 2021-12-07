@@ -92,6 +92,9 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         #self.lm_head3 = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
         #self.lm_combine = Mixture(num_inputs=1)
         self.weigh_context = nn.Linear(config.d_model , 1)
+        self.weigh_context1 = nn.Linear(config.d_model , 1)
+        self.weigh_context2 = nn.Linear(config.d_model , 1)
+        self.weigh_context3 = nn.Linear(config.d_model , 1)
         
         self.soft_weigh = nn.Softmax(dim =2)
         self.init_weights()
@@ -207,10 +210,6 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         attention_mask_col1 = None,
         attention_mask_col2 = None,
         attention_mask_col3 = None,
-        bos_ids_col0 = None,
-        bos_ids_col1 = None,
-        bos_ids_col2 = None,
-        bos_ids_col3 = None,
         decoder_input_ids=None,
         decoder_attention_mask=None,
         head_mask=None,
@@ -323,44 +322,14 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         )
 
        
-        #print(outputs0.encoder_last_hidden_state.shape) 
-
-        '''encoder_outputs_list = [outputs0.encoder_last_hidden_state, outputs1.encoder_last_hidden_state,\
-                                outputs2.encoder_last_hidden_state, outputs3.encoder_last_hidden_state]
-        bos_id_list = [bos_ids_col0, bos_ids_col1, bos_ids_col2, bos_ids_col3]
-
-        
-        sentence_representations, sentence_attention_mask = self._get_sentence_vectors(encoder_outputs_list, bos_id_list)
-        
-        outputs4 = self.model.decoder(
-            encoder_hidden_states=sentence_representations,
-            encoder_attention_mask=sentence_attention_mask,
-            input_ids=decoder_input_ids,
-            head_mask=decoder_head_mask,
-            cross_attn_head_mask=None,
-            past_key_values=past_key_values[4] if past_key_values else None,
-            inputs_embeds=decoder_inputs_embeds,
-            use_cache=use_cache,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
-        )'''
-
-        '''context_vect = torch.stack([outputs0[0], outputs1[0], outputs2[0], outputs3[0]], dim = 0)
-        context_vect = torch.max(context_vect, dim = 0)[0]
-        #print('CVECT', context_vect.shape)
-        alphas = self.weigh_context(context_vect)
-        ##alphas = self.weigh_context(torch.cat([outputs0[0], outputs1[0], outputs2[0], outputs3[0], outputs4[0]], dim = -1))'''
-        
-
         alphas_0 = self.weigh_context(outputs0[0])
-        alphas_1 = self.weigh_context(outputs1[0])
-        alphas_2 = self.weigh_context(outputs2[0])
-        alphas_3 = self.weigh_context(outputs3[0])
+        alphas_1 = self.weigh_context1(outputs1[0])
+        alphas_2 = self.weigh_context2(outputs2[0])
+        alphas_3 = self.weigh_context3(outputs3[0])
         alphas = torch.cat([alphas_0, alphas_1, alphas_2, alphas_3], dim = -1)
         
 
-        alphas = self.soft_weigh(alphas)
+        '''alphas = self.soft_weigh(alphas)
         alphas_ind = torch.argmax(alphas, 2, keepdim=True)
         one_hot = torch.FloatTensor(alphas.shape)
         alphas_ind = alphas_ind.to(device = one_hot.device)
@@ -369,7 +338,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         alphas = one_hot
         alphas = alphas.to(device = outputs3[0].device)
         #print('ONE HOT', one_hot)
-        #print("ALPHAS", alphas.shape, alphas[0][:, 0][:, None])
+        #print("ALPHAS", alphas.shape, alphas[0][:, 0][:, None])'''
 
         #alphas = alphas[0]
         #print('WEIGHTS', alphas)
@@ -400,7 +369,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             masked_lm_loss = loss_fct(lm_logits0.view(-1, self.config.vocab_size), labels.view(-1))
 
         if not return_dict:
-            output = (lm_logits) + outputs4[1:]
+            output = (lm_logits) + outputs3[1:]
             return ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
         #print(lm_logits0[0].unsqueeze(0).shape)        
         lm_logits_list = [torch.stack([alphas[batch_id][:,0]  , alphas[batch_id][:,1] \
@@ -434,11 +403,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         encoder_outputs_col0 =None,
         encoder_outputs_col1 = None,
         encoder_outputs_col2 = None,
-        encoder_outputs_col3 = None,
-        bos_ids_col0 = None,
-        bos_ids_col1 = None,
-        bos_ids_col2 = None,
-        bos_ids_col3 = None,
+        encoder_outputs_col3 = None
         **kwargs
     ):
         decoder_time_step =  decoder_input_ids.shape[1] - 1
@@ -462,10 +427,6 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             "attention_mask_col1": attention_mask_col1,
             "attention_mask_col2": attention_mask_col2,
             "attention_mask_col3": attention_mask_col3,
-            "bos_ids_col0": bos_ids_col0,
-            "bos_ids_col1": bos_ids_col1,
-            "bos_ids_col2": bos_ids_col2,
-            "bos_ids_col3": bos_ids_col3,
             "head_mask": head_mask,
             "use_cache": use_cache,  # change this to avoid caching (presumably for debugging)
 
