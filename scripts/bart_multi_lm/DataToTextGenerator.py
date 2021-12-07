@@ -86,7 +86,7 @@ class LogitsRecorder():
             #print("checker", self.beam_logits, self.beam_ids)
 
         unfinished_idx = (next_tokens != 2).nonzero(as_tuple=True)[1]
-        unfinished_idx = next_indices[0][unfinished_idx][:3]
+        unfinished_idx = next_indices[0][unfinished_idx][:4]
         unfinished_tokens = next_tokens[0][unfinished_idx]
         logits_list_idx = logits_list[unfinished_idx]
         logits_list_idx = self._get_max_logits(logits_list_idx, unfinished_tokens)
@@ -181,9 +181,9 @@ class Data2TextGenerator(GenerationMixin):
    
     def _prepare_attention_mask_for_generation(self, batch, device, model_kwargs):
         attention_mask_col0 = batch[1] if len(batch) >1 else None
-        attention_mask_col1 = batch[4] if len(batch) >3 else None
-        attention_mask_col2 = batch[7] if len(batch) >5 else None
-        attention_mask_col3 = batch[10] if len(batch) >5 else None
+        attention_mask_col1 = batch[2] if len(batch) >3 else None
+        attention_mask_col2 = batch[5] if len(batch) >5 else None
+        attention_mask_col3 = batch[7] if len(batch) >5 else None
         
         if not(attention_mask_col0 is None):
             model_kwargs["attention_mask_col0"] = attention_mask_col0
@@ -314,19 +314,19 @@ class Data2TextGenerator(GenerationMixin):
         attention_mask_col0 = attention_mask_col0.to(device)
 
 
-        input_ids_col1 = batch[3] if len(batch) >3 else None
+        input_ids_col1 = batch[2] if len(batch) >3 else None
         input_ids_col1 = input_ids_col1.to(device)
-        attention_mask_col1 = batch[4] if len(batch) >3 else None
+        attention_mask_col1 = batch[3] if len(batch) >3 else None
         attention_mask_col1 = attention_mask_col1.to(device)
 
-        input_ids_col2 = batch[6] if len(batch) >5 else None
+        input_ids_col2 = batch[4] if len(batch) >5 else None
         input_ids_col2 = input_ids_col2.to(device)
-        attention_mask_col2 = batch[7] if len(batch) >5 else None
+        attention_mask_col2 = batch[6] if len(batch) >5 else None
         attention_mask_col2 = attention_mask_col2.to(device)
 
-        input_ids_col3 = batch[9] if len(batch) >5 else None
+        input_ids_col3 = batch[6] if len(batch) >5 else None
         input_ids_col3 = input_ids_col2.to(device)
-        attention_mask_col3 = batch[10] if len(batch) >5 else None
+        attention_mask_col3 = batch[7] if len(batch) >5 else None
         attention_mask_col3 = attention_mask_col3.to(device)
     
         #max_length = max_length if max_length is not None else self.config.max_length
