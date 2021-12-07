@@ -239,13 +239,7 @@ if __name__ == '__main__':
         content_input_ids = batch[6] if len(batch) >1 else None
         content_attention_masks = batch[7] if len(batch) >1 else None
 
-        targets = batch[8]
-        print([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in targets[0]])
-        print(batch[9])
-        target_tags = batch[9][0]
-        words = [tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in targets[0]]
-        print(list(zip(words, target_tags)))
-        '''print("CONTENT")
+        print("CONTENT")
         print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in content_input_ids]))
         print(content_attention_masks)
         print('=' * 13)
@@ -269,7 +263,7 @@ if __name__ == '__main__':
         print("OUTCOMES")
         print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in punchline_text_input_ids]))
         print(punchline_text_attention_masks)
-        print('=' * 13)'''
+        print('=' * 13)
 
     print_pico(batch)
 
