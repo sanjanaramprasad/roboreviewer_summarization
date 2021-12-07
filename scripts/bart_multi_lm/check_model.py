@@ -24,27 +24,23 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/s
 def get_data(data):
         population_input_ids = data[0] 
         population_attention_masks = data[1] 
-        population_bos_ids = data[2]
 
-        interventions_input_ids = data[3] 
-        interventions_attention_masks = data[4] 
-        interventions_bos_ids = data[5]
+        interventions_input_ids = data[2] 
+        interventions_attention_masks = data[3] 
 
 
-        outcomes_input_ids = data[6] 
-        outcomes_attention_masks = data[7] 
-        outcomes_bos_ids = data[8]
+        outcomes_input_ids = data[4] 
+        outcomes_attention_masks = data[5] 
 
-        punchline_text_input_ids = data[9] 
-        punchline_text_attention_masks = data[10] 
-        punchline_text_bos_ids = data[11]
+        punchline_text_input_ids = data[6] 
+        punchline_text_attention_masks = data[7] 
 
 
 
-        return population_input_ids, population_attention_masks, population_bos_ids,\
-                interventions_input_ids, interventions_attention_masks, interventions_bos_ids,\
-                outcomes_input_ids, outcomes_attention_masks, outcomes_bos_ids,\
-                punchline_text_input_ids, punchline_text_attention_masks, punchline_text_bos_ids,
+        return population_input_ids, population_attention_masks,\
+                interventions_input_ids, interventions_attention_masks,\
+                outcomes_input_ids, outcomes_attention_masks,\
+                punchline_text_input_ids, punchline_text_attention_masks,
 
 #additional_special_tokens = ["<sep>"]
 additional_special_tokens = ['<population>', '</population>',
@@ -76,10 +72,10 @@ class BartMultiEncHATTester():
         it = iter(val_data)
 
         data = next(it)
-        population_input_ids, population_attention_masks, population_bos_ids,\
-                interventions_input_ids, interventions_attention_masks, interventions_bos_ids,\
-                outcomes_input_ids, outcomes_attention_masks, outcomes_bos_ids,\
-                punchline_text_input_ids, punchline_text_attention_masks, punchline_text_bos_ids = get_data(data)
+        population_input_ids, population_attention_masks,\
+                interventions_input_ids, interventions_attention_masks,\
+                outcomes_input_ids, outcomes_attention_masks,\
+                punchline_text_input_ids, punchline_text_attention_masks, = get_data(data)
 
         print("forward...") 
         tgt_ids = data[-1]
@@ -92,10 +88,6 @@ class BartMultiEncHATTester():
             attention_mask_col1 = interventions_attention_masks,
             attention_mask_col2 = outcomes_attention_masks,
             attention_mask_col3 = punchline_text_attention_masks,
-            bos_ids_col0 = population_bos_ids,
-            bos_ids_col1 = interventions_bos_ids,
-            bos_ids_col2 = outcomes_bos_ids,
-            bos_ids_col3 = punchline_text_bos_ids,
             labels = tgt_ids,
             use_cache = False,
         )
