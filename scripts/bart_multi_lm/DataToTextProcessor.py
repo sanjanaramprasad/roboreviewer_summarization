@@ -18,7 +18,7 @@ def preprocess_df(df, keys):
     return df
 
 
-def encode_sentences(tokenizer, df, surface_keys, content_keys, targets, targets_tags, max_length=1024, pad_to_max_length=True, return_tensors="pt"):
+def encode_sentences(tokenizer, df, surface_keys, content_keys, targets, max_length=1024, pad_to_max_length=True, return_tensors="pt"):
 
     
     encoded_sentences = {}
@@ -83,15 +83,15 @@ def encode_sentences(tokenizer, df, surface_keys, content_keys, targets, targets
         #shifted_target_ids = shift_tokens_right(encoded_dict['input_ids'], tokenizer.pad_token_id)
         target_ids.append(encoded_dict['input_ids'])
         ##print(i, len(targets_tags))
-        target_tags_sentences.append(torch.tensor(eval(targets_tags[i])))
+        #target_tags_sentences.append(torch.tensor(eval(targets_tags[i])))
         
     for key in list(encoded_sentences.keys()):
         encoded_sentences[key] = torch.cat(encoded_sentences[key], dim = 0)
         
     target_ids = torch.cat(target_ids, dim = 0)
-    target_tags_sentences = torch.stack(target_tags_sentences, dim = 0)
+    #target_tags_sentences = torch.stack(target_tags_sentences, dim = 0)
     encoded_sentences['labels'] = target_ids
-    encoded_sentences['labels_tags'] = target_tags_sentences
+    #encoded_sentences['labels_tags'] = target_tags_sentences
     return encoded_sentences
 
     
@@ -127,7 +127,6 @@ class SummaryDataModule(pl.LightningDataModule):
                                         ['population', 'interventions', 'outcomes'],
                                         ['punchline_text', 'punchline_effect'],
                                         self.train['SummaryConclusions'],
-                                        list(self.train['SummaryConclusion_tagged'].values),
                                         max_length = self.max_len)
         
         self.validate = encode_sentences(self.tokenizer, 
@@ -135,14 +134,12 @@ class SummaryDataModule(pl.LightningDataModule):
                                         ['population', 'interventions', 'outcomes'],
                                         ['punchline_text', 'punchline_effect'],
                                         self.validate['SummaryConclusions'],
-                                        list(self.validate['SummaryConclusion_tagged'].values),
                                         max_length = self.max_len)
         self.test = encode_sentences(self.tokenizer, 
                                       self.test,
                                         ['population', 'interventions', 'outcomes'],
                                         ['punchline_text', 'punchline_effect'],
                                         self.test['SummaryConclusions'],
-                                        list(self.test['SummaryConclusion_tagged'].values),
                                         max_length = self.max_len)
         
     def train_dataloader(self, data_type = 'robo', label_tags = False):
@@ -265,6 +262,11 @@ if __name__ == '__main__':
         print(punchline_text_attention_masks)
         print('=' * 13)
 
+
+        print("LABELS")
+        print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in batch[-1]]))
+        #print(punchline_text_attention_masks)
+        print('=' * 13)
     print_pico(batch)
 
 

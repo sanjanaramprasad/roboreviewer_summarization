@@ -125,10 +125,6 @@ class Data2TextGenerator(GenerationMixin):
         encoder_outputs_col1: ModelOutput = None,
         encoder_outputs_col2: ModelOutput = None,
         encoder_outputs_col3: ModelOutput = None,
-        bos_ids_col0: torch.LongTensor = None,
-        bos_ids_col1: torch.LongTensor = None,
-        bos_ids_col2: torch.LongTensor = None,
-        bos_ids_col3: torch.LongTensor = None,
         **model_kwargs,
     ) -> Tuple[torch.LongTensor, Dict[str, Any]]:
 
@@ -150,14 +146,6 @@ class Data2TextGenerator(GenerationMixin):
         if attention_mask_col3 is not None:
             model_kwargs["attention_mask_col3"] = attention_mask_col3.index_select(0, expanded_return_idx)
 
-        if bos_ids_col0 is not None:
-            model_kwargs["bos_ids_col0"] = bos_ids_col0.index_select(0, expanded_return_idx)
-        if bos_ids_col1 is not None:
-            model_kwargs["bos_ids_col1"] = bos_ids_col1.index_select(0, expanded_return_idx)
-        if bos_ids_col2 is not None:
-            model_kwargs["bos_ids_col2"] = bos_ids_col2.index_select(0, expanded_return_idx)
-        if bos_ids_col3 is not None:
-            model_kwargs["bos_ids_col3"] = bos_ids_col3.index_select(0, expanded_return_idx)
 
         if is_encoder_decoder:
             if encoder_outputs_col0 is not None:
@@ -222,10 +210,6 @@ class Data2TextGenerator(GenerationMixin):
         input_ids_col1: torch.LongTensor,
         input_ids_col2: torch.LongTensor,
         input_ids_col3: torch.LongTensor,
-        bos_ids_col0,
-        bos_ids_col1,
-        bos_ids_col2,
-        bos_ids_col3,
         device,
         model_kwargs
     ) -> Dict[str, Any]:
@@ -278,11 +262,6 @@ class Data2TextGenerator(GenerationMixin):
             model_kwargs["attention_mask_col2"] = attention_mask_col2
             model_kwargs["attention_mask_col3"] = attention_mask_col3
 
-            model_kwargs['bos_ids_col0'] = bos_ids_col0
-            model_kwargs['bos_ids_col1'] = bos_ids_col1
-            model_kwargs['bos_ids_col2'] = bos_ids_col2
-            model_kwargs['bos_ids_col3'] = bos_ids_col3
-
         return model_kwargs
         
     def generate(self,
@@ -333,30 +312,22 @@ class Data2TextGenerator(GenerationMixin):
         input_ids_col0 = input_ids_col0.to(device)
         attention_mask_col0 = batch[1] if len(batch) >1 else None
         attention_mask_col0 = attention_mask_col0.to(device)
-        bos_ids_col0 = batch[2]
-        bos_ids_col0 = bos_ids_col0.to(device)
 
 
         input_ids_col1 = batch[3] if len(batch) >3 else None
         input_ids_col1 = input_ids_col1.to(device)
         attention_mask_col1 = batch[4] if len(batch) >3 else None
         attention_mask_col1 = attention_mask_col1.to(device)
-        bos_ids_col1 = batch[5]
-        bos_ids_col1 = bos_ids_col1.to(device)
 
         input_ids_col2 = batch[6] if len(batch) >5 else None
         input_ids_col2 = input_ids_col2.to(device)
         attention_mask_col2 = batch[7] if len(batch) >5 else None
         attention_mask_col2 = attention_mask_col2.to(device)
-        bos_ids_col2 = batch[8]
-        bos_ids_col2 = bos_ids_col2.to(device)
 
         input_ids_col3 = batch[9] if len(batch) >5 else None
         input_ids_col3 = input_ids_col2.to(device)
         attention_mask_col3 = batch[10] if len(batch) >5 else None
         attention_mask_col3 = attention_mask_col3.to(device)
-        bos_ids_col3 = batch[11]
-        bos_ids_col3 = bos_ids_col3.to(device)
     
         #max_length = max_length if max_length is not None else self.config.max_length
         # set init values
@@ -410,10 +381,6 @@ class Data2TextGenerator(GenerationMixin):
                                                                                 input_ids_col1,
                                                                                 input_ids_col2,
                                                                                 input_ids_col3,
-                                                                                bos_ids_col0,
-                                                                                bos_ids_col1,
-                                                                                bos_ids_col2,
-                                                                                bos_ids_col3,
                                                                                 device,
                                                                                 model_kwargs,
                                                                                 )
