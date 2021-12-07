@@ -10,157 +10,95 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from transformers import BartTokenizer, BartForCausalLM, BartForConditionalGeneration, BeamSearchScorer, LogitsProcessorList, MinLengthLogitsProcessor, TopKLogitsWarper, TemperatureLogitsWarper
 import torch
 
-import math
-import random
-import re
-import argparse
 
-#inc = 0
 
-def encode_sentences(tokenizer, df, source_keys, target_key, max_length=1024, pad_to_max_length=True, return_tensors="pt"):
+def preprocess_df(df, keys):
+    for key in keys:
+        df = df[df[key] != "['']"]
+    return df
+
+
+def encode_sentences(tokenizer, df, surface_keys, content_keys, targets, targets_tags, max_length=1024, pad_to_max_length=True, return_tensors="pt"):
+
+    
+    encoded_sentences = {}
+
+    target_ids = []
     
     def run_bart(snippet):
         encoded_dict = tokenizer(
           snippet,
           max_length=max_length,
+          padding="max_length" if pad_to_max_length else None,
           truncation=True,
+          return_tensors=return_tensors,
           add_prefix_space = True
         )
         return encoded_dict
+    
+    for _, row in df.iterrows():
+        content_val = []
+        num_items = len(eval(row[content_keys[0]]))
+        row_contents = {}
+        for idx in range(0, num_items):
+            idx_vals_content = ["<%s> "%k+ eval(row[k])[idx] + " </%s>"%k for k in content_keys]
+            content_sent = " ".join(idx_vals_content)
+            content_sent = "<study> " + content_sent + " </study>" 
+            content_val.append(  content_sent )
 
-    #bos_token_id = run_bart('<bos>')['input_ids'][1]
-    #print("BOS TOKEN ID", bos_token_id)
+        for surface_k in surface_keys:
+            row_surface_k = eval(row[surface_k])
+            row_surface_k = " ".join(["<study> <%s> "%surface_k+ each + " </%s> </study>"%surface_k for each in row_surface_k])
+            row_contents[surface_k] =  row_surface_k.strip()
 
-    def get_encoding(snippet):
-        all_input_ids = []
-        all_attention_masks = []
-        encoded_dict = {}
-        if isinstance(snippet, list):
-            #snippet = [each for each in snippet if each.strip()]
-            enc = run_bart(snippet)
-            batch_ids = enc['input_ids']
-            
-            for each_list in batch_ids:
-                #print(each_list)
-                #each_list.remove(0)
-                #each_list.remove(2)
-                all_input_ids += each_list
-
-            for each_list in enc['attention_mask']:
-                all_attention_masks += each_list
-
-            #print(all_input_ids)
-            #if len(all_input_ids) > max_length:
-            all_input_ids = all_input_ids[:1023] + [2] 
-            #print(all_input_ids, len(all_input_ids))
-            all_attention_masks = all_attention_masks[:1023] + [1]
-            #print(list(zip(all_attention_masks , all_input_ids)))
-            pad_len = max_length - len(all_input_ids)
-            pad_list = [1] * pad_len
-            attention_mask = [0] * pad_len
-            all_input_ids += pad_list
-            #print(len(all_input_ids), len(pad_list))
-            all_attention_masks += attention_mask
-            
-            input_ids = torch.as_tensor([all_input_ids])
-            attention_mask = torch.as_tensor([all_attention_masks])
-            encoded_dict["input_ids"] = input_ids
-            encoded_dict["attention_mask"] = attention_mask
-             
-            bos_ids = [i for i, t in enumerate(encoded_dict['input_ids'].tolist()[0]) if t == 0]
-            pad_len = max_length - len(bos_ids)
-            pad_list = [-2] *  pad_len
-            bos_ids = bos_ids + pad_list
-            bos_ids = torch.tensor([bos_ids])
-            assert(input_ids.shape == attention_mask.shape ==bos_ids.shape)
-        return encoded_dict, bos_ids
-
-    encoded_sentences = {}
-
-    target_ids = []
-
-    for key in source_keys:
-        key = key[0] if type(key) is list else key
-        id_key = '%s_ids'%key
-        attention_mask_key = '%s_attention_masks'%key
-        bos_key = "%s_bos_ids"%key
+        row_content_sent = " ".join(content_val)
+        row_contents['content'] = row_content_sent.strip()
         
-        if key not in encoded_sentences:
-            encoded_sentences[id_key] = []
-            encoded_sentences[attention_mask_key] = []
-            encoded_sentences[bos_key] = []
-
-
-    for idx, row in df.iterrows():
-        row_dict = {}
-        all_present = True
-        #print(row)
-        for key in source_keys:
-            key_name = key[0] if type(key) is list else key
-            id_key = '%s_ids'%key_name
-            attention_mask_key = '%s_attention_masks'%key_name
-            bos_key = "%s_bos_ids"%key_name
-            if id_key not in row_dict:
-                row_dict[id_key] = []
-                row_dict[attention_mask_key] = []
-                row_dict[bos_key] = []
-            #print(id_key)
-            row_keys = key if type(key) is list else [key]
-            sentences = {}
-            for k in row_keys:
-                data_key = row[k]
-                data_key = eval(data_key)
-                sentences[k] = [each for each in data_key if each.strip()]
-                #sentences[k] =  ["<%s> "%k +each + " </%s>"%k for each in data_key ]
+        
+        
+        
+        for key, key_sent in row_contents.items():
+            id_key = '%s_ids'%key
+            attention_mask_key = '%s_attention_masks'%key
+            if id_key not in encoded_sentences:
+                encoded_sentences[id_key] = []
+                encoded_sentences[attention_mask_key] = []
+                
+            sentence_encoding = run_bart(key_sent.strip())
             
-            #sentences_key = list(zip([sentences[k] for k in row_keys]))
-            all_keys = list(sentences.keys())
-            zipped_sentences = [' <sep> '.join([sentences[k][i] for k in all_keys]) for i in range(0, len(sentences[all_keys[0]]))]
-            sentences_key = zipped_sentences
-            #print(sentences_key)
-            #print(sentences_key)
-           
-            
-            #if sentences_key:
-            sentence_encoding, bos_ids = get_encoding(sentences_key)
+            encoded_sentences[id_key].append(sentence_encoding['input_ids'])
+            encoded_sentences[attention_mask_key].append(sentence_encoding['attention_mask'])
+    target_tags_sentences = []
 
-            row_dict[id_key].append(sentence_encoding['input_ids'])
-            row_dict[attention_mask_key].append(sentence_encoding['attention_mask'])
-            row_dict[bos_key].append(bos_ids)
-            #else:
-            #all_present = False
-       
-        #print(row_dict.keys()) 
-        if all_present:
-            for k , v in row_dict.items():
-                encoded_sentences[k] += v
-
-            target_sentence = row[target_key]
-            encoded_dict = tokenizer(
-                target_sentence,
-                max_length=max_length,
-                padding="max_length" if pad_to_max_length else None,
-                truncation=True,
-                return_tensors=return_tensors,
-                add_prefix_space = True
-            )
-            target_ids.append(encoded_dict['input_ids'])
-            #print(encoded_dict['input_ids'])
-        #else:
-        #print(row[target_key])
-    #print('=' * 13)
+    for i, tgt_sentence in enumerate(targets):
+        encoded_dict = tokenizer(
+              tgt_sentence,
+              max_length=max_length,
+              padding="max_length" if pad_to_max_length else None,
+              truncation=True,
+              return_tensors=return_tensors,
+              add_prefix_space = True
+        )
+        # Shift the target ids to the right
+        #shifted_target_ids = shift_tokens_right(encoded_dict['input_ids'], tokenizer.pad_token_id)
+        target_ids.append(encoded_dict['input_ids'])
+        ##print(i, len(targets_tags))
+        target_tags_sentences.append(torch.tensor(eval(targets_tags[i])))
+        
     for key in list(encoded_sentences.keys()):
         encoded_sentences[key] = torch.cat(encoded_sentences[key], dim = 0)
         
     target_ids = torch.cat(target_ids, dim = 0)
-    #print("TGT IDS" , target_ids)
+    target_tags_sentences = torch.stack(target_tags_sentences, dim = 0)
     encoded_sentences['labels'] = target_ids
-    #print(encoded_sentences['labels'])
+    encoded_sentences['labels_tags'] = target_tags_sentences
     return encoded_sentences
+
+    
 
 def preprocess_df(df, keys):
     for key in keys:
-        df = df[(df[key] != "['']") & (df[key] != "['', '']") & (df[key] != "['', '', '']") & (df[key] != "['', '', '', '', '', '', '', '']") & (df[key] != "['', '', '', '', '']")]
+        df = df[df[key] != "['']"]
     return df
 
 class SummaryDataModule(pl.LightningDataModule):
@@ -186,84 +124,78 @@ class SummaryDataModule(pl.LightningDataModule):
     def setup(self):
         self.train = encode_sentences(self.tokenizer, 
                                       self.train,
-                                        ['population', 
-                                        'interventions',
-                                        'outcomes',
-                                        ['punchline_text',
-                                        'punchline_effect']], 
-                                        'SummaryConclusions',
+                                        ['population', 'interventions', 'outcomes'],
+                                        ['punchline_text', 'punchline_effect'],
+                                        self.train['SummaryConclusions'],
+                                        list(self.train['SummaryConclusion_tagged'].values),
                                         max_length = self.max_len)
+        
         self.validate = encode_sentences(self.tokenizer, 
-                                        self.validate,
-                                        ['population', 
-                                        'interventions',
-                                        'outcomes',
-                                        ['punchline_text',
-                                        'punchline_effect']], 
-                                        'SummaryConclusions',
+                                      self.validate,
+                                        ['population', 'interventions', 'outcomes'],
+                                        ['punchline_text', 'punchline_effect'],
+                                        self.validate['SummaryConclusions'],
+                                        list(self.validate['SummaryConclusion_tagged'].values),
                                         max_length = self.max_len)
         self.test = encode_sentences(self.tokenizer, 
-                                    self.test,
-                                        ['population', 
-                                        'interventions',
-                                        'outcomes',
-                                        ['punchline_text',
-                                        'punchline_effect']], 
-                                        'SummaryConclusions',
+                                      self.test,
+                                        ['population', 'interventions', 'outcomes'],
+                                        ['punchline_text', 'punchline_effect'],
+                                        self.test['SummaryConclusions'],
+                                        list(self.test['SummaryConclusion_tagged'].values),
                                         max_length = self.max_len)
-    def train_dataloader(self, data_type = 'robo'):
+        
+    def train_dataloader(self, data_type = 'robo', label_tags = False):
         #dataset = TensorDataset
-        #if data_type == 'robo':
-        train_dataset = TensorDataset(self.train['population_ids'], self.train['population_attention_masks'],
-                                    self.train['population_bos_ids'],
-                                    self.train['interventions_ids'], self.train['interventions_attention_masks'],
-                                    self.train['interventions_bos_ids'],
-                                    self.train['outcomes_ids'], self.train['outcomes_attention_masks'],
-                                    self.train['outcomes_bos_ids'],
-                                    self.train['punchline_text_ids'], self.train['punchline_text_attention_masks'],
-                                    self.train['punchline_text_bos_ids'],
+        dataset = TensorDataset(self.train['population_ids'], self.train['population_attention_masks'],
+                                self.train['interventions_ids'], self.train['interventions_attention_masks'],
+                                self.train['outcomes_ids'], self.train['outcomes_attention_masks'],
+                                self.train['content_ids'], self.train['content_attention_masks'],
                                     self.train['labels'])
-                    
-                    
+
+        if label_tags:
+            dataset = TensorDataset(self.train['population_ids'], self.train['population_attention_masks'],
+                                self.train['interventions_ids'], self.train['interventions_attention_masks'],
+                                self.train['outcomes_ids'], self.train['outcomes_attention_masks'],
+                                self.train['content_ids'], self.train['content_attention_masks'],
+                                    self.train['labels'], self.train['labels_tags'])
         #dataset = TensorDataset(self.train['input_ids'], self.train['attention_mask'], self.train['labels'])                          
-        train_data = DataLoader(train_dataset , sampler = RandomSampler(train_dataset), batch_size = self.batch_size)
+        train_data = DataLoader(dataset, sampler = RandomSampler(dataset), batch_size = self.batch_size)
         return train_data
 
-    def val_dataloader(self, data_type = 'robo'):
-
-        #if data_type == 'robo':
-        val_dataset = TensorDataset(self.validate['population_ids'], self.validate['population_attention_masks'],
-                                    self.validate['population_bos_ids'],
-                                    self.validate['interventions_ids'], self.validate['interventions_attention_masks'],
-                                    self.validate['interventions_bos_ids'],
-                                    self.validate['outcomes_ids'], self.validate['outcomes_attention_masks'],
-                                    self.validate['outcomes_bos_ids'],
-                                    self.validate['punchline_text_ids'], self.validate['punchline_text_attention_masks'],
-                                    self.validate['punchline_text_bos_ids'],
+    def val_dataloader(self, data_type = 'robo', label_tags = False):
+        dataset = TensorDataset(self.validate['population_ids'], self.validate['population_attention_masks'],
+                                self.validate['interventions_ids'], self.validate['interventions_attention_masks'],
+                                self.validate['outcomes_ids'], self.validate['outcomes_attention_masks'],
+                                self.validate['content_ids'], self.validate['content_attention_masks'],
                                     self.validate['labels'])
-        
-        val_data = DataLoader(val_dataset, batch_size = self.batch_size)                       
+        if label_tags:
+            dataset = TensorDataset(self.validate['population_ids'], self.validate['population_attention_masks'],
+                                self.validate['interventions_ids'], self.validate['interventions_attention_masks'],
+                                self.validate['outcomes_ids'], self.validate['outcomes_attention_masks'],
+                                self.validate['content_ids'], self.validate['content_attention_masks'],
+                                    self.validate['labels'], self.validate['labels_tags'])
+        val_data = DataLoader(dataset, batch_size = self.batch_size)                       
         return val_data
-    
-    def test_dataloader(self, data_type = 'robo'):
 
-        #if data_type == 'robo':
-        test_dataset = TensorDataset(self.test['population_ids'], self.test['population_attention_masks'],
-                                    self.test['population_bos_ids'],
-                                    self.test['interventions_ids'], self.test['interventions_attention_masks'],
-                                    self.test['interventions_bos_ids'],
-                                    self.test['outcomes_ids'], self.test['outcomes_attention_masks'],
-                                    self.test['outcomes_bos_ids'],
-                                    self.test['punchline_text_ids'], self.test['punchline_text_attention_masks'],
-                                    self.test['punchline_text_bos_ids'],
+    def test_dataloader(self, data_type = 'robo', label_tags = False):
+        #print(self.test['punchline_text_ids'])
+        dataset = TensorDataset(self.test['population_ids'], self.test['population_attention_masks'],
+                                self.test['interventions_ids'], self.test['interventions_attention_masks'],
+                                self.test['outcomes_ids'], self.test['outcomes_attention_masks'],
+                                self.test['content_ids'], self.test['content_attention_masks'],
                                     self.test['labels'])
-        test_data = DataLoader(test_dataset, batch_size = self.batch_size)                   
+
+        if label_tags:
+            dataset = TensorDataset(self.test['population_ids'], self.test['population_attention_masks'],
+                                self.test['interventions_ids'], self.test['interventions_attention_masks'],
+                                self.test['outcomes_ids'], self.test['outcomes_attention_masks'],
+                                self.test['content_ids'], self.test['content_attention_masks'],
+                                    self.test['labels'], self.test['labels_tags'])
+        test_data = DataLoader(dataset, batch_size = self.batch_size)                   
         return test_data
-    
 
-
-
-def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/ramprasad.sa', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
+def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/ramprasad.sa', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
     if data_type == 'robo':
         train_file = path + '/summarization/datasets/%s'%(files[0])
         dev_file = path + '/summarization/datasets/%s'%(files[1])
@@ -273,76 +205,73 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/r
     data_files = [train_file, dev_file, test_file]
     summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1, max_len = max_len, flatten_studies = True)
     summary_data.prepare_data()
-    #assert(len(summary_data.train) > 10)
+    
+    assert(len(summary_data.train) > 10)
     return summary_data
 
 if __name__ == '__main__':
-    #additional_special_tokens = [ "<sep>"]
-    additional_special_tokens = ['<population>', '</population>',
-                                        '<interventions>', '</interventions>',
-                                        '<outcomes>', '</outcomes>',
-                                        '<punchline_text>', '</punchline_text>',
-                                        '<punchline_effect>', '</punchline_effect>', "<sep>", "<bos>"]
+    additional_special_tokens = ["<sep>", "<content>", "</content>",
+            "<surface>", "</surface>",
+            "<outcomes>", "</outcomes>",
+            "<punchline_text>", "</punchline_text>",
+            "<population>", "</population>",
+            "<interventions>", "</interventions>",
+            "<punchline_effect>", "</punchline_effect>"]
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
                                                     eos_token="</s>", 
                                                     pad_token = "<pad>")
 
     tokenizer.add_tokens(additional_special_tokens)
     #bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
-    data_files = ['train_rr_data.csv', 'dev_rr_data.csv' , 'test_rr_data.csv']
+    data_files = ['train_rr_data_tagged.csv', 'dev_rr_data_tagged.csv' , 'test_rr_data_tagged.csv']
 
     
                                     
     
-    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/Users/sanjana', files = data_files, max_len = 1024)
     print(summary_data.train)
     summary_data.setup()
-    it = summary_data.test_dataloader()
+    it = summary_data.val_dataloader(label_tags=True)
     batches = iter(it)
     batch = next(batches)
 
     def print_pico(batch):
-        '''population_input_ids = batch[0][0]
-        population_bos_ids = batch[2] if len(batch) >1 else None
-        population_attention_masks = batch[10] if len(batch) >1 else None
-        print("PUNCHLINE TEXT")
-        print(population_bos_ids)
-        print(" ".join([tokenizer.decode(population_input_ids[w], skip_special_tokens=False, clean_up_tokenization_spaces=True) for w in population_bos_ids[0] if w != -2]))
+        content_input_ids = batch[6] if len(batch) >1 else None
+        content_attention_masks = batch[7] if len(batch) >1 else None
+
+        targets = batch[8]
+        print([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in targets[0]])
+        print(batch[9])
+        target_tags = batch[9][0]
+        words = [tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in targets[0]]
+        print(list(zip(words, target_tags)))
+        '''print("CONTENT")
+        print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in content_input_ids]))
+        print(content_attention_masks)
+        print('=' * 13)
+
+        population_input_ids = batch[0] if len(batch) >1 else None
+        population_attention_masks = batch[1] if len(batch) >1 else None
+        print("POPULATION")
+        print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in population_input_ids]))
         print(population_attention_masks)
-        print(batch[11])'''
+        print('=' * 13)
 
+        population_input_ids = batch[2] if len(batch) >1 else None
+        population_attention_masks = batch[3] if len(batch) >1 else None
+        print("INTERVENTION")
+        print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in population_input_ids]))
+        print(population_attention_masks)
+        print('=' * 13)
 
-        interventions_input_ids = batch[-1]  #interventions_attention_masks = batch[4] if len(batch) >3 else None
-        print("TGT")
-        print(" ".join([tokenizer.decode(w, skip_special_tokens=False, clean_up_tokenization_spaces=True) for w in interventions_input_ids]))
-        #print(interventions_attention_masks)
-
-
-        '''outcomes_input_ids = batch[4] if len(batch) >5 else None
-        outcomes_attention_masks = batch[5] if len(batch) >5 else None
-
+        punchline_text_input_ids = batch[4] if len(batch) >1 else None
+        punchline_text_attention_masks = batch[5] if len(batch) >1 else None
         print("OUTCOMES")
-        print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outcomes_input_ids]))
-        print(outcomes_attention_masks)
-
-        punchline_text_input_ids = batch[6] if len(batch) >7 else None
-        punchline_text_attention_masks = batch[7] if len(batch) >7 else None
-
-        print("PUNCHLINE TEXT")
         print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in punchline_text_input_ids]))
         print(punchline_text_attention_masks)
+        print('=' * 13)'''
 
-        punchline_effect_input_ids = batch[8] if len(batch) >9 else None
-        punchline_effect_attention_masks = batch[9] if len(batch) >9 else None
-        print("PUNCHLINE EFFECT")
-        print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in punchline_effect_input_ids]))
-        print(punchline_effect_attention_masks)'''
+    print_pico(batch)
 
-    #print(list(batches))
-    for batch in list(batches):
-        print('||=||' * 10)
-        print(batch[-1])
-        #print(batch[-2])
-        #print_pico(batch)
-        print('||=||' * 10)
 
+        
