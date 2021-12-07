@@ -91,7 +91,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         #self.lm_head2 = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
         #self.lm_head3 = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
         #self.lm_combine = Mixture(num_inputs=1)
-        self.weigh_context = nn.Linear(config.d_model , 4)
+        self.weigh_context = nn.Linear(config.d_model , 1)
         
         self.soft_weigh = nn.Softmax(dim =2)
         self.init_weights()
@@ -325,7 +325,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
        
         #print(outputs0.encoder_last_hidden_state.shape) 
 
-        encoder_outputs_list = [outputs0.encoder_last_hidden_state, outputs1.encoder_last_hidden_state,\
+        '''encoder_outputs_list = [outputs0.encoder_last_hidden_state, outputs1.encoder_last_hidden_state,\
                                 outputs2.encoder_last_hidden_state, outputs3.encoder_last_hidden_state]
         bos_id_list = [bos_ids_col0, bos_ids_col1, bos_ids_col2, bos_ids_col3]
 
@@ -344,17 +344,24 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
-        )
+        )'''
 
-        #context_vect = torch.stack([outputs0[0], outputs1[0], outputs2[0], outputs3[0]], dim = 0)
-        #context_vect = torch.max(context_vect, dim = 0)[0]
+        '''context_vect = torch.stack([outputs0[0], outputs1[0], outputs2[0], outputs3[0]], dim = 0)
+        context_vect = torch.max(context_vect, dim = 0)[0]
         #print('CVECT', context_vect.shape)
-        alphas = self.weigh_context(outputs4[0])
-        ##alphas = self.weigh_context(torch.cat([outputs0[0], outputs1[0], outputs2[0], outputs3[0], outputs4[0]], dim = -1))
+        alphas = self.weigh_context(context_vect)
+        ##alphas = self.weigh_context(torch.cat([outputs0[0], outputs1[0], outputs2[0], outputs3[0], outputs4[0]], dim = -1))'''
+        
+
+        alphas_0 = self.weigh_context(outputs0[0])
+        alphas_1 = self.weigh_context(outputs1[0])
+        alphas_2 = self.weigh_context(outputs2[0])
+        alphas_3 = self.weigh_context(outputs3[0])
+        alphas = torch.cat([alphas_0, alphas_1, alphas_2, alphas_3], dim = -1)
         
 
         alphas = self.soft_weigh(alphas)
-        '''alphas_ind = torch.argmax(alphas, 2, keepdim=True)
+        alphas_ind = torch.argmax(alphas, 2, keepdim=True)
         one_hot = torch.FloatTensor(alphas.shape)
         alphas_ind = alphas_ind.to(device = one_hot.device)
         one_hot.zero_()
@@ -362,7 +369,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         alphas = one_hot
         alphas = alphas.to(device = outputs3[0].device)
         #print('ONE HOT', one_hot)
-        #print("ALPHAS", alphas.shape, alphas[0][:, 0][:, None])'''
+        #print("ALPHAS", alphas.shape, alphas[0][:, 0][:, None])
 
         #alphas = alphas[0]
         #print('WEIGHTS', alphas)
@@ -404,7 +411,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         return BARTSeq2SeqLMOutput(
             loss=masked_lm_loss,
             logits=lm_logits,
-            past_key_values=[outputs0.past_key_values, outputs1.past_key_values, outputs2.past_key_values, outputs3.past_key_values, outputs4.past_key_values],
+            past_key_values=[outputs0.past_key_values, outputs1.past_key_values, outputs2.past_key_values, outputs3.past_key_values],
             decoder_hidden_states=outputs0.decoder_hidden_states,
             decoder_attentions=outputs0.decoder_attentions,
             cross_attentions=outputs0.cross_attentions,
