@@ -57,17 +57,23 @@ def get_file_relations(filename):
 
 model_output_file = "/home/ramprasad.sa/roboreviewer_summarization/scripts/trial_output.txt"
 reference_file = '/home/ramprasad.sa/roboreviewer_summarization/scripts/trial_ref.txt'
-
-
+pop_file = '/home/ramprasad.sa/roboreviewer_summarization/scripts/trial_pop.txt'
+int_file = '/home/ramprasad.sa/roboreviewer_summarization/scripts/trial_int.txt'
+out_file = '/home/ramprasad.sa/roboreviewer_summarization/scripts/trial_out.txt'
+ptext_file = '/home/ramprasad.sa/roboreviewer_summarization/scripts/trial_ptext.txt'
 data_relations = get_file_relations(model_output_file)
 ##print(data_relations)
 data_relations_targets = get_file_relations(reference_file)
 
 model_outputs = read_file(model_output_file)
 targets = read_file(reference_file)
+pop = read_file(pop_file)
+ints = read_file(int_file)
+outs = read_file(out_file)
+ptext = read_file(ptext_file)
 
-dataf = {'model_outputs' : model_outputs, 'targets': targets, 'model_output_relations' : data_relations, 'target_relations': data_relations_targets}
-
+dataf = {'model_outputs' : model_outputs, 'targets': targets, 'model_output_relations' : data_relations, 'target_relations': data_relations_targets,
+        'population' : pop, 'interventions' : ints, 'outcomes': outs, 'punchline_text': ptext}
 df = pd.DataFrame(dataf)
 print(df)
-df.to_csv('bart_context_lm_relations.csv')
+df.to_csv('bart_lm_ind_weights.csv')

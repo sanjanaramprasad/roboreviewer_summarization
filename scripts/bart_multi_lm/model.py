@@ -362,8 +362,9 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             alphas[batch_id][:, 2][:, None] *  lm_logits2[batch_id].unsqueeze(0) \
                 + alphas[batch_id][:, 3][:, None] *  lm_logits3[batch_id].unsqueeze(0) \
                 for batch_id in range(0, lm_logits0.shape[0])]
-        lm_logits = torch.cat(lm_logits)
+        #lm_logits = torch.cat([lm_logits1[batch_id].unsqueeze(0) for batch_id in range(0, lm_logits0.shape[0])])
         #print('lm combined', lm_logits.shape)
+        lm_logits = torch.cat(lm_logits)
         #lm_logits = self.softmax_logits(lm_logits)
         masked_lm_loss = None
         if labels is not None:
