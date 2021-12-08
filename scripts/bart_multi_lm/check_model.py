@@ -9,7 +9,7 @@ from torch import nn
 import torch
 
 
-def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv']):
+def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/ramprasad.sa', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv']):
     if data_type == 'robo':
         train_file = path + '/summarization/datasets/%s'%(files[0])
         dev_file = path + '/summarization/datasets/%s'%(files[1])
@@ -64,7 +64,7 @@ class BartMultiEncHATTester():
         self.model.resize_token_embeddings(len(tokenizer))
         self.model._make_multiple_lm_heads()
         print("Loading Data ...")
-        summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/sanjana', files = ['train_rr_data.csv', 
+        summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/ramprasad.sa', files = ['train_rr_data.csv', 
                             'dev_rr_data.csv', 'test_rr_data.csv'])
         summary_data.setup()
         val_data = summary_data.val_dataloader(data_type = 'robo')

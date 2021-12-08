@@ -19,7 +19,7 @@ from transformers.file_utils import ModelOutput
 import pandas as pd
 import nltk
 from nltk.translate import meteor_score
-from DataToTextGenerator import Data2TextGenerator
+from DataToTextGenerator_lm import Data2TextGenerator
 import numpy as np
 import subprocess, os, sys 
 #import config_single_addition as config_single_addition
@@ -126,8 +126,8 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     print("Bleu : ", bleuScores)
     print("Meteor : ", meteorScores)
     print('=' * 13)
-    with open('inference_logits_scores_weight_ind', 'w') as fp:
-     fp.write('\n'.join(logits_recordings))
+    with open('inference_logits_scores_weight', 'w') as fp:
+       fp.write('\n'.join(logits_recordings))
     return model_outputs, populations, interventions, outcomes, punchline_texts, targets,  rougeScores, meteorScores, bleuScores
 
 

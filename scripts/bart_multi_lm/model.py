@@ -91,10 +91,10 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         #self.lm_head2 = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
         #self.lm_head3 = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
         #self.lm_combine = Mixture(num_inputs=1)
-        self.weigh_context = nn.Linear(config.d_model * 4 , config.d_model * 2)
-        self.weigh_context1 = nn.Linear(config.d_model * 2 , 4)
-        #self.weigh_context2 = nn.Linear(config.d_model , 1)
-        #self.weigh_context3 = nn.Linear(config.d_model , 1)
+        self.weigh_context = nn.Linear(config.d_model , 1)
+        ##self.weigh_context1 = nn.Linear(config.d_model , 1)
+        ## self.weigh_context2 = nn.Linear(config.d_model , 1)
+        ##self.weigh_context3 = nn.Linear(config.d_model , 1)
         
         self.soft_weigh = nn.Softmax(dim =2)
         self.init_weights()
@@ -322,18 +322,14 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         )
 
        
-        '''alphas_0 = self.weigh_context(outputs0[0])
-        alphas_1 = self.weigh_context1(outputs1[0])
-        alphas_2 = self.weigh_context2(outputs2[0])
-        alphas_3 = self.weigh_context3(outputs3[0])
-        alphas = torch.cat([alphas_0, alphas_1, alphas_2, alphas_3], dim = -1)'''
-
-        context_vect = torch.cat([outputs0[0], outputs1[0], outputs2[0], outputs3[0]], dim = -1)
-        context_vect = self.activation_fn(self.weigh_context(context_vect))
-        alphas = self.weigh_context1(context_vect)
-        alphas = self.soft_weigh(alphas)
 
         
+        alphas_0 = self.weigh_context(outputs0[0])
+        alphas_1 = self.weigh_context(outputs1[0])
+        alphas_2 = self.weigh_context(outputs2[0])
+        alphas_3 = self.weigh_context(outputs3[0])
+        alphas = torch.cat([alphas_0, alphas_1, alphas_2, alphas_3], dim = -1)
+        alphas = self.soft_weigh(alphas) 
 
         '''alphas = self.soft_weigh(alphas)
         alphas_ind = torch.argmax(alphas, 2, keepdim=True)
@@ -409,7 +405,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         encoder_outputs_col0 =None,
         encoder_outputs_col1 = None,
         encoder_outputs_col2 = None,
-        encoder_outputs_col3 = None
+        encoder_outputs_col3 = None,
         **kwargs
     ):
         decoder_time_step =  decoder_input_ids.shape[1] - 1

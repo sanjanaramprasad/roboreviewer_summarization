@@ -44,7 +44,7 @@ data_files = ['train_rr_data.csv', 'dev_rr_data.csv' , 'test_rr_data.csv']
 
 
 
-summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/sanjana', files = ['train_rr_data.csv', 
+summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/ramprasad.sa', files = ['train_rr_data.csv', 
                             'dev_rr_data.csv', 'test_rr_data.csv'])
 bart_model = BartForDataToTextGeneration_MultiLM.from_pretrained('facebook/bart-base')
 
@@ -57,10 +57,10 @@ eval_beams = 3
 #summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/ramprasad.sa', files = data_files, max_len = 1024)
 
 learning_rate = 3e-5
-checkpoint_file = 'checkpoint_files_final/token_mixture_lm_bck_o4/epoch=3-val_loss=0.27.ckpt'
+checkpoint_file = 'checkpoint_files_final/outputs_ind_weights/epoch=2-val_loss=0.27.ckpt'
 model = LitModel.load_from_checkpoint(checkpoint_path=checkpoint_file, learning_rate = learning_rate, model=bart_model, tokenizer = tokenizer,  freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
 
-num_beams = 3
+num_beams = 4
 min_len = 90
 repetition_penalty = 1.0
 length_penalty = 2.0

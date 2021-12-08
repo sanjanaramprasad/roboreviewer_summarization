@@ -67,15 +67,15 @@ def get_data(data):
         population_input_ids = data[0] 
         population_attention_masks = data[1] 
 
-        interventions_input_ids = data[3] 
-        interventions_attention_masks = data[4] 
+        interventions_input_ids = data[2] 
+        interventions_attention_masks = data[3] 
 
 
-        outcomes_input_ids = data[6] 
-        outcomes_attention_masks = data[7] 
+        outcomes_input_ids = data[4] 
+        outcomes_attention_masks = data[5] 
 
-        punchline_text_input_ids = data[9] 
-        punchline_text_attention_masks = data[10] 
+        punchline_text_input_ids = data[6] 
+        punchline_text_attention_masks = data[7] 
 
         return population_input_ids, population_attention_masks,\
                 interventions_input_ids, interventions_attention_masks,\
@@ -160,10 +160,10 @@ class LitModel(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
     
         
-        population_input_ids, population_attention_masks, population_bos_ids,\
-                interventions_input_ids, interventions_attention_masks, interventions_bos_ids,\
-                outcomes_input_ids, outcomes_attention_masks, outcomes_bos_ids,\
-                punchline_text_input_ids, punchline_text_attention_masks, punchline_text_bos_ids = get_data(batch)
+        population_input_ids, population_attention_masks,\
+                interventions_input_ids, interventions_attention_masks,\
+                outcomes_input_ids, outcomes_attention_masks,\
+                punchline_text_input_ids, punchline_text_attention_masks = get_data(batch)
         
 
         # Load the data into variables
@@ -247,7 +247,7 @@ def main():
     eval_beams = 4
 
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
-    checkpoint = ModelCheckpoint(dirpath = 'checkpoint_files_final/token_mixture_lm_background',
+    checkpoint = ModelCheckpoint(dirpath = 'checkpoint_files_final/outputs_ind_weights',
                                 filename = '{epoch}-{val_loss:.2f}',
                                 save_top_k=10,
                                 monitor = 'val_loss')

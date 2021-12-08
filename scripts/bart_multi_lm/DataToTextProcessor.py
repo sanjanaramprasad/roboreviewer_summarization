@@ -225,10 +225,10 @@ if __name__ == '__main__':
     
                                     
     
-    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/Users/sanjana', files = data_files, max_len = 1024)
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/ramprasad.sa', files = data_files, max_len = 1024)
     print(summary_data.train)
     summary_data.setup()
-    it = summary_data.val_dataloader(label_tags=True)
+    it = summary_data.val_dataloader(label_tags=False)
     batches = iter(it)
     batch = next(batches)
 
