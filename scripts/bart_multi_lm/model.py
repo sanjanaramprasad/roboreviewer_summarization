@@ -81,7 +81,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
 
         self.softmax_logits = nn.LogSoftmax(dim = 2)
         self.lm_head = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
-        self.activation_fn = ACT2FN['relu']
+        self.dropout = nn.Dropout(0.3)
 
         '''self.weight_vect0 = nn.Linear(config.d_model, 1, bias = False)
         self.weight_vect1 = nn.Linear(config.d_model, 1, bias = False)
@@ -91,8 +91,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         #self.lm_head2 = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
         #self.lm_head3 = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
         #self.lm_combine = Mixture(num_inputs=1)
-        self.weigh_context = nn.Linear(config.d_model * 4 , config.d_model * 2)
-        self.weigh_context1 = nn.Linear(config.d_model * 2 , 4)
+        self.weigh_context = nn.Linear(config.d_model * 4 , 4)
         #self.weigh_context2 = nn.Linear(config.d_model , 1)
         #self.weigh_context3 = nn.Linear(config.d_model , 1)
         
@@ -329,22 +328,24 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         alphas = torch.cat([alphas_0, alphas_1, alphas_2, alphas_3], dim = -1)'''
 
         context_vect = torch.cat([outputs0[0], outputs1[0], outputs2[0], outputs3[0]], dim = -1)
-        context_vect = self.activation_fn(self.weigh_context(context_vect))
-        alphas = self.weigh_context1(context_vect)
+        context_vect = self.dropout(context_vect)
+        alphas = self.weigh_context(context_vect)
         alphas = self.soft_weigh(alphas)
 
-        
+        print("ALPHAS", alphas.shape, alphas[0][:, 0][:, None])
 
-        '''alphas = self.soft_weigh(alphas)
+        
         alphas_ind = torch.argmax(alphas, 2, keepdim=True)
         one_hot = torch.FloatTensor(alphas.shape)
         alphas_ind = alphas_ind.to(device = one_hot.device)
         one_hot.zero_()
         one_hot.scatter_(2, alphas_ind, 1)
+
         alphas = one_hot
+
         alphas = alphas.to(device = outputs3[0].device)
-        #print('ONE HOT', one_hot)
-        #print("ALPHAS", alphas.shape, alphas[0][:, 0][:, None])'''
+        print('ONE HOT', one_hot)
+        
 
         #alphas = alphas[0]
         #print('WEIGHTS', alphas)
