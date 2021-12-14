@@ -247,13 +247,13 @@ def main():
     eval_beams = 4
 
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, freeze_encoder = freeze_encoder, freeze_embeds = freeze_embeds, eval_beams = eval_beams)
-    checkpoint = ModelCheckpoint(dirpath = 'checkpoint_files_final/outputs_ind_weights',
+    checkpoint = ModelCheckpoint(dirpath = 'checkpoint_files_final/outputs_cat_fnn',
                                 filename = '{epoch}-{val_loss:.2f}',
                                 save_top_k=10,
                                 monitor = 'val_loss')
     trainer = pl.Trainer(gpus=1,  
 			accelerator='dp',
-                        max_epochs = max_epochs,
+                        max_epochs = 3,
                         min_epochs = 1,
                         auto_lr_find = False,
                         progress_bar_refresh_rate = 100,

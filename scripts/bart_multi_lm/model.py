@@ -82,7 +82,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         self.softmax_logits = nn.LogSoftmax(dim = 2)
         self.lm_head = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
         self.activation_fn = ACT2FN['relu']
-
+        self.LayerNorm = nn.LayerNorm(config.d_model)
         '''self.weight_vect0 = nn.Linear(config.d_model, 1, bias = False)
         self.weight_vect1 = nn.Linear(config.d_model, 1, bias = False)
         self.weight_vect2 = nn.Linear(config.d_model, 1, bias = False)
@@ -91,9 +91,9 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         #self.lm_head2 = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
         #self.lm_head3 = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
         #self.lm_combine = Mixture(num_inputs=1)
-        self.weigh_context = nn.Linear(config.d_model , 1)
-        ##self.weigh_context1 = nn.Linear(config.d_model , 1)
-        ## self.weigh_context2 = nn.Linear(config.d_model , 1)
+        self.weigh_context = nn.Linear(config.d_model * 4 , config.d_model * 2)
+        self.weigh_context1 = nn.Linear(config.d_model*2 , config.d_model)
+        self.weigh_context_final = nn.Linear(config.d_model, 4)
         ##self.weigh_context3 = nn.Linear(config.d_model , 1)
         
         self.soft_weigh = nn.Softmax(dim =2)
@@ -248,7 +248,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
                 decoder_input_ids = shift_tokens_right(
                     labels, self.config.pad_token_id, self.config.decoder_start_token_id
                 )
-
+        
         outputs0 = self.model(
             input_ids_col0,
             attention_mask=attention_mask_col0,
@@ -324,15 +324,21 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
        
 
         
-        alphas_0 = self.weigh_context(outputs0[0])
-        alphas_1 = self.weigh_context(outputs1[0])
-        alphas_2 = self.weigh_context(outputs2[0])
-        alphas_3 = self.weigh_context(outputs3[0])
-        alphas = torch.cat([alphas_0, alphas_1, alphas_2, alphas_3], dim = -1)
-        alphas = self.soft_weigh(alphas) 
+        #alphas_0 = self.weigh_context(outputs0[0])
+        #alphas_1 = self.weigh_context(outputs1[0])
+        #alphas_2 = self.weigh_context(outputs2[0])
+        #alphas_3 = self.weigh_context(outputs3[0])
+        context_vect = torch.cat([outputs0[0], outputs1[0], outputs2[0], outputs3[0]], dim = -1)
+        #context_vect = torch.max(context_vect, dim = 0)[0]
+        context_vect = self.activation_fn(self.weigh_context(context_vect)) ## D * 2
+        context_vect = self.activation_fn(self.weigh_context1(context_vect)) ## D 
+        alphas = self.weigh_context_final(context_vect) ## 4
 
-        '''alphas = self.soft_weigh(alphas)
-        alphas_ind = torch.argmax(alphas, 2, keepdim=True)
+        #alphas = torch.cat([alphas_0, alphas_1, alphas_2, alphas_3], dim = -1)
+        alphas = self.soft_weigh(alphas) 
+        #print('APLHAS', alphas)
+        #alphas = self.soft_weigh(alphas)
+        '''alphas_ind = torch.argmax(alphas, 2, keepdim=True)
         one_hot = torch.FloatTensor(alphas.shape)
         alphas_ind = alphas_ind.to(device = one_hot.device)
         one_hot.zero_()
@@ -340,9 +346,8 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         alphas = one_hot
         alphas = alphas.to(device = outputs3[0].device)
         #print('ONE HOT', one_hot)
-        #print("ALPHAS", alphas.shape, alphas[0][:, 0][:, None])'''
-
-        #alphas = alphas[0]
+        #print("ALPHAS", alphas.shape, alphas[0][:, 0][:, None])
+        #alphas = alphas[0]'''
         #print('WEIGHTS', alphas)
         #print(input_ids)
         lm_logits0 = self.lm_head(outputs0[0]) + self.final_logits_bias0
@@ -350,12 +355,11 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         lm_logits2 = self.lm_head2(outputs2[0]) + self.final_logits_bias2
         lm_logits3 = self.lm_head3(outputs3[0]) + self.final_logits_bias3
         #lm_logits4 = self.lm_head4(outputs4[0]) + self.final_logits_bias4
-
         lm_logits0 = self.softmax_logits(lm_logits0)
         lm_logits1 = self.softmax_logits(lm_logits1)
         lm_logits2 = self.softmax_logits(lm_logits2)
         lm_logits3 = self.softmax_logits(lm_logits3)
-        #lm_logits4 = self.softmax_logits(lm_logits4)
+        #lm_logits4 = self.softmax_logits(lm_logits4)'''
 
         #print("LOGITS SINGLE", lm_logits0.shape)
         lm_logits = [ alphas[batch_id][:, 0][:, None] *  lm_logits0[batch_id].unsqueeze(0) + alphas[batch_id][:, 1][:, None] *  lm_logits1[batch_id].unsqueeze(0)  + \
@@ -369,10 +373,10 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         masked_lm_loss = None
         if labels is not None:
             loss_fct = nn.CrossEntropyLoss()
-            masked_lm_loss = loss_fct(lm_logits0.view(-1, self.config.vocab_size), labels.view(-1))
+            masked_lm_loss = loss_fct(lm_logits.view(-1, self.config.vocab_size), labels.view(-1))
 
         if not return_dict:
-            output = (lm_logits) + outputs3[1:]
+            output = (lm_logits0) + outputs3[1:]
             return ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
         #print(lm_logits0[0].unsqueeze(0).shape)        
         lm_logits_list = [torch.stack([alphas[batch_id][:,0]  , alphas[batch_id][:,1] \
@@ -384,12 +388,12 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             loss=masked_lm_loss,
             logits=lm_logits,
             past_key_values=[outputs0.past_key_values, outputs1.past_key_values, outputs2.past_key_values, outputs3.past_key_values],
-            decoder_hidden_states=outputs0.decoder_hidden_states,
-            decoder_attentions=outputs0.decoder_attentions,
-            cross_attentions=outputs0.cross_attentions,
-            encoder_last_hidden_state=outputs0.encoder_last_hidden_state,
-            encoder_hidden_states=outputs0.encoder_hidden_states,
-            encoder_attentions=outputs0.encoder_attentions,
+            decoder_hidden_states=None,
+            decoder_attentions=None,
+            cross_attentions=None,
+            encoder_last_hidden_state=None,
+            encoder_hidden_states=None,
+            encoder_attentions=None,
             lm_logits_individual = lm_logits_list
         )
 
