@@ -94,25 +94,25 @@ class BartEncoderAttention(nn.Module):
         self.q_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
         self.out_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
 
-        self.k_proj_pop = nn.Linear(embed_dim, embed_dim, bias=bias)
-        self.k_proj_int = nn.Linear(embed_dim, embed_dim, bias=bias)
-        self.k_proj_out = nn.Linear(embed_dim, embed_dim, bias=bias)
-        self.k_proj_ptext = nn.Linear(embed_dim, embed_dim, bias=bias)
+        self.q_proj_pop = nn.Linear(embed_dim, embed_dim, bias=bias)
+        self.q_proj_int = nn.Linear(embed_dim, embed_dim, bias=bias)
+        self.q_proj_out = nn.Linear(embed_dim, embed_dim, bias=bias)
+        self.q_proj_ptext = nn.Linear(embed_dim, embed_dim, bias=bias)
 
         self.v_proj_pop = nn.Linear(embed_dim, embed_dim, bias=bias)
         self.v_proj_int = nn.Linear(embed_dim, embed_dim, bias=bias)
         self.v_proj_out = nn.Linear(embed_dim, embed_dim, bias=bias)
         self.v_proj_ptext = nn.Linear(embed_dim, embed_dim, bias=bias)
 
-    def _attr_key(self, hidden_states, bsz, attribute_key):
+    def _attr_query(self, hidden_states, attribute_key):
         if attribute_key == 'pop':
-            return self._shape(self.k_proj_pop(hidden_states), -1, bsz)
+            return self.q_proj_pop(hidden_states)
         elif attribute_key == 'int':
-            return self._shape(self.k_proj_int(hidden_states), -1, bsz)
+            return self.q_proj_int(hidden_states)
         if attribute_key == 'out':
-            return self._shape(self.k_proj_out(hidden_states), -1, bsz)
+            return self.q_proj_out(hidden_states)
         if attribute_key == 'ptext':
-            return self._shape(self.k_proj_ptext(hidden_states), -1, bsz)
+            return self.q_proj_ptext(hidden_states)
 
     def _attr_value(self, hidden_states, bsz, attribute_key):
         if attribute_key == 'pop':
@@ -145,7 +145,9 @@ class BartEncoderAttention(nn.Module):
         bsz, tgt_len, embed_dim = hidden_states.size()
 
         # get query proj
-        query_states = self.q_proj(hidden_states) * self.scaling
+        query_states = self.q_proj(hidden_states) 
+        query_states_attr = self._attr_query(hidden_states,attribute_key=attribute_key)
+        query_states = query_states.add(query_states_attr) * self.scaling
         # get key, value proj
         if is_cross_attention and past_key_value is not None:
             # reuse k,v, cross_attentions
@@ -163,12 +165,11 @@ class BartEncoderAttention(nn.Module):
             value_states = torch.cat([past_key_value[1], value_states], dim=2)
         else:
             # self_attention
-            print("ATTRIBUTE KEY", attribute_key)
-            key_attr_states = self._attr_key(hidden_states=hidden_states, bsz=bsz,attribute_key=attribute_key)
-            value_attr_states = self._attr_value(hidden_states=hidden_states, bsz=bsz,attribute_key=attribute_key)
+            
             key_states = self._shape(self.k_proj(hidden_states), -1, bsz)
             value_states = self._shape(self.v_proj(hidden_states), -1, bsz)
-            key_states = key_states.add(key_attr_states)
+
+            value_attr_states = self._attr_value(hidden_states=hidden_states, bsz=bsz,attribute_key=attribute_key)
             value_states = value_states.add(value_attr_states)
 
         if self.is_decoder:
