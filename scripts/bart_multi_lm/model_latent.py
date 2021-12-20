@@ -165,9 +165,11 @@ class BartEncoderAttention(nn.Module):
             # self_attention
             key_attr_states = self._attr_key(hidden_states=hidden_states, bsz=bsz,attribute_key=attribute_key)
             value_attr_states = self._attr_value(hidden_states=hidden_states, bsz=bsz,attribute_key=attribute_key)
-            print(key_attr_states.shape)
             key_states = self._shape(self.k_proj(hidden_states), -1, bsz)
             value_states = self._shape(self.v_proj(hidden_states), -1, bsz)
+
+            key_states = key_states.add(key_attr_states)
+            value_states = value_states.add(value_attr_states)
 
         if self.is_decoder:
             # if cross_attention save Tuple(torch.Tensor, torch.Tensor) of all cross attention key/value_states.
