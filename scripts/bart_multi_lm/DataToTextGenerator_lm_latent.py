@@ -223,6 +223,7 @@ class Data2TextGenerator(GenerationMixin):
                 encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if  "col" not in argument}
                 attention_mask_col0 = model_kwargs.get("attention_mask_col0", None)
                 encoder_kwargs["attention_mask"] = attention_mask_col0
+                encoder_kwargs['attribute_key'] = 'pop'
                 ##print(model_kwargs)
                 #encoder_outputs = encoder_kwargs.get('encoder_outputs_col0', None)
                 
@@ -232,6 +233,7 @@ class Data2TextGenerator(GenerationMixin):
                     encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if  "col" not in argument}
                     attention_mask_col1 = model_kwargs.get("attention_mask_col1", None)
                     encoder_kwargs["attention_mask"] = attention_mask_col1
+                    encoder_kwargs['attribute_key'] = 'int'
                     #encoder_outputs = encoder_kwargs.get('encoder_outputs_col1', None)
 
                     model_kwargs["encoder_outputs_col1"]: ModelOutput = self.model.model.get_encoder()(input_ids_col1, return_dict=True, **encoder_kwargs)
@@ -240,6 +242,7 @@ class Data2TextGenerator(GenerationMixin):
                     encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if "col" not in argument}
                     attention_mask_col2 = model_kwargs.get("attention_mask_col2", None)
                     encoder_kwargs["attention_mask"] = attention_mask_col2
+                    encoder_kwargs['attribute_key'] = 'out'
                     #print(encoder_kwargs)
                     #encoder_outputs = encoder_kwargs.get('encoder_outputs_col2', None)
 
@@ -249,6 +252,7 @@ class Data2TextGenerator(GenerationMixin):
                     encoder_kwargs = {argument: value for argument, value in model_kwargs.items() if "col" not in argument}
                     attention_mask_col3 = model_kwargs.get("attention_mask_col3", None)
                     encoder_kwargs["attention_mask"] = attention_mask_col3
+                    encoder_kwargs['attribute_key'] = 'ptext'
                     #print(encoder_kwargs)
                     #encoder_outputs = encoder_kwargs.get('encoder_outputs_col2', None)
 
