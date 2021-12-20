@@ -64,8 +64,6 @@ class Mixture(nn.Module):
         return torch.cat(v_mixt)
 
 
-
-
 class BartEncoderAttention(nn.Module):
     """Multi-headed attention from 'Attention Is All You Need' paper"""
 
@@ -126,7 +124,6 @@ class BartEncoderAttention(nn.Module):
         if attribute_key == 'ptext':
             return self._shape(self.v_proj_ptext(hidden_states), -1, bsz)
 
-
     def _shape(self, tensor: torch.Tensor, seq_len: int, bsz: int):
         return tensor.view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2).contiguous()
 
@@ -145,8 +142,7 @@ class BartEncoderAttention(nn.Module):
         # if key_value_states are provided this layer is used as a cross-attention layer
         # for the decoder
         is_cross_attention = key_value_states is not None
-
-        bsz, tgt_len, _ = hidden_states.size()
+        bsz, tgt_len, embed_dim = hidden_states.size()
 
         # get query proj
         query_states = self.q_proj(hidden_states) * self.scaling
@@ -235,15 +231,11 @@ class BartEncoderAttention(nn.Module):
 
         attn_output = attn_output.view(bsz, self.num_heads, tgt_len, self.head_dim)
         attn_output = attn_output.transpose(1, 2)
-
-        # Use the `embed_dim` from the config (stored in the class) rather than `hidden_state` because `attn_output` can be
-        # partitioned aross GPUs when using tensor-parallelism.
-        attn_output = attn_output.reshape(bsz, tgt_len, self.embed_dim)
+        attn_output = attn_output.reshape(bsz, tgt_len, embed_dim)
 
         attn_output = self.out_proj(attn_output)
 
         return attn_output, attn_weights_reshaped, past_key_value
-
 
 
 class BartEncoderLayer(nn.Module):
@@ -348,9 +340,8 @@ class BartEncoder(BartPretrainedModel):
         self.layers = nn.ModuleList([BartEncoderLayer(config) for _ in range(config.encoder_layers)])
         self.layernorm_embedding = nn.LayerNorm(embed_dim)
 
+        self.init_weights()
         self.gradient_checkpointing = False
-        # Initialize weights and apply final processing
-        self.post_init()
 
     def get_input_embeddings(self):
         return self.embed_tokens
@@ -366,8 +357,8 @@ class BartEncoder(BartPretrainedModel):
         inputs_embeds=None,
         output_attentions=None,
         output_hidden_states=None,
-        attribute_key = None,
         return_dict=None,
+        attribute_key = None,
     ):
         r"""
         Args:
@@ -436,11 +427,9 @@ class BartEncoder(BartPretrainedModel):
 
         # check if head_mask has a correct number of layers specified if desired
         if head_mask is not None:
-            if head_mask.size()[0] != (len(self.layers)):
-                raise ValueError(
-                    f"The head_mask should be specified for {len(self.layers)} layers, but it is for {head_mask.size()[0]}."
-                )
-
+            assert head_mask.size()[0] == (
+                len(self.layers)
+            ), f"The head_mask should be specified for {len(self.layers)} layers, but it is for {head_mask.size()[0]}."
         for idx, encoder_layer in enumerate(self.layers):
             if output_hidden_states:
                 encoder_states = encoder_states + (hidden_states,)
@@ -462,7 +451,7 @@ class BartEncoder(BartPretrainedModel):
                         hidden_states,
                         attention_mask,
                         (head_mask[idx] if head_mask is not None else None),
-                        attribute_key = attribute_key,
+                        attribute_key,
                     )
                 else:
                     layer_outputs = encoder_layer(
@@ -470,7 +459,7 @@ class BartEncoder(BartPretrainedModel):
                         attention_mask,
                         layer_head_mask=(head_mask[idx] if head_mask is not None else None),
                         output_attentions=output_attentions,
-                        attribute_key = attribute_key
+                        attribute_key=attribute_key,
                     )
 
                 hidden_states = layer_outputs[0]
@@ -487,7 +476,6 @@ class BartEncoder(BartPretrainedModel):
             last_hidden_state=hidden_states, hidden_states=encoder_states, attentions=all_attentions
         )
 
-
 class BartModel(BartPretrainedModel):
     def __init__(self, config: BartConfig):
         super().__init__(config)
@@ -498,8 +486,7 @@ class BartModel(BartPretrainedModel):
         self.encoder = BartEncoder(config, self.shared)
         self.decoder = BartDecoder(config, self.shared)
 
-        # Initialize weights and apply final processing
-        self.post_init()
+        self.init_weights()
 
     def get_input_embeddings(self):
         return self.shared
@@ -564,8 +551,8 @@ class BartModel(BartPretrainedModel):
                 inputs_embeds=inputs_embeds,
                 output_attentions=output_attentions,
                 output_hidden_states=output_hidden_states,
-                attribute_key = attribute_key,
                 return_dict=return_dict,
+                attribute_key=attribute_key,
             )
         # If the user passed a tuple for encoder_outputs, we wrap it in a BaseModelOutput when return_dict=True
         elif return_dict and not isinstance(encoder_outputs, BaseModelOutput):
@@ -604,8 +591,6 @@ class BartModel(BartPretrainedModel):
             encoder_hidden_states=encoder_outputs.hidden_states,
             encoder_attentions=encoder_outputs.attentions,
         )
-
-
 class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
     base_model_prefix = "model"
     _keys_to_ignore_on_load_missing = [r"final_logits_bias", r"lm_head\.weight"]
