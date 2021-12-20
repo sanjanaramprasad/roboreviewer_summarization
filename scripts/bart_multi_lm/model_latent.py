@@ -163,6 +163,7 @@ class BartEncoderAttention(nn.Module):
             value_states = torch.cat([past_key_value[1], value_states], dim=2)
         else:
             # self_attention
+            print("ATTRIBUTE KEY", attribute_key)
             key_attr_states = self._attr_key(hidden_states=hidden_states, bsz=bsz,attribute_key=attribute_key)
             value_attr_states = self._attr_value(hidden_states=hidden_states, bsz=bsz,attribute_key=attribute_key)
             key_states = self._shape(self.k_proj(hidden_states), -1, bsz)
@@ -864,7 +865,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         alphas = self.soft_weigh(alphas) 
         #print('APLHAS', alphas)
         #alphas = self.soft_weigh(alphas)
-        '''alphas_ind = torch.argmax(alphas, 2, keepdim=True)
+        alphas_ind = torch.argmax(alphas, 2, keepdim=True)
         one_hot = torch.FloatTensor(alphas.shape)
         alphas_ind = alphas_ind.to(device = one_hot.device)
         one_hot.zero_()
@@ -902,7 +903,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
             masked_lm_loss = loss_fct(lm_logits.view(-1, self.config.vocab_size), labels.view(-1))
 
         if not return_dict:
-            output = (lm_logits0) + outputs3[1:]
+            output = (lm_logits) + outputs3[1:]
             return ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
         #print(lm_logits0[0].unsqueeze(0).shape)        
         lm_logits_list = [torch.stack([alphas[batch_id][:,0]  , alphas[batch_id][:,1] \
