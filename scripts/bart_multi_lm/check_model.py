@@ -58,7 +58,7 @@ tokenizer.add_tokens(additional_special_tokens)
 class BartMultiEncHATTester():
 
     def test_model_forward_bart_encoder(self, encoder_combination_type):
-        from model import BartForDataToTextGeneration_MultiLM
+        from model_latent import BartForDataToTextGeneration_MultiLM
         
         self.model = BartForDataToTextGeneration_MultiLM.from_pretrained('facebook/bart-base')
         self.model.resize_token_embeddings(len(tokenizer))
