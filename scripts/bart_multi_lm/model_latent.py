@@ -877,7 +877,7 @@ class BartForDataToTextGeneration_MultiLM(BartPretrainedModel):
         alphas = self.soft_weigh(alphas) 
         #print('APLHAS', alphas)
         #alphas = self.soft_weigh(alphas)
-        alphas_ind = torch.argmax(alphas, 2, keepdim=True)
+        '''alphas_ind = torch.argmax(alphas, 2, keepdim=True)
         one_hot = torch.FloatTensor(alphas.shape)
         alphas_ind = alphas_ind.to(device = one_hot.device)
         one_hot.zero_()
