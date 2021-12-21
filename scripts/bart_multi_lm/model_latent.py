@@ -151,9 +151,7 @@ class BartEncoderAttention(nn.Module):
         query_states = self.q_proj(hidden_states) 
         query_states_attr = self._attr_query(hidden_states,attribute_key=attribute_key)
         query_states_concat = torch.cat([query_states, query_states_attr], dim = -1)
-        print('QUERY STATES CAT', query_states_concat.shape)
         query_states = self.q_lin(query_states_concat)
-        print('QUERY STATES LIN', query_states.shape)
         query_states = query_states * self.scaling
         # get key, value proj
         if is_cross_attention and past_key_value is not None:
@@ -174,14 +172,10 @@ class BartEncoderAttention(nn.Module):
             # self_attention
             key_states = self._shape(self.k_proj(hidden_states), -1, bsz)
             value_states = self.v_proj(hidden_states)
-            print('VALUE STATES', value_states.shape)
             value_attr_states = self._attr_value(hidden_states=hidden_states, bsz=bsz,attribute_key=attribute_key)
             value_states_cat = torch.cat([value_states, value_attr_states], dim = -1)
-            print('VALUE STATES CONCAT', value_states_cat.shape)
             value_states = self.v_lin(value_states_cat)
-            print('VALUE STATES LIN', value_states.shape)
             value_states = self._shape(value_states, -1, bsz)
-            print('VALUE STATES KEY STATES', key_states.shape, value_states.shape)
 
         if self.is_decoder:
             # if cross_attention save Tuple(torch.Tensor, torch.Tensor) of all cross attention key/value_states.
