@@ -119,13 +119,13 @@ class BartEncoderAttention(nn.Module):
 
     def _attr_value(self, hidden_states, bsz, attribute_key):
         if attribute_key == 'pop':
-            return self._shape(self.v_proj_pop(hidden_states), -1, bsz)
+            return self.v_proj_pop(hidden_states)
         elif attribute_key == 'int':
-            return self._shape(self.v_proj_int(hidden_states), -1, bsz)
+            return self.v_proj_int(hidden_states)
         if attribute_key == 'out':
-            return self._shape(self.v_proj_out(hidden_states), -1, bsz)
+            return self.v_proj_out(hidden_states)
         if attribute_key == 'ptext':
-            return self._shape(self.v_proj_ptext(hidden_states), -1, bsz)
+            return self.v_proj_ptext(hidden_states)
 
     def _shape(self, tensor: torch.Tensor, seq_len: int, bsz: int):
         return tensor.view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2).contiguous()
@@ -173,13 +173,15 @@ class BartEncoderAttention(nn.Module):
         else:
             # self_attention
             key_states = self._shape(self.k_proj(hidden_states), -1, bsz)
-            value_states = self._shape(self.v_proj(hidden_states), -1, bsz)
+            value_states = self.v_proj(hidden_states)
             print('VALUE STATES', value_states.shape)
             value_attr_states = self._attr_value(hidden_states=hidden_states, bsz=bsz,attribute_key=attribute_key)
             value_states_cat = torch.cat([value_states, value_attr_states], dim = -1)
             print('VALUE STATES CONCAT', value_states_cat.shape)
             value_states = self.v_lin(value_states_cat)
             print('VALUE STATES LIN', value_states.shape)
+            value_states = self._shape(value_states, -1, bsz)
+            print('VALUE STATES KEY STATES', key_states.shape, value_states.shape)
 
         if self.is_decoder:
             # if cross_attention save Tuple(torch.Tensor, torch.Tensor) of all cross attention key/value_states.
