@@ -92,6 +92,7 @@ class BartEncoderAttention(nn.Module):
         self.k_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
         self.v_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
         self.q_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
+        self.q_lin = nn.Linear(embed_dim * 2, embed_dim)
         self.out_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
 
         self.q_proj_pop = nn.Linear(embed_dim, embed_dim, bias=bias)
@@ -147,7 +148,10 @@ class BartEncoderAttention(nn.Module):
         # get query proj
         query_states = self.q_proj(hidden_states) 
         query_states_attr = self._attr_query(hidden_states,attribute_key=attribute_key)
-        query_states = query_states.add(query_states_attr) 
+        query_states_concat = torch.cat([query_states, query_states_attr], dim = -1)
+        print('QUERY STATES CAT', query_states_concat.shape)
+        query_states = self.q_lin(query_states_concat)
+        print('QUERY STATES LIN', query_states)
         query_states = query_states * self.scaling
         # get key, value proj
         if is_cross_attention and past_key_value is not None:
