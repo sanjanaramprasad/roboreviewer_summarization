@@ -147,7 +147,8 @@ class BartEncoderAttention(nn.Module):
         # get query proj
         query_states = self.q_proj(hidden_states) 
         query_states_attr = self._attr_query(hidden_states,attribute_key=attribute_key)
-        query_states = query_states.add(query_states_attr) * self.scaling
+        query_states = query_states.add(query_states_attr) 
+        query_states = query_states * self.scaling
         # get key, value proj
         if is_cross_attention and past_key_value is not None:
             # reuse k,v, cross_attentions
@@ -165,10 +166,9 @@ class BartEncoderAttention(nn.Module):
             value_states = torch.cat([past_key_value[1], value_states], dim=2)
         else:
             # self_attention
-            
             key_states = self._shape(self.k_proj(hidden_states), -1, bsz)
             value_states = self._shape(self.v_proj(hidden_states), -1, bsz)
-
+            #print('VALUE STATES', value_states.shape)
             value_attr_states = self._attr_value(hidden_states=hidden_states, bsz=bsz,attribute_key=attribute_key)
             value_states = value_states.add(value_attr_states)
 
